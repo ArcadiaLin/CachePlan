@@ -2,8 +2,31 @@
 %
 % 约定见 references/README.md：
 %   - citekey 格式 <firstauthor><year><keyword>，与 papers/<citekey>.pdf
-%     及 docs/literature/<citekey>.md 同名绑定。
+%     及 docs/literature/<citekey>*.md 同名绑定。
 %   - 每个条目带一条 note 字段，写明它支撑本项目的哪个问题。
 %   - 入库门槛：能说出它支撑哪个 open question / decision / experiment。
-%
-% 尚无条目。
+
+@article{fan2026deepprep,
+  title     = {DeepPrep: An LLM-Powered Agentic System for Autonomous Data Preparation},
+  author    = {Fan, Meihao and Fan, Ju and Zhang, Yuxin and Zhang, Shaolei and
+               Du, Xiaoyong and Song, Jie and Li, Peng and Jiang, Fuxin and
+               Zhang, Tieying and Chen, Jianjun},
+  journal   = {Proceedings of the VLDB Endowment},
+  volume    = {19},
+  number    = {1},
+  year      = {2026},
+  publisher = {VLDB Endowment},
+  note      = {取证对象：open-questions/Necessity-of-agentic-execution。
+               精读稿待评审，见 references/papers/fan2026deepprep/close-read.md；
+               评审通过前不要引用其结论。artifact 链接在本版本中仍为占位符。}
+}
+
+@misc{anon2026longda,
+  title        = {LongDA: Benchmarking LLM Agents for Long-Document Data Analysis},
+  author       = {{Anonymous ACL submission}},
+  year         = {2026},
+  howpublished = {ACL submission, under review},
+  note         = {取证对象：open-questions/Necessity-of-agentic-execution。
+                  精读稿待评审，见 references/papers/anon2026longda/close-read.md；
+                  评审通过前不要引用其结论。505 条 query 与 ground truth 均未发布。}
+}

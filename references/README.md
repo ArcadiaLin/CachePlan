@@ -25,6 +25,18 @@ docs/literature/         →  chen2024promptcache.md   （只有需要写笔记�
 
 citekey 格式：**第一作者姓氏（小写）+ 发表年份 + 一个关键词**，如 `chen2024promptcache`、`zheng2024sglang`。重复时在年份后加 `a`/`b`。
 
+## 精读稿的暂存位置
+
+用 `paper-close-read` skill 产出的图文精读稿，先落在工作目录里：
+
+```
+references/papers/<citekey>/close-read.md      # 精读稿
+references/papers/<citekey>/assets/            # 正文引用的图
+references/papers/<citekey>/evidence_map.md    # 证据地图
+```
+
+这一层是 gitignored 的**暂存区**，不是成品。精读稿由 agent 生成，**必须经人工评审确认结论可信之后**，才决定是否以及以什么形式进入 `docs/literature/`——通常是提炼成一篇判断笔记，而不是把长稿整篇搬过去。未经评审的内容不进 `docs/`，`refs.bib` 的 note 字段也不写它的结论。
+
 ## 入库门槛
 
 一篇论文进入 `refs.bib`，必须能说出它支撑哪个 open question / decision / experiment。**不做无目的的文献囤积**——只读不入库是允许的，读完发现无关就不要留下痕迹。
