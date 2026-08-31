@@ -1,0 +1,62 @@
+# Local reference material. Track source metadata, not binaries or full clones.
+/references/papers/
+/references/repos/
+/references/datasets/
+
+# External data, model weights, and caches. Keep manifests and small fixtures tracked.
+/data/raw/
+/data/processed/
+/data/cache/
+/models/
+/checkpoints/
+/cache/
+
+# Generated experiment output. Keep experiment code and configs under experiments/ tracked.
+/runs/
+/results/
+
+# Node.js dependencies, build output, and profiling artifacts.
+node_modules/
+dist/
+coverage/
+.npm/
+*.tsbuildinfo
+*.cpuprofile
+/outputs/
+/artifacts/
+/wandb/
+/mlruns/
+/scratch/
+
+# Secrets and machine-local configuration.
+.env
+.env.*
+!.env.example
+
+# Python environments, bytecode, test, type-checker, and build caches.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Editors and operating-system noise.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files.
+*.log
+*.tmp
+*.swp
+*~
