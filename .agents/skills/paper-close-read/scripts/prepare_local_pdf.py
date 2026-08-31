@@ -28,7 +28,7 @@ from pathlib import Path
 # fragments) and only add noise to the index. Filter on dimensions only, never
 # on encoded byte size: line-art figures and plots compress to very few bytes.
 MIN_IMAGE_PIXELS = 120
-PAGE_RENDER_DPI = 150
+PAGE_RENDER_DPI = 200
 
 
 def load_pymupdf():
@@ -75,49 +75,60 @@ def extract_text_pymupdf(doc, output_txt: Path) -> str:
     return f"text: extracted with pymupdf ({len(doc)} pages, page markers included)"
 
 
-def extract_images_pymupdf(pymupdf, doc, images_dir: Path) -> tuple[str, list[str]]:
-    """Extract embedded images; render whole pages when there are none."""
-    entries: list[str] = []
+def render_pages_pymupdf(doc, images_dir: Path, dpi: int) -> list[str]:
+    entries = []
+    for number, page in enumerate(doc, start=1):
+        name = f"page-{number:03d}.png"
+        page.get_pixmap(dpi=dpi).save(images_dir / name)
+        entries.append(f"- `{name}`: rendered page {number} @ {dpi}dpi")
+    return entries
+
+
+def extract_images_pymupdf(pymupdf, doc, images_dir: Path, dpi: int) -> tuple[str, list[str]]:
+    """Render every page, then add whatever embedded rasters are actually usable.
+
+    Page renders are the reliable artifact. Embedded-image extraction is only a
+    supplement, because in a typical CS paper the figures are vector art: the
+    objects `get_images()` reports are then just the soft masks and shading
+    layers behind that art, and `extract_image()` hands back a base layer that
+    opens as solid black. Such images are composited with their mask here, and
+    dropped when the result carries no detail.
+    """
+    entries = render_pages_pymupdf(doc, images_dir, dpi)
+    page_count = len(entries)
+
     seen: set[int] = set()
-    index = 0
+    kept = 0
+    skipped_flat = 0
 
     for number, page in enumerate(doc, start=1):
         for info in page.get_images(full=True):
-            xref = info[0]
+            xref, smask_xref = info[0], info[1]
             if xref in seen:  # the same image can be placed on several pages
                 continue
             seen.add(xref)
             try:
-                image = doc.extract_image(xref)
+                pix = pymupdf.Pixmap(doc, xref)
+                if smask_xref:  # re-attach transparency, else the art reads as black
+                    pix = pymupdf.Pixmap(pix, pymupdf.Pixmap(doc, smask_xref))
             except Exception:  # noqa: BLE001 - a broken xref must not abort the run
                 continue
-            if image["width"] < MIN_IMAGE_PIXELS or image["height"] < MIN_IMAGE_PIXELS:
+            if pix.width < MIN_IMAGE_PIXELS or pix.height < MIN_IMAGE_PIXELS:
                 continue
-            name = f"img-{index:03d}.{image['ext']}"
-            (images_dir / name).write_bytes(image["image"])
-            entries.append(f"- `{name}`: page {number}, {image['width']}x{image['height']}px")
-            index += 1
+            if pix.is_unicolor:  # a bare mask or a solid fill: no figure in there
+                skipped_flat += 1
+                continue
+            name = f"img-{kept:03d}.png"
+            pix.save(images_dir / name)
+            entries.append(f"- `{name}`: page {number}, {pix.width}x{pix.height}px (embedded)")
+            kept += 1
 
-    if entries:
-        return f"images: extracted {len(entries)} embedded images with pymupdf", entries
-
-    for number, page in enumerate(doc, start=1):
-        name = f"page-{number:03d}.png"
-        page.get_pixmap(dpi=PAGE_RENDER_DPI).save(images_dir / name)
-        entries.append(f"- `{name}`: rendered page {number} @ {PAGE_RENDER_DPI}dpi")
-    return (
-        f"images: no embedded images found, rendered {len(entries)} pages with pymupdf",
-        entries,
+    status = (
+        f"images: rendered {page_count} pages @ {dpi}dpi + kept {kept} embedded rasters"
     )
-
-
-def render_pages_pymupdf(doc, images_dir: Path) -> list[str]:
-    entries = []
-    for number, page in enumerate(doc, start=1):
-        name = f"page-{number:03d}.png"
-        page.get_pixmap(dpi=PAGE_RENDER_DPI).save(images_dir / name)
-        entries.append(f"- `{name}`: rendered page {number} @ {PAGE_RENDER_DPI}dpi")
-    return entries
+    if skipped_flat:
+        status += f" (dropped {skipped_flat} mask-only/flat images)"
+    return status, entries
 
 
 # --- poppler fallback ------------------------------------------------------
@@ -179,9 +190,10 @@ def main() -> int:
     parser.add_argument("pdf", help="Path to the source PDF")
     parser.add_argument("output_dir", help="Directory to populate")
     parser.add_argument(
-        "--render-pages",
-        action="store_true",
-        help="Also render every page to PNG, even when embedded images were found",
+        "--dpi",
+        type=int,
+        default=PAGE_RENDER_DPI,
+        help=f"Page render resolution (default: {PAGE_RENDER_DPI})",
     )
     args = parser.parse_args()
 
@@ -204,10 +216,7 @@ def main() -> int:
         with pymupdf.open(copied_pdf) as doc:
             backend = f"backend: pymupdf {pymupdf.__doc__ or ''}".strip()
             text_status = extract_text_pymupdf(doc, output_dir / "paper.txt")
-            image_status, entries = extract_images_pymupdf(pymupdf, doc, images_dir)
-            if args.render_pages and not any(e.startswith("- `page-") for e in entries):
-                entries.extend(render_pages_pymupdf(doc, images_dir))
-                image_status += " + rendered all pages"
+            image_status, entries = extract_images_pymupdf(pymupdf, doc, images_dir, args.dpi)
     else:
         backend = "backend: poppler fallback (PyMuPDF unavailable — prefer `uv run`)"
         text_status = extract_text_poppler(copied_pdf, output_dir / "paper.txt")
