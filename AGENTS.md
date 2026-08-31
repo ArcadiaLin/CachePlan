@@ -57,6 +57,19 @@ When working in this repository:
 6. Clearly separate experimental mechanisms from baseline implementations.
 7. Do not optimize code solely for software elegance when doing so makes experiments harder to understand or reproduce.
 
+## Documentation Conventions
+
+Research questions, discussions, and experiment records accumulate under `docs/`, organized by kind rather than dropped flat into `docs/`:
+
+- `docs/open-questions/` — unresolved research questions or hypotheses that need experimental validation before the project can proceed on an assumption.
+- `docs/decisions/` — conclusions reached once an open question is resolved, with the rationale (ADR-style). Cross-link back to the originating open-question doc.
+- `docs/experiments/` — records of specific experiments (setup, results, logs).
+- `docs/PROGRESS.md` — the mainline tracking document. It lists current research direction and the resolution status of every open question (OPEN / RESOLVED), with a short resolution summary once resolved.
+
+**Agent rule**: once an open question is marked `RESOLVED` in `docs/PROGRESS.md`, treat its original doc under `docs/open-questions/` as historical — do not read the full doc back into context unless the user explicitly asks for it. Rely on the short resolution summary in `docs/PROGRESS.md` instead. This keeps converged, long-form discussions from being repeatedly pulled into context once they're settled.
+
+When starting new research-direction work, check `docs/PROGRESS.md` first for current status before creating a new doc.
+
 ## Evolving Research Direction
 
 This repository supports an **ongoing and evolving research project**. The current problem formulation, hypotheses, metrics, workloads, and system design should not be treated as finalized.
