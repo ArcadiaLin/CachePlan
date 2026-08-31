@@ -80,9 +80,14 @@ Research questions, discussions, and experiment records accumulate under `docs/`
 - `docs/open-questions/` — unresolved research questions or hypotheses that need experimental validation before the project can proceed on an assumption.
 - `docs/decisions/` — conclusions reached once an open question is resolved, with the rationale (ADR-style). Cross-link back to the originating open-question doc.
 - `docs/experiments/` — records of specific experiments (setup, results, logs).
-- `docs/PROGRESS.md` — the mainline tracking document. It lists current research direction and the resolution status of every open question (OPEN / RESOLVED), with a short resolution summary once resolved.
+- `docs/literature/` — our *judgement* on external papers: one note per paper that actually supports a question, plus the index of those notes. Not the papers themselves.
+- `docs/PROGRESS.md` — the mainline tracking document. It lists current research direction, current work, and the resolution status of every open question (OPEN / RESOLVED), with a short resolution summary once resolved.
 
-**Agent rule**: once an open question is marked `RESOLVED` in `docs/PROGRESS.md`, treat its original doc under `docs/open-questions/` as historical — do not read the full doc back into context unless the user explicitly asks for it. Rely on the short resolution summary in `docs/PROGRESS.md` instead. This keeps converged, long-form discussions from being repeatedly pulled into context once they're settled.
+External material lives outside `docs/`, in `references/`: `references/refs.bib` is the single tracked source of paper metadata, while `references/papers/` (PDFs), `references/repos/`, and `references/datasets/` are gitignored local copies. A paper is bound across all three places by one **citekey** (`author2024keyword`) used as its bib entry name, PDF filename, and note filename. Conventions: [`references/README.md`](references/README.md) and [`docs/literature/README.md`](docs/literature/README.md).
+
+**Agent rule (settled discussions)**: once an open question is marked `RESOLVED` in `docs/PROGRESS.md`, treat its original doc under `docs/open-questions/` as historical — do not read the full doc back into context unless the user explicitly asks for it. Rely on the short resolution summary in `docs/PROGRESS.md` instead. This keeps converged, long-form discussions from being repeatedly pulled into context once they're settled.
+
+**Agent rule (literature)**: same principle. Default to reading the index table in `docs/literature/README.md` and, where needed, a note's `verdict` field. Do not pull PDF full text or whole notes into context unless the user asks for a specific paper.
 
 When starting new research-direction work, check `docs/PROGRESS.md` first for current status before creating a new doc.
 

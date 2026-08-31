@@ -15,14 +15,18 @@
 > **本章节的维护规范**（仅适用于本章节）：这里只记录**当前正在进行的工作**，保持简短。**不对历史进行维护**——每次更新本章节都是**整节完整重写**，直接覆盖旧内容，不追加、不保留历史条目、不写变更记录。仅当用户显式要求"只调整某一处"时才做局部修改。需要留存的历史属于 Open Questions / Decisions / Experiments 各表，不属于这里。
 
 - 已把研究 workload 定名为 data-intensive / data-processing agent workflows（见上节），`AGENTS.md`、本文档、open-question 文档三处术语已对齐。
+- 文献管理规范已建立（`references/` + `docs/literature/`，见下方 Literature 节），骨架就位但**尚无任何文献入库**。
+- 进行中：为已有 open question 找支撑文献，读完后按规范写笔记并回填 Open Questions 表的 `Refs` 列。
 - 待办：验证 open question「Is agentic execution necessary」——构造不同 autonomy level 的 P4A 实现做 controlled comparison。
 - 待办：`docs/experiments/p4a.md` 第 4 节的先决核查项——批量核实 12,801 个 session 的 `inputCacheRead` / `inputCacheCreation` 是否恒为 0，未做之前不得基于 cache 命中率下结论。
 
 ## Open Questions
 
-| Question | Status | Doc | Resolution |
-|---|---|---|---|
-| Is agentic execution necessary for data-intensive workloads (P4A)? | OPEN | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | — |
+| Question | Status | Doc | Refs | Resolution |
+|---|---|---|---|---|
+| Is agentic execution necessary for data-intensive workloads (P4A)? | OPEN | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | — | — |
+
+`Refs` 列填支撑该问题的文献 citekey（见 [Literature](#literature)）；一个问题在有文献支撑之前被 RESOLVED，应当在 Resolution 里说明结论是纯实验得出的。
 
 ## Decisions
 
@@ -34,3 +38,9 @@
 ## Experiments
 
 - [`experiments/p4a.md`](experiments/p4a.md) — P4A 项目实验记录
+
+## Literature
+
+- 索引与笔记规范：[`literature/README.md`](literature/README.md)
+- 文献元数据（唯一来源）：[`../references/refs.bib`](../references/refs.bib)
+- PDF 等外部材料：`references/papers/`（gitignored，靠 `refs.bib` 里的 url 取回）
