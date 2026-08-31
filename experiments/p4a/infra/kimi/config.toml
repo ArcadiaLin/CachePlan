@@ -1,0 +1,24 @@
+default_model = "qwen36-35b-a3b"
+default_thinking = true
+default_permission_mode = "auto"
+
+[providers.vllm]
+type = "openai"
+base_url = "http://192.168.163.112:8003/v1"
+api_key = "REPLACE_ME"
+
+[models.qwen36-35b-a3b]
+provider = "vllm"
+model = "qwen3.6-35b-a3b"
+max_context_size = 262144
+max_output_size = 32768
+reasoning_key = "REPLACE_ME"
+capabilities = ["thinking", "tool_use"]
+
+[loop_control]
+max_steps_per_turn = 1000
+max_retries_per_step = 5
+reserved_context_size = 50000
+
+[experimental]
+micro_compaction = true

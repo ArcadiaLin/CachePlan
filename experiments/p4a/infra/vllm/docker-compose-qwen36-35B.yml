@@ -1,0 +1,123 @@
+# docker compose -f docker-compose-qwen36-35B.yml up -d
+services:
+  vllm-qwen36-35b:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-qwen36-35b
+    runtime: nvidia
+
+    ports:
+      - "8003:8000"
+
+    volumes:
+      - /srv/models/Qwen3.6/Qwen3.6-35B-A3B:/models/Qwen3.6-35B-A3B
+
+    ipc: host
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Equivalent to: docker run --gpus '"device=2,3"'
+    gpus:
+      - driver: nvidia
+        device_ids: ["2", "3"]
+        capabilities: [gpu]
+
+    command:
+      - --model
+      - /models/Qwen3.6-35B-A3B
+
+      # ===== 服务监听 =====
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+
+      # ===== 访问鉴权（OpenAI API Key）=====
+      # 启用后，请求时需要带：
+      # Authorization: Bearer sk-xxxxxx
+      # - --api-key
+      # - sk-your-secret-token
+
+      # ===== 张量并行 =====
+      - --tensor-parallel-size
+      - "2"
+
+      # ===== 数据类型 / 精度 =====
+      # 可选：auto / half / float16 / bfloat16 / float / float32
+      # A800 通常更推荐 bfloat16 或 auto
+      - --dtype
+      - bfloat16
+
+      # ===== 最大上下文长度 =====
+      - --max-model-len
+      - "262144"
+
+      # ===== GPU 显存利用率 =====
+      # 默认通常偏保守，可手动调高
+      - --gpu-memory-utilization
+      - "0.9"
+
+      # ===== 并发 / 调度 =====
+      # - --max-num-seqs
+      # - "16"
+      # - --max-num-batched-tokens
+      # - "8192"
+
+      # ===== KV Cache 数据类型 =====
+      # 可选: auto / fp8 / fp8_e5m2 / fp8_e4m3
+      # 需要硬件与版本支持
+      # - --kv-cache-dtype
+      # - fp8
+
+      # ===== 信任远程代码 =====
+      # 某些 Hugging Face 模型需要
+      # - --trust-remote-code
+
+      # ===== 模型名称（API 返回名）=====
+      # 不写的话一般就是模型路径
+      - --served-model-name
+      - qwen3.6-35b-a3b
+
+      # ===== tool call 设置 =====
+      - --enable-auto-tool-choice
+      - --tool-call-parser
+      - qwen3_coder
+
+      # ===== reasoning 输出设置 =====
+      - --reasoning-parser
+      - qwen3
+
+      # ===== 限制日志级别 =====
+      # - --uvicorn-log-level
+      # - info
+
+      # ===== eager 模式，排查问题时有用 =====
+      # - --enforce-eager
+
+      # ===== 前缀缓存 =====
+      # 一般可提升重复前缀请求性能
+      - --enable-prefix-caching
+
+      # ===== 量化（如果你的模型就是量化版，可启用）=====
+      # 常见如 awq / gptq / fp8
+      # - --quantization
+      # - awq
+
+      # ===== CPU offload（显存不够时尝试）=====
+      # - --cpu-offload-gb
+      # - "10"
+
+      # ===== swap 空间 =====
+      # - --swap-space
+      # - "16"
+
+      # ===== 禁用请求日志（压日志量）=====
+      # - --disable-log-requests
+
+    environment:
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+    restart: unless-stopped

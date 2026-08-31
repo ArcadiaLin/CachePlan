@@ -1,0 +1,37 @@
+{
+  "mcpServers": {
+    "github-readonly": {
+      "url": "https://api.githubcopilot.com/mcp/readonly",
+      "bearerTokenEnvVar": "GITHUB_PAT_TOKEN",
+      "headers": {
+        "X-MCP-Tools": "get_file_contents,search_code,search_repositories,get_commit,list_commits,search_commits,list_branches,list_tags,get_tag,get_latest_release,get_release_by_tag,list_releases",
+        "X-MCP-Readonly": "true"
+      }
+    },
+    "hf-readonly": {
+      "url": "https://huggingface.co/mcp?no_image_content=true",
+      "enabledTools": [
+        "hf_whoami",
+        "hub_repo_details",
+        "hub_repo_search",
+        "paper_search",
+        "space_search"
+      ],
+      "startupTimeoutMs": 30000,
+      "toolTimeoutMs": 30000
+    },
+    "arxiv-mcp": {
+      "command": "uvx",
+      "args": [
+        "arxiv-mcp-server"
+      ],
+      "enabledTools": [
+        "search_papers",
+        "get_abstract",
+        "download_paper"
+      ],
+      "startupTimeoutMs": 30000,
+      "toolTimeoutMs": 30000
+    }
+  }
+}

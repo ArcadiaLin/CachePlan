@@ -1,0 +1,225 @@
+defaults:
+  unknown_value: unknown
+  missing_hyperparameters_status: missing
+  arxiv_api_url: https://export.arxiv.org/api/query
+  max_citation_contexts_in_yaml: 200
+
+enums:
+  paper_type:
+    - survey
+    - empirical
+    - benchmark
+    - dataset
+    - method
+    - theory
+    - position
+    - unknown
+  claim_type:
+    - empirical
+    - theoretical
+    - methodological
+    - survey
+    - resource
+    - ""
+  hyperparameter_status:
+    - available
+    - partial
+    - missing
+    - not_applicable
+  resource_kind:
+    - dataset
+    - benchmark
+    - code
+    - model
+    - tool
+    - skill
+    - protocol
+    - resource
+  access_type:
+    - public
+    - request_only
+    - restricted
+    - missing
+    - unknown
+  availability_status:
+    - available
+    - partial
+    - missing
+    - broken
+    - empty
+    - unknown
+  wrapping_difficulty:
+    - low
+    - medium
+    - high
+    - unknown
+  extraction_confidence:
+    - low
+    - medium
+    - high
+    - unknown
+  figure_review_status:
+    - unreviewed
+    - ok
+    - parser_mismatch
+    - uncertain
+
+lint:
+  paper_required_fields:
+    paper_record.paper_id: str
+    paper_record.source_type: str
+    paper_record.metadata: dict
+    paper_record.metadata.title: str
+    paper_record.metadata.authors: list
+    paper_record.metadata.arxiv_id: str
+    paper_record.content_units: dict
+    paper_record.content_units.section_outline: list
+    paper_record.atomic_extracts: dict
+    paper_record.atomic_extracts.intent: dict
+    paper_record.atomic_extracts.contributions: list
+    paper_record.atomic_extracts.claims: list
+    paper_record.atomic_extracts.experiments: list
+    paper_record.atomic_extracts.citation_context: dict
+    resources_introduced: list
+    resources_used: list
+    cites: list
+    cited_by: list
+  resource_required_fields:
+    resource_record.resource_id: str
+    resource_record.kind: str
+    resource_record.name: str
+    resource_record.domain: list
+    resource_record.access: dict
+    resource_record.agent_callable: dict
+    resource_record.availability_check: dict
+    resource_record.reverse_index: dict
+    resource_record.provenance: dict
+  enum_fields:
+    paper_record.atomic_extracts.intent.paper_type: paper_type
+    resource_record.kind: resource_kind
+    resource_record.access.access_type: access_type
+    resource_record.availability_check.status: availability_status
+    resource_record.agent_callable.estimated_wrapping_difficulty: wrapping_difficulty
+
+agent_judgment:
+  allowed_replace_paths:
+    - paper_record.atomic_extracts.intent.paper_type
+    - paper_record.atomic_extracts.intent.research_problem
+    - paper_record.atomic_extracts.intent.target_domain
+    - paper_record.atomic_extracts.contributions
+    - paper_record.atomic_extracts.claims
+    - paper_record.atomic_extracts.experiments
+    - paper_record.atomic_extracts.limitations
+    - paper_record.atomic_extracts.future_work
+    - resources_introduced
+    - resources_used
+  citation_semantic_fields:
+    - citation_function
+  figure_semantic_fields:
+    - description
+    - agent_review
+  resource_judgment_paths:
+    - resource_judgments
+    - resources
+  resource_merge:
+    dedupe_keys:
+      - resource_id
+      - url
+      - kind_name
+    agent_source_label: agent_judgment
+    prefer_agent_fields:
+      - kind
+      - name
+      - description
+      - domain
+      - access
+      - agent_callable
+      - notes
+    list_fields:
+      - aliases
+      - evidence
+      - source_mentions
+    allowed_fields:
+      - resource_id
+      - kind
+      - name
+      - aliases
+      - description
+      - domain
+      - access
+      - agent_callable
+      - evidence
+      - notes
+      - source_mentions
+
+emitter:
+  default_resource_access_type: unknown
+  default_availability_status: unknown
+  default_wrapping_difficulty: unknown
+  default_extraction_confidence: medium
+  checked_by: agent
+
+tex:
+  readme_filename: 00README.json
+  top_level_usage: toplevel
+  file_extensions_to_read:
+    - .tex
+    - .bib
+    - .bbl
+    - .json
+  main_file_scoring:
+    content_markers:
+      "\\documentclass": 100
+      "\\begin{document}": 60
+      "\\title": 20
+      "\\maketitle": 10
+    preferred_basenames:
+      main.tex: 15
+      paper.tex: 15
+      article.tex: 15
+    path_depth_penalty: 3
+    negative_name_keywords:
+      supp: 15
+      appendix: 15
+  include_commands:
+    - input
+    - include
+  section_levels:
+    - section
+    - subsection
+    - subsubsection
+  caption_environments:
+    - figure
+    - figure*
+    - table
+    - table*
+  graphics_commands:
+    - includegraphics
+  graphicspath_commands:
+    - graphicspath
+  citation_commands:
+    - cite
+    - Cite
+    - citep
+    - Citet
+    - Citep
+    - citet
+    - citealt
+    - citealp
+    - citeauthor
+    - parencite
+    - textcite
+
+resources:
+  url_pattern: "(?:https?://|www\\.)[^\\s{}\\\\]+"
+  default_url_kind: resource
+
+figures:
+  allowed_extensions:
+    - .pdf
+    - .png
+    - .jpg
+    - .jpeg
+    - .eps
+    - .svg
+  copy_policy: original

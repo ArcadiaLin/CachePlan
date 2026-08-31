@@ -1,0 +1,15 @@
+[project]
+name = "p4a"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "arxiv<2",
+    "docopt>=0.6.2",
+    "fastapi<0.137.0",
+    "lxml>=6.1.1",
+    "mineru[core,vllm]>=3.3.1,<4.0.0",
+    "starlette<0.52.0",
+    "vllm>=0.21.0,<0.22.0",
+]

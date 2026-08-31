@@ -1,0 +1,11 @@
+version: 1
+agent:
+  name: data-worker-references-repair-agent
+  system_prompt_path: ./system.md
+  tools:
+    - "kimi_cli.tools.shell:Shell"
+    - "kimi_cli.tools.file:ReadFile"
+    - "kimi_cli.tools.file:WriteFile"
+  exclude_tools:
+    - "kimi_cli.tools.web:SearchWeb"
+    - "kimi_cli.tools.web:FetchURL"  

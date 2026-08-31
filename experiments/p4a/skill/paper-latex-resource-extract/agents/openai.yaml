@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paper LaTeX Resource Extract"
+  short_description: "从 arXiv LaTeX 包抽取论文与资源记录"
+  default_prompt: "Use $paper-latex-resource-extract to parse an arXiv LaTeX source package into paper and resource draft records."
