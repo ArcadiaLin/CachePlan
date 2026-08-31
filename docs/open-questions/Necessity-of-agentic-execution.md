@@ -1,5 +1,7 @@
 ## Open Question: Is Agentic Execution Necessary for Data-Intensive Workloads?
 
+> 术语说明（2026-08-31 补记）：本文中的 "data-intensive workload" 指 **data-intensive / data-processing agent workflow**——Agent 依据固定 procedural knowledge（Skill），对大量不同输入反复执行同一个长程、工具增强、带 validation 与 repair 的 E2E workflow。它不是 "Data Analysis Agent"，任务语义是否属于"数据分析"与本问题无关。完整定义见 [`AGENTS.md` → Workload Under Study](../../AGENTS.md#workload-under-study)。
+
 在进一步研究 **cache-aware planning and execution in LLM agents** 之前，一个需要优先验证的前置问题是：**对于 P4A 这类 data-intensive end-to-end processing task，是否真的有必要使用 Kimi Code 一类具有自主规划、工具调用和迭代执行能力的 ReAct/coding agent？**
 
 目前 P4A 使用 coding agent，根据较长的 Skill 描述完成论文资源抽取任务。Agent 需要读取输入文件、理解论文内容、识别潜在资源、调用本地脚本及外部工具进行调查、生成结构化结果、执行 validation，并在必要时根据中间结果继续调查或修复输出。这种执行模式天然形成较长的 agent trajectory，也为 prompt/KV cache reuse 提供了潜在的优化空间。然而，这里存在一个更基础的问题：**这些 agentic behaviors 是否确实是完成任务所必需的，还是 P4A 实际上可以退化为一个固定的数据处理 workflow？**

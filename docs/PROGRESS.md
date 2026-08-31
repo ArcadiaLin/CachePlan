@@ -8,6 +8,16 @@
 
 见 [`AGENTS.md`](../AGENTS.md)：cache-aware planning and execution in LLM agents（研究方向仍在演进中，以 AGENTS.md 中的描述为准）。
 
+**Workload 命名（2026-08-31 更正）**：本项目研究的 workload 类别是 **data-intensive / data-processing agent workflows**，不是 "Data Analysis Agent"。P4A 的核心特征不是"分析数据"，而是 Agent 依据固定的 procedural knowledge（Skill），对大量不同输入反复执行同一个长程、工具增强、带 validation 与 repair 的 E2E workflow。完整定义见 [`AGENTS.md` → Workload Under Study](../AGENTS.md#workload-under-study)。这一命名对研究是 load-bearing 的：跨 run 的**固定过程 + 大量重复**才是 cache 复用空间的来源，"data analysis" 强调的是任务语义，指向了错误的属性。
+
+## Current Work
+
+> **本章节的维护规范**（仅适用于本章节）：这里只记录**当前正在进行的工作**，保持简短。**不对历史进行维护**——每次更新本章节都是**整节完整重写**，直接覆盖旧内容，不追加、不保留历史条目、不写变更记录。仅当用户显式要求"只调整某一处"时才做局部修改。需要留存的历史属于 Open Questions / Decisions / Experiments 各表，不属于这里。
+
+- 已把研究 workload 定名为 data-intensive / data-processing agent workflows（见上节），`AGENTS.md`、本文档、open-question 文档三处术语已对齐。
+- 待办：验证 open question「Is agentic execution necessary」——构造不同 autonomy level 的 P4A 实现做 controlled comparison。
+- 待办：`docs/experiments/p4a.md` 第 4 节的先决核查项——批量核实 12,801 个 session 的 `inputCacheRead` / `inputCacheCreation` 是否恒为 0，未做之前不得基于 cache 命中率下结论。
+
 ## Open Questions
 
 | Question | Status | Doc | Resolution |

@@ -24,6 +24,22 @@ A tentative research question is:
 
 Both the research question and the technical approach are subject to change as the project develops.
 
+## Workload Under Study
+
+The workload class this project studies is **data-intensive / data-processing agent workflows**, not "data analysis agents".
+
+The distinction is load-bearing. What characterizes P4A (see `docs/experiments/p4a.md`) is not that the agent *analyzes data*; it is that the agent repeatedly executes **one long-horizon, tool-augmented, end-to-end workflow over many different inputs, driven by a fixed body of procedural knowledge (a Skill)**. Concretely, an instance of this workload class has:
+
+- **fixed procedural knowledge** — a long, stable Skill / agent prompt that encodes the same procedure for every input;
+- **input-parallel repetition** — the same procedure is run over a corpus of homogeneous but non-identical inputs (in P4A: every ACL 2025 main-conference paper), one independent run per input;
+- **long-horizon tool-augmented execution** — many turns of read / extract / search / merge, over local scripts and external sources;
+- **validation and repair** — the run does not end at first output; results are validated against a schema or checker, and failures trigger re-investigation or targeted fixes;
+- **structured end-to-end output** — the deliverable is a structured record, not a conversational answer.
+
+This framing is what makes the workload interesting for cache research: because the procedural knowledge is fixed and the runs are many, there is a large *a priori* shared prefix across runs, and any divergence in how the agent phrases or orders its steps is what erodes reuse of that prefix. Terms like "data analysis agent" put the emphasis on the wrong property (the semantics of the task) rather than on the repetition of a fixed procedure, which is the property the research actually depends on.
+
+The open question of *how much agency* this workload class actually requires is tracked separately in `docs/PROGRESS.md`; nothing here presumes that a full ReAct agent is the right execution abstraction for it.
+
 ## Repository Purpose
 
 This repository is primarily intended for research experimentation, including:
