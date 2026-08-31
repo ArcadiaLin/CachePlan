@@ -1,5 +1,20 @@
-#!/usr/bin/env python3
-"""Prepare a local-paper workspace from a PDF with graceful fallbacks."""
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pymupdf>=1.24"]
+# ///
+"""Prepare a local-paper workspace from a PDF.
+
+Run with uv so the PDF dependency is resolved automatically, with no system
+packages and no virtualenv to manage:
+
+    uv run scripts/prepare_local_pdf.py paper.pdf out-dir/
+
+PyMuPDF handles text extraction, embedded-image extraction and page rendering,
+so poppler (pdftotext / pdfimages / pdftoppm) is no longer required. If the
+script is run with a bare interpreter that lacks PyMuPDF, it falls back to
+poppler when present and otherwise reports what is missing instead of failing.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +23,27 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+# Embedded images below this pixel size are decorative (rules, logos, glyph
+# fragments) and only add noise to the index. Filter on dimensions only, never
+# on encoded byte size: line-art figures and plots compress to very few bytes.
+MIN_IMAGE_PIXELS = 120
+PAGE_RENDER_DPI = 150
+
+
+def load_pymupdf():
+    """Return the pymupdf module, or None when it is unavailable."""
+    try:
+        import pymupdf  # type: ignore
+
+        return pymupdf
+    except ImportError:
+        try:
+            import fitz as pymupdf  # type: ignore  # PyMuPDF < 1.24 name
+
+            return pymupdf
+        except ImportError:
+            return None
 
 
 def which(name: str) -> str | None:
@@ -20,60 +56,133 @@ def run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
 
 def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content)
+    path.write_text(content, encoding="utf-8")
 
 
-def build_index(images_dir: Path) -> None:
-    files = sorted(p for p in images_dir.iterdir() if p.is_file() and p.name != "index.md")
-    lines = ["# Image Index", ""]
-    if not files:
-        lines.append("- No extracted images or rendered pages were created.")
-    else:
-        for item in files:
-            lines.append(f"- `{item.name}`")
-    write_text(images_dir / "index.md", "\n".join(lines) + "\n")
+# --- PyMuPDF path ----------------------------------------------------------
 
 
-def extract_text(pdf_path: Path, output_txt: Path) -> str:
+def extract_text_pymupdf(doc, output_txt: Path) -> str:
+    """Write the full text with page markers, so claims stay citable by page."""
+    chunks = []
+    for number, page in enumerate(doc, start=1):
+        chunks.append(f"\n\n===== [page {number}] =====\n\n")
+        chunks.append(page.get_text("text"))
+    text = "".join(chunks).strip()
+    if not text:
+        return "text: pymupdf found no text layer (likely a scanned PDF; OCR needed)"
+    write_text(output_txt, text + "\n")
+    return f"text: extracted with pymupdf ({len(doc)} pages, page markers included)"
+
+
+def extract_images_pymupdf(pymupdf, doc, images_dir: Path) -> tuple[str, list[str]]:
+    """Extract embedded images; render whole pages when there are none."""
+    entries: list[str] = []
+    seen: set[int] = set()
+    index = 0
+
+    for number, page in enumerate(doc, start=1):
+        for info in page.get_images(full=True):
+            xref = info[0]
+            if xref in seen:  # the same image can be placed on several pages
+                continue
+            seen.add(xref)
+            try:
+                image = doc.extract_image(xref)
+            except Exception:  # noqa: BLE001 - a broken xref must not abort the run
+                continue
+            if image["width"] < MIN_IMAGE_PIXELS or image["height"] < MIN_IMAGE_PIXELS:
+                continue
+            name = f"img-{index:03d}.{image['ext']}"
+            (images_dir / name).write_bytes(image["image"])
+            entries.append(f"- `{name}`: page {number}, {image['width']}x{image['height']}px")
+            index += 1
+
+    if entries:
+        return f"images: extracted {len(entries)} embedded images with pymupdf", entries
+
+    for number, page in enumerate(doc, start=1):
+        name = f"page-{number:03d}.png"
+        page.get_pixmap(dpi=PAGE_RENDER_DPI).save(images_dir / name)
+        entries.append(f"- `{name}`: rendered page {number} @ {PAGE_RENDER_DPI}dpi")
+    return (
+        f"images: no embedded images found, rendered {len(entries)} pages with pymupdf",
+        entries,
+    )
+
+
+def render_pages_pymupdf(doc, images_dir: Path) -> list[str]:
+    entries = []
+    for number, page in enumerate(doc, start=1):
+        name = f"page-{number:03d}.png"
+        page.get_pixmap(dpi=PAGE_RENDER_DPI).save(images_dir / name)
+        entries.append(f"- `{name}`: rendered page {number} @ {PAGE_RENDER_DPI}dpi")
+    return entries
+
+
+# --- poppler fallback ------------------------------------------------------
+
+
+def extract_text_poppler(pdf_path: Path, output_txt: Path) -> str:
     pdftotext = which("pdftotext")
-    if pdftotext:
-        result = run([pdftotext, str(pdf_path), "-"])
-        if result.returncode == 0 and result.stdout.strip():
-            write_text(output_txt, result.stdout)
-            return "text: extracted with pdftotext"
-        return f"text: pdftotext failed ({result.stderr.strip() or 'no stderr'})"
-    return "text: no extractor available"
+    if not pdftotext:
+        return "text: no extractor available (install uv and run this script with `uv run`)"
+    result = run([pdftotext, str(pdf_path), "-"])
+    if result.returncode == 0 and result.stdout.strip():
+        write_text(output_txt, result.stdout)
+        return "text: extracted with pdftotext (fallback; no page markers)"
+    return f"text: pdftotext failed ({result.stderr.strip() or 'no stderr'})"
 
 
-def extract_images(pdf_path: Path, images_dir: Path) -> str:
-    images_dir.mkdir(parents=True, exist_ok=True)
-
+def extract_images_poppler(pdf_path: Path, images_dir: Path) -> str:
     pdfimages = which("pdfimages")
     if pdfimages:
-        prefix = images_dir / "img"
-        result = run([pdfimages, "-all", str(pdf_path), str(prefix)])
+        result = run([pdfimages, "-all", str(pdf_path), str(images_dir / "img")])
         if result.returncode == 0:
-            build_index(images_dir)
-            return "images: extracted with pdfimages"
+            return "images: extracted with pdfimages (fallback)"
         return f"images: pdfimages failed ({result.stderr.strip() or 'no stderr'})"
 
     pdftoppm = which("pdftoppm")
     if pdftoppm:
-        prefix = images_dir / "page"
-        result = run([pdftoppm, "-png", str(pdf_path), str(prefix)])
+        result = run([pdftoppm, "-png", str(pdf_path), str(images_dir / "page")])
         if result.returncode == 0:
-            build_index(images_dir)
-            return "images: rendered pages with pdftoppm"
+            return "images: rendered pages with pdftoppm (fallback)"
         return f"images: pdftoppm failed ({result.stderr.strip() or 'no stderr'})"
 
-    build_index(images_dir)
-    return "images: no extractor available"
+    return "images: no extractor available (install uv and run this script with `uv run`)"
+
+
+def build_index_from_dir(images_dir: Path) -> list[str]:
+    files = sorted(p for p in images_dir.iterdir() if p.is_file() and p.name != "index.md")
+    return [f"- `{item.name}`" for item in files]
+
+
+def write_index(images_dir: Path, entries: list[str]) -> None:
+    lines = ["# Image Index", ""]
+    if entries:
+        lines.extend(entries)
+        lines.extend(
+            [
+                "",
+                "为每张计划使用的图补上：对应图号（Fig./Table）、建议用途、是否进正文。",
+            ]
+        )
+    else:
+        lines.append("- No extracted images or rendered pages were created.")
+    write_text(images_dir / "index.md", "\n".join(lines) + "\n")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prepare a local-paper workspace from a PDF.")
+    parser = argparse.ArgumentParser(
+        description="Prepare a local-paper workspace from a PDF (run via `uv run`).",
+    )
     parser.add_argument("pdf", help="Path to the source PDF")
     parser.add_argument("output_dir", help="Directory to populate")
+    parser.add_argument(
+        "--render-pages",
+        action="store_true",
+        help="Also render every page to PNG, even when embedded images were found",
+    )
     args = parser.parse_args()
 
     pdf_path = Path(args.pdf).expanduser().resolve()
@@ -90,12 +199,27 @@ def main() -> int:
     copied_pdf = output_dir / "source.pdf"
     shutil.copy2(pdf_path, copied_pdf)
 
-    text_status = extract_text(copied_pdf, output_dir / "paper.txt")
-    image_status = extract_images(copied_pdf, images_dir)
+    pymupdf = load_pymupdf()
+    if pymupdf is not None:
+        with pymupdf.open(copied_pdf) as doc:
+            backend = f"backend: pymupdf {pymupdf.__doc__ or ''}".strip()
+            text_status = extract_text_pymupdf(doc, output_dir / "paper.txt")
+            image_status, entries = extract_images_pymupdf(pymupdf, doc, images_dir)
+            if args.render_pages and not any(e.startswith("- `page-") for e in entries):
+                entries.extend(render_pages_pymupdf(doc, images_dir))
+                image_status += " + rendered all pages"
+    else:
+        backend = "backend: poppler fallback (PyMuPDF unavailable — prefer `uv run`)"
+        text_status = extract_text_poppler(copied_pdf, output_dir / "paper.txt")
+        image_status = extract_images_poppler(copied_pdf, images_dir)
+        entries = build_index_from_dir(images_dir)
+
+    write_index(images_dir, entries)
 
     report = "\n".join(
         [
             f"source_pdf: {copied_pdf}",
+            backend,
             text_status,
             image_status,
         ]

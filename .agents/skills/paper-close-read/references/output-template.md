@@ -131,8 +131,9 @@ status: analyzed
 
 ## Image Path Rules
 
-- 图片路径使用相对路径，例如 `images/img-004.jpg`
-- 使用实际文件名，不要自己猜测扩展名
+- 图片路径使用相对路径，例如 `images/img-004.png`
+- 使用 `images/index.md` 里的实际文件名，不要自己猜测扩展名；`img-NNN.*` 是论文嵌入图，`page-NNN.png` 是整页渲染
+- 页码来源直接取 `paper.txt` 中的 `===== [page N] =====` 标记，不要凭印象写页码
 - 不要对空格或特殊字符做 URL 编码
 - 如果提取到的是 PDF 页面或表格截图，也允许直接引用
 

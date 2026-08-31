@@ -40,12 +40,22 @@ description: 单篇论文精读与成品笔记生成，覆盖本地 PDF 或提�
 ### 1. 准备本地论文材料
 
 - 如果用户给的是本地 PDF，优先准备一个独立输出目录。
-- 先运行 `scripts/prepare_local_pdf.py`，让它尽可能完成：
-  - 复制 PDF
-  - 提取 `paper.txt`
-  - 提取或整理 `images/`
-  - 生成 `images/index.md`
-- 如果当前环境缺少 PDF 提取工具，继续寻找已有的提取文本、截图、图片目录或用户提供的辅助材料，不要直接退化成只写摘要。
+- 用 `uv` 运行 `scripts/prepare_local_pdf.py`，依赖由脚本内的 PEP 723 声明自动解析，**不需要预先安装任何东西，也不需要 venv 或 sudo**：
+
+  ```bash
+  uv run scripts/prepare_local_pdf.py <paper.pdf> <output-dir>/
+  ```
+
+  它会完成：
+  - 复制 PDF 为 `source.pdf`
+  - 提取 `paper.txt`，**每页前带 `===== [page N] =====` 标记**，便于把 claim 回指到页码
+  - 提取 `images/` 中的嵌入图；若论文没有嵌入图，自动改为整页渲染
+  - 生成 `images/index.md`，记录每张图来自第几页、尺寸多少
+  - 写 `prep_status.txt`，记录本次实际用了哪条路径
+
+- 加 `--render-pages` 可在提取嵌入图之外**额外**渲染全部页面，用于表格截图或版式复杂的论文。
+- 如果环境里没有 `uv`，脚本会退回 poppler（`pdftotext` / `pdfimages` / `pdftoppm`）；退回路径没有页码标记，能力更弱，仅作兜底。
+- 如果两条路径都不可用，继续寻找已有的提取文本、截图、图片目录或用户提供的辅助材料，不要直接退化成只写摘要。
 
 具体要求见 [references/local-paper-workflow.md](references/local-paper-workflow.md)。
 
