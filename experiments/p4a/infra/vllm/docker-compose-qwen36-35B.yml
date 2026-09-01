@@ -1,7 +1,22 @@
 # docker compose -f docker-compose-qwen36-35B.yml up -d
 services:
   vllm-qwen36-35b:
-    image: vllm/vllm-openai:latest
+    # 版本必须钉死，不得用 :latest。
+    #
+    # P4A 的历史运行用的是未钉版本的 :latest，当时解析到 **0.21.0**。该版本的
+    # OpenAI 兼容响应不上报 cache 统计：非流式返回 prompt_tokens_details: null，
+    # 流式连这个 key 都没有。于是 kimi-code 的 extractUsage 取不到 cached_tokens
+    # 而记 0（packages/kosong/src/providers/openai-common.ts:204），全部 4083 份
+    # session 日志的 inputCacheRead 恒为零 —— 那是**上报缺陷，不是缓存未命中**。
+    # 服务端当时开着 --enable-prefix-caching，实测命中率 86.5%。
+    #
+    # 0.22.1 已修复：非流式与流式均返回
+    #   prompt_tokens_details.cached_tokens，且与 /metrics 的
+    #   prefix_cache_hits_total 增量精确相等（2026-09-01 实测，两种模式各验一次）。
+    #
+    # 结论依赖上报行为，所以 :latest 是复现性隐患 —— 同一个 tag 在两天内改变了
+    # 语义。任何变更版本都必须重跑一次上报验证。
+    image: vllm/vllm-openai:v0.22.1
     container_name: vllm-qwen36-35b
     runtime: nvidia
 
@@ -100,6 +115,13 @@ services:
       # ===== 前缀缓存 =====
       # 一般可提升重复前缀请求性能
       - --enable-prefix-caching
+
+      # ===== 在 usage 里上报 prefix cache 命中 =====
+      # 让响应体带 prompt_tokens_details.cached_tokens，kimi-code 才能把
+      # 每次请求的真实命中数记进 wire.jsonl（否则只能靠 /metrics 全局计数器
+      # 做差，要求请求串行且服务器上无其他流量）。缺了它就是 P4A 历史日志
+      # inputCacheRead 恒为零的成因，见文件顶部 image 处的说明。
+      - --enable-prompt-tokens-details
 
       # ===== 量化（如果你的模型就是量化版，可启用）=====
       # 常见如 awq / gptq / fp8
