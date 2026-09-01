@@ -24,6 +24,14 @@ EXCLUDE_NO_STEPS = "no_steps"          # 一步都没起（空会话）
 EXCLUDE_ABORTED = "aborted"            # 起了步但没有任何一步跑完
 EXCLUDE_NO_USAGE = "no_usage"          # 有完成的步但仍无 usage，属异常，需单独看
 EXCLUDE_OPERATOR = "operator_chat"     # 操作者本人的交互，不是 workload 的一次运行
+EXCLUDE_MULTI_TURN = "multi_turn"      # 不止一轮，见下
+
+# `multi_turn` 覆盖两种来源，两种都要剔：
+#   (a) 用户真的发了多次输入（n_user_prompts > 1）—— 观测到 2 份，均为操作者对话；
+#   (b) harness 自动续跑（turnId 出现多个值但只有一条 turn.prompt）—— 观测到 2 份，
+#       第二轮由 "Continue working toward the active goal" 加 goal-mode 提醒触发。
+# (b) 尤其要剔：它在 workload 语义上仍是一次 run，但上下文里多了一段只有它才有的
+# 注入文本，轨迹与前缀结构都不再与其余 run 可比。
 
 # `aborted` 不是坏数据，是**流产的 run**：观测到的形态一致为
 # n_steps=1 / n_tools=0 / model=None —— step.begin 发了，step.end 没到。
@@ -44,6 +52,8 @@ def build(limit: int | None = None):
         elif not s.usage:
             # 起了步、没有任何一步跑完 → 流产，而非日志缺失
             excludes.append(EXCLUDE_ABORTED if s.n_tools == 0 else EXCLUDE_NO_USAGE)
+        if len(s.turns) > 1 or s.n_user_prompts > 1:
+            excludes.append(EXCLUDE_MULTI_TURN)
         if s.family == "other":
             # 已知的 6 份是操作者手打的对话（"继续你的工作" 等）。归为 operator_chat
             # 而不是静默丢弃：清单里保留原文前 200 字，便于事后复核这个判断。
