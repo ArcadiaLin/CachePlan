@@ -1,0 +1,22 @@
+[project]
+name = "cacheplan-e01"
+version = "0.1.0"
+description = "E01: P4A 历史 session 轨迹的全量观测研究（只读、不跑 agent）"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+
+# 主线阶段（s0-s2、s4-s5）**只用标准库**。这是刻意的：整条流水线必须能在
+# 没有网络、没有模型下载的机器上原样复现。
+dependencies = []
+
+[project.optional-dependencies]
+# 阶段 3（跨 run 前缀重叠）需要 token 级切分才能给出可比的数字。
+# 字符级结果在无此依赖时仍可产出，但只能作为量级参考 —— 见 README「分词器」一节。
+tokenize = ["tokenizers>=0.20,<0.23"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/e01"]

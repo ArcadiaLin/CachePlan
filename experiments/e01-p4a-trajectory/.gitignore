@@ -1,0 +1,10 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+*.egg-info/
+
+# Virtual environments
+.venv/
+
+# 本实验不在自己目录下存产物。所有输出写到仓库根的 data/processed/e01/
+# （已由根 .gitignore 忽略），以便与来源指纹一起集中管理。

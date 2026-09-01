@@ -73,6 +73,26 @@ When working in this repository:
 6. Clearly separate experimental mechanisms from baseline implementations.
 7. Do not optimize code solely for software elegance when doing so makes experiments harder to understand or reproduce.
 
+## Working Rhythm
+
+Process rules set by the user on 2026-09-01, after a turn that chained discussion,
+code, a full-corpus run, documentation, and staging into one pass. They override any
+default instinct to finish a request end-to-end.
+
+1. **Discuss before landing experiment code.** Do not create an experiment directory,
+   write analysis scripts, or launch a full-corpus run without the user having agreed
+   to it. Throwaway reconnaissance to answer a question is fine — bring the numbers
+   back and let the user decide what becomes a real script, and where it goes.
+
+2. **Update `docs/` only when the user asks.** This includes `docs/PROGRESS.md`, and
+   it includes writing a new experiment record. The user maintains parts of these
+   documents themselves and adds their own notes; unrequested "while I'm here" syncing
+   collides with their edits and turns a discussion into a large diff nobody asked to
+   review. Findings belong in the reply, not in a doc, until asked.
+
+3. **One thing per turn.** Prefer finishing one step and coming back over chaining
+   several. Doing more per turn is not doing better here.
+
 ## Documentation Conventions
 
 Research questions, discussions, and experiment records accumulate under `docs/`, organized by kind rather than dropped flat into `docs/`:
