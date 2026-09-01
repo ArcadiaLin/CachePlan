@@ -49,18 +49,27 @@
 
 ## 判据的实际用法：作为筛选器
 
-五条判据的用途是**筛掉不合格的候选 workload**。已经用它筛过两个候选（均为 staged 判断，
-见 `../related_work.md`）：
+五条判据的用途是**筛掉不合格的候选 workload**。已经用它筛过三个候选：
 
 | 候选 | 判据 1 | 2 | 3 | 4 | 5 | 结论 |
 |---|---|---|---|---|---|---|
 | P4A | ✅ | ✅（上千次） | ✅ | ✅ | ✅ | 主 workload |
+| **RW03 的 ARA Compiler** | ✅ ~482 行规格载入上下文 | ✅ 但仅 23+7 篇 | ✅ 四阶段工具增强 | ✅ **首轮通过率 0/30** | ✅ 结构化 artifact | **五条全中**，第二个独立实例（C12）；判据 2 的规模比 P4A 小两个量级 |
 | RW01 的 ADP 任务 | ✅ | ✅ | ⚠️ 长在产物不在轨迹（探索预算仅 5 轮） | ✅ | ✅ | 形态吻合但工具面被闭合，不可外推 |
 | RW02 的分析任务 | ✅ 但过短 | ⚠️ 仅 30 次且输入异构 | ✅ | ⚠️ 有 validation 无 repair | ✅ | 只能做受限 micro-benchmark |
 
-**筛出的模式**：两个候选都在判据 2（重复次数）与判据 3（长程）上打折，而这两条恰恰是
-cache 复用空间的直接来源。这解释了为什么至今没有找到 P4A 之外可用的第二个 workload——
-约束 5 要求的泛化前提**仍未满足**。
+**筛出的模式**：RW01 / RW02 两个 staged 候选都在判据 2（重复次数）与判据 3（长程）上打折，
+而这两条恰恰是 cache 复用空间的直接来源。RW03 是第一个五条全中的外部实例，判据 4 上甚至
+比 P4A 一侧的证据更干净（0/30 首轮通过率把 validation-repair 从设计选项变成实测常态）。
+
+**但这不等于泛化前提已满足。** RW03 补上的是 **workload 形态**的第二个实例，不是**轨迹
+结构**的第二个观测——我们没有它的任何 session 日志，放大倍数、轮数分布、前缀断点在它身上
+全是零观测。约束 5 要求的是后者，因此**仍未满足**（见 `problem.md` 的 A4）。
+
+**Sources（RW03 行）**
+- 判据 1 ← `references/papers/liu2026ara.pdf` p29 §B.1 «The Compiler skill specification (∼482 lines of natural lan- guage) is structured into five sections. When loaded into a host agent’s context, it provides the full domain knowl- edge needed to produce a schema-conforming ARA.» [input]
+- 判据 2 与 4 ← `references/papers/liu2026ara.pdf` p44 «Each of the 23 PaperBench ARAs and the 7 RE-Bench ARAs converges to a Level- 1 pass within ≤3 iterations of the Compiler’s generate– validate–fix loop (§4). First-iteration pass rate is 0/30; all artifacts require at least one feedback round» [result]
+- 判据 3 ← `references/papers/liu2026ara.pdf` p7 Figure 7 caption «The ARA Compiler accepts any combination of research sources and guides a coding agent through four stages of top-down artifact compilation, iterating 2–3× with in-loop ARA Seal Level 1 validation until the output conforms to the protocol.» [input]
 
 **Sources**
 - RW01 逐条比对 ← `references/papers/fan2026deepprep/close-read.md:564` «| **long-horizon tool-augmented execution** | ⚠️ **部分吻合** | 算子层面确实长（pipeline 长度 1~28，Fig. 7 分布拖到 20）；但 **agent 交互轮数上限只有 5**。"长"在产物上，不在轨迹上 |» [result, staged]

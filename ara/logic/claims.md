@@ -1,10 +1,11 @@
 # Claims
 
-十一条 claim。
+十二条 claim。
 
 > **没有任何一条 claim 由本项目的实验支撑，因为本项目至今没有做过实验。**
-> 标 `supported` 的几条，依据来自**继承观测**（P4A 工程过程产生的实测）或**代码事实**
-> （可在本仓库内直接验证的代码路径），不是来自 E-series。每条 claim 的 **依据类型**
+> 标 `supported` 的几条，依据来自**继承观测**（P4A 工程过程产生的实测）、**代码事实**
+> （可在本仓库内直接验证的代码路径）或**已入库文献**（一手核实的外部论文），
+> 不是来自 E-series。每条 claim 的 **依据类型**
 > 字段说明它站在哪一种依据上。见 [`inherited-observations.md`](inherited-observations.md)
 > 与 [`experiments.md`](experiments.md)。
 
@@ -24,6 +25,9 @@
   无对照、无预注册，只能支撑动机与量级。
 - `代码事实` — 通过阅读本仓库代码即可验证的断言，不需要实验。
 - `方法论约定` — 定义/取舍层面的 claim，其"正确性"体现在是否让后续实验指向正确的变量。
+- `已入库文献` — 在 `references/refs.bib` 中有条目、且**由本项目一手读原文核实**的外部论文。
+  与 `staged 文献` 的区别是核实路径，不是权威性：这里的每个数字都能回到 PDF 的页码与小节
+  逐字复核。它支撑的是"外部世界确实如此"，仍**不能**支撑"本项目的方法有效"。
 - `staged 文献` — 见上。
 - `无` — 假设。
 
@@ -439,3 +443,58 @@ E01 阶段 3 同时是本 claim 的证伪通道。
 - 设计意图 ← `experiments/p4a/src/extract/layer4_v2/prompts.py:4-5` «The static blocks must stay byte-identical across papers so vLLM prefix\ncaching turns them into a shared cached prefix.» [input]
 - 同一意图在 README ← `experiments/p4a/src/extract/layer4_v2/README.md:25` «- **两次 LLM 调用**都打到本地 vLLM（见 §5），字节级一致的静态前缀以吃 prefix cache。» [input]
 - 采集字段 ← `experiments/p4a/src/extract/layer4_v2/llm_client.py:138-139` «"prompt_tokens": getattr(usage, "prompt_tokens", None),\n                "completion_tokens": getattr(usage, "completion_tokens", None),» [input]
+
+---
+
+## C12 — 这个 workload 形态是被独立收敛到的，不是 P4A 的偶然工程选择
+
+**Statement**
+当一个领域需要把大量既有材料机械地转成结构化产物时，独立团队会各自收敛到同一种执行
+形态：把过程知识写成一份跨输入逐字不变的自然语言规格，装进通用 coding agent 的上下文，
+对同构输入逐个重复执行，并用结构校验器闭环修复直到通过。这个形态因此不是某个项目的实现
+偏好，而是该任务类别的**收敛解**——C03 界定的可优化空间（过程固定 × 重复次数）随之是一个
+具有外部有效性的研究对象，而不是单实例的特例。
+
+**Conditions**
+两个独立实例（本仓库的 P4A；`liu2026ara` 的 ARA Compiler），且**两者同属科学文档处理、
+同样跑在 coding-agent 基座上**——形态一致有可能来自这层共同基座而非任务类别本身，本 claim
+无法区分这两种解释。"收敛"是从两例的形态一致性读出的，**未做跨项目普查**，也未检验该形态
+在文档处理之外是否成立。另需注意两例的**规模差两个量级**：ARA Compiler 一侧已跑过的编译
+是几十篇量级，"大规模导入 legacy 文献"在该论文中是纲领方向（§6 的 network 论述），
+**不是已达成的规模**——引用时不可把纲领当作已发生的事实。
+
+**Falsification criteria**
+找到第三、第四个同类系统（固定过程 + 输入并行重复 + validation/repair）却采用了实质
+不同的执行形态——例如把过程知识编译成确定性 pipeline 而不装进 agent 上下文，且任务质量
+相当——则"收敛解"为假，两例的形态一致只是巧合。
+
+**Evidence basis**
+ARA Compiler 在 `workload-definition.md` 的五条判据上逐条对应：(1) 过程知识是一份
+~482 行的自然语言规格，**载入 host agent 上下文**；(2) 输入并行重复，23 篇 PaperBench +
+7 篇 RE-Bench；(3) 由 coding agent 多阶段、工具增强地执行；(4) validation-repair 是**常态
+而非边缘**——首轮通过率 0/30，全部 artifact 都至少需要一轮反馈；(5) 产出是结构化 artifact
+而非对话答案。判据 4 的这个数字比 P4A 一侧更干净：它把"带 repair 的 E2E workflow"从一个
+设计选项变成了该 workload 的实测常态。
+
+**Proof**: 已入库文献（`liu2026ara`，一手核实，逐字引用见 Sources）+ 代码事实（本机安装的
+compiler skill 文件）。**无本项目实验**。
+
+**依据类型**: 已入库文献。
+
+**Status**: supported（五条判据的对应关系已逐条核实）；"收敛解"的普遍性仅有两个实例，
+且共享基座这一混淆项未排除，见 Conditions
+
+**Dependencies**: C03（本 claim 是 C03 的外部有效性检验，不是它的独立重复验证）
+
+**Sources**
+- 是 agent skill，不是 pipeline ← `references/papers/liu2026ara.pdf` p7 §4 «we introduce the ARA Compiler, an agent skill that translates any combination of legacy research sources into a» [input]
+- 摘要层面的同一表述 ← `references/papers/liu2026ara.pdf` p1 摘要 «an ARA Compiler that translates legacy PDFs and repos into ARAs» [input]
+- 由 coding agent 执行 + validation 闭环 ← `references/papers/liu2026ara.pdf` p7 Figure 7 caption «The ARA Compiler accepts any combination of research sources and guides a coding agent through four stages of top-down artifact compilation, iterating 2–3× with in-loop ARA Seal Level 1 validation until the output conforms to the protocol.» [input]
+- 固定过程知识的规模与载入方式 ← `references/papers/liu2026ara.pdf` p29 §B.1 «The Compiler skill specification (∼482 lines of natural lan- guage) is structured into five sections. When loaded into a host agent’s context, it provides the full domain knowl- edge needed to produce a schema-conforming ARA.» [input]
+- 输入并行重复的实际条数 + repair 是常态 ← `references/papers/liu2026ara.pdf` p44 §Compiler iteration counts «Each of the 23 PaperBench ARAs and the 7 RE-Bench ARAs converges to a Level- 1 pass within ≤3 iterations of the Compiler’s generate– validate–fix loop (§4). First-iteration pass rate is 0/30; all artifacts require at least one feedback round» [result]
+- 自然语言规格把通用 agent 专门化 ← `references/papers/liu2026ara.pdf` p30 §C «it is a self-contained natural-language specification that turns a general-purpose coding agent into a domain-specialized system» [input]
+- 本机安装的同一 skill，其 validate→fix 闭环 ← `~/.claude/skills/compiler/SKILL.md:58` «4. COVERAGE CHECK loop (max 3 rounds): re-read source → diff against ARA → patch gaps» [input]
+- 同上，收敛轮数 ← `~/.claude/skills/compiler/SKILL.md:288` «Typically converges in 2–3 rounds.» [input]
+
+> PDF 引文按页码 + 小节定位（PDF 无稳定行号）。引号内为 PyMuPDF 抽取的原文，
+> **保留了跨行断字符**（如 `lan- guage`、`Level- 1`）以便逐字复核。

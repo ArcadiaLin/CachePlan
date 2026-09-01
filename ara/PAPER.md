@@ -17,17 +17,19 @@ keywords:
   - agency level
 status: "in-progress — no research question resolved yet"
 claims_summary: >
-  十一条 claim。五条由本仓库自有的实测数据与代码支撑：ReAct 逐步重发历史造成计费 input
+  十二条 claim。五条由本仓库自有的实测数据与代码支撑：ReAct 逐步重发历史造成计费 input
   一个数量级的放大（C01）；计费口径与 serving 侧 KV 复用是两个互不蕴含的量，因此日志
   token 数不是有效成本指标（C02）；workload 的 load-bearing 属性是"固定过程 + 大量重复"
   而非任务语义（C03）；通过工具读入的固定知识对跨 run 前缀复用贡献为零，而 P4A v1 自身
   就是这个反模式的实例（C10）；跨 run 前缀设计已被本仓库的 layer4_v2 自觉采用，但采用它
   的实现同样不测量它（C11）。五条来自两篇论文的精读稿，**精读稿未经人工评审、对应
   refs.bib 条目已被移除**，因此一律标 staged，不可引用（C04–C08）。一条是尚无任何证据的
-  hypothesis（C09：cache-aware 与 agency-reduction 可能是同一个动作）。**没有任何一条
-  claim 由本项目的实验支撑 —— 本项目至今没有做过实验**；supported 的依据是继承自 P4A
-  的观测或可直接核实的代码事实。整个研究程序的前置 open question "这类 workload 需要
-  多少 agency" 仍为 OPEN。
+  hypothesis（C09：cache-aware 与 agency-reduction 可能是同一个动作）。一条由本项目**第一篇
+  入库文献**支撑：这类 workload 的执行形态是被独立收敛到的，不是 P4A 的偶然工程选择
+  （C12，依据 liu2026ara 的 ARA Compiler）。**没有任何一条 claim 由本项目的实验支撑 ——
+  本项目至今没有做过实验**；supported 的依据是继承自 P4A 的观测、可直接核实的代码事实，
+  或一手核实的外部论文。前置 open question "这类 workload 需要多少 agency" **仍未被回答**，
+  但已由 C12 从阻塞项降级为 DEFERRED：研究对象的真实性不再取决于它的答案。
 abstract: >
   本 artifact 记录 CachePlan 研究程序截至 2026-09-01 的状态。**本项目尚未开始实验**，
   因此这里没有 results。研究起点是一个在 P4A（对全量 ACL 2025 主会论文做批量资源抽取的
@@ -74,7 +76,7 @@ abstract: >
 | 文件 | 内容 |
 |---|---|
 | [`problem.md`](logic/problem.md) | 触发立项的观测（带数字）、gap、核心 insight、当前假设 |
-| [`claims.md`](logic/claims.md) | C01–C11，每条带 Conditions / Falsification criteria / **依据类型** / Proof / Sources |
+| [`claims.md`](logic/claims.md) | C01–C12，每条带 Conditions / Falsification criteria / **依据类型** / Proof / Sources |
 | [`concepts.md`](logic/concepts.md) | 本项目自有术语的定义（workload 类别、两种成本口径、autonomy 阶梯…） |
 | [`experiments.md`](logic/experiments.md) | E01–E05，**全部未开始**。方向性描述，不含精确数字 |
 | [`inherited-observations.md`](logic/inherited-observations.md) | B01–B02，P4A 产生的已完成记录 —— **背景，不是本项目的结果** |
@@ -125,9 +127,10 @@ P4A 定位）、一处 blocking dead_end（cache 字段不可用）与五个 ope
 落在 L2–L3，参照的 v1 是 L4——且其 README 称已完成 **200 篇对照评估、裁定召回 96.1%
 通过**。
 
-**2026-09-01 已把它补记进 `docs/PROGRESS.md` 的 Experiments 节**（`docs/PROGRESS.md:36`
-仍将 controlled comparison 列为待办，这是正确的：B02 不构成那个受控实验）。**剩下的是
-处置方式，仍需用户裁定。**
+**2026-09-01 已把它补记进 `docs/PROGRESS.md` 的 Experiments 节**（`docs/PROGRESS.md:68-72`）。
+同日晚些时候 OQ1 被降级为 DEFERRED，那条独立的「controlled comparison 待办」bullet 随之
+并入 Open Questions 表；**受控对比本身没有被取消**——E02 保留、设计不变，只是不再阻塞主线，
+而 B02 依然不构成那个受控实验。**剩下的是处置方式，仍需用户裁定。**
 
 本 artifact **不擅自把 open question 判为 RESOLVED**，因为该评估有三条硬限制（原始报告
 不在本仓库、v1 被当作参照系而非独立对照臂、两臂因兜底而不独立），且完全没有覆盖本项目

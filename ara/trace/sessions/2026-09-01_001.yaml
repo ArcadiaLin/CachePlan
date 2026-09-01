@@ -2,11 +2,13 @@ session:
   id: "2026-09-01_001"
   date: "2026-09-01"
   started: "2026-09-01T10:50"
-  last_turn: "2026-09-01T11:40"
-  turn_count: 3
+  last_turn: "2026-09-01T13:20"
+  turn_count: 4
   summary: >
-    接入 ARA 标准并编译初始 artifact；随后用户纠正 P4A 的定位 —— P4A 是起点不是实验，
-    本项目至今零实验，下一步的第一个实验是拿 P4A 历史轨迹做观测研究。
+    接入 ARA 标准并编译初始 artifact；用户纠正 P4A 的定位 —— P4A 是起点不是实验，
+    本项目至今零实验，下一步的第一个实验是拿 P4A 历史轨迹做观测研究。第 4 轮用户提供
+    liu2026ara（ARA 团队自己的论文）与配套仓库，用一条 claim（C12）把前置 open question
+    从阻塞项降级为 DEFERRED，主线得以推进。
 
 events_logged:
   - turn: 1
@@ -33,6 +35,23 @@ events_logged:
     routing: direct
     provenance: user
     summary: "E01 = P4A 历史轨迹全量观测研究，五个测量目标，本项目第一个实验，未开始。"
+  - turn: 4
+    type: experiment
+    id: "n20-rw03-intake"
+    routing: direct
+    provenance: user
+    summary: >
+      用户提供 liu2026ara（arXiv:2604.24658v3）PDF 与 github.com/AmberLJC/ara-paperbench。
+      一手读原文核实后入 refs.bib —— 本项目第一篇可引用文献。其 ARA Compiler 在
+      workload-definition 的五条判据上全中，成为该 workload 类别的第二个独立实例。
+  - turn: 4
+    type: decision
+    id: "n19-oq1-deferred"
+    routing: direct
+    provenance: user
+    summary: >
+      OQ1「agentic execution 是否必要」由 OPEN 降为 DEFERRED（未被回答，阻塞作用被消解）。
+      E02 保留、设计不变，降为非阻塞。PROGRESS.md 引入 DEFERRED 状态并显式区分于 RESOLVED。
 
 ai_actions:
   - turn: 3
@@ -64,6 +83,38 @@ ai_actions:
     provenance: ai-executed
     files_changed: ["ara/logic/claims.md", "ara/src/artifacts.md"]
 
+  - turn: 4
+    action: "新增 C12；claims.md 的依据类型词表新增「已入库文献」；PAPER.md 计数 11→12"
+    provenance: ai-executed
+    files_changed: ["ara/logic/claims.md", "ara/PAPER.md"]
+  - turn: 4
+    action: "refs.bib 新增 liu2026ara（本项目第一条入库文献）；PDF 按 citekey 归位到 references/papers/"
+    provenance: ai-executed
+    files_changed: ["references/refs.bib", "references/papers/liu2026ara.pdf"]
+  - turn: 4
+    action: "related_work.md 新增 RW03（Status: read，首个可引用条目）并改写文件头与末尾缺口段"
+    provenance: ai-executed
+    files_changed: ["ara/logic/related_work.md"]
+  - turn: 4
+    action: "workload-definition.md 的候选筛选表新增 ARA Compiler 行（首个五条全中的外部实例），并写明它不满足约束 5 的泛化前提"
+    provenance: ai-executed
+    files_changed: ["ara/logic/solution/workload-definition.md"]
+  - turn: 4
+    action: "problem.md：Gap 3 的风险性质改写、§5 前置问题降级说明、A4 标为部分推进"
+    provenance: ai-executed
+    files_changed: ["ara/logic/problem.md"]
+  - turn: 4
+    action: "PROGRESS.md：OQ1 → DEFERRED 并新增状态语义说明、Decisions 补一行、Current Work 整节重写、Literature 补已入库条目"
+    provenance: ai-executed
+    files_changed: ["docs/PROGRESS.md"]
+  - turn: 4
+    action: >
+      PROGRESS.md 行号再次位移，重映射 artifact 内引用（:43→:44、:35→:36、:36→:44/:68-72）；
+      三处「controlled comparison 列为待办」的表述已随 bullet 删除而失效，改写为「未取消，
+      只是降级」。
+    provenance: ai-executed
+    files_changed: ["ara/PAPER.md", "ara/src/artifacts.md", "ara/evidence/tables/table10-layer4v2-eval200.md", "ara/trace/exploration_tree.yaml"]
+
 claims_touched:
   - {id: C01, action: revised, turn: 3}
   - {id: C02, action: revised, turn: 3}
@@ -76,6 +127,7 @@ claims_touched:
   - {id: C09, action: revised, turn: 3}
   - {id: C10, action: revised, turn: 3}
   - {id: C11, action: revised, turn: 3}
+  - {id: C12, action: created, turn: 4}
 
 logic_revisions:
   - turn: 3
@@ -151,6 +203,42 @@ logic_revisions:
     after: "E01–E05 全部未开始；顶部声明本项目零实验；原 E01→B01、原 E07→B02 迁至 inherited-observations.md；原 E02 并入新 E01 阶段 1；原 E03→E02；原 E06→E03"
     signal: user-directive
     provenance: user-revised
+
+  - turn: 4
+    entry: C12 (new)
+    field: 全条目
+    before: "(不存在)"
+    after: >
+      "这个 workload 形态是被独立收敛到的，不是 P4A 的偶然工程选择" —— 依据 liu2026ara 的
+      ARA Compiler 在五条判据上逐条落位。依据类型：已入库文献。Dependencies: C03。
+    signal: user-directive
+    provenance: user-revised
+    note: >
+      用户给的原句是论文 intro 式的动机句，含两半。只有前半（这类基础设施需要大规模编译
+      legacy 材料、且以 agent 形态部署）落成 claim；后半（冗余高、cache locality 差）是既有的
+      C01/C02/C10，未因本轮获得新支撑，故未动其 status。
+  - turn: 4
+    entry: claims.md (header)
+    field: 依据类型 词表
+    before: "继承观测 / 代码事实 / 方法论约定 / staged 文献 / 无"
+    after: "…新增「已入库文献」——在 refs.bib 中有条目且由本项目一手读原文核实的外部论文；与 staged 文献的区别是核实路径而非权威性"
+    signal: dependency-change
+    provenance: ai-suggested
+  - turn: 4
+    entry: experiments.md / E02
+    field: 优先级（Setup 前的定位块）
+    before: "(无该块) —— E02 直接回答前置 open question，隐含为阻塞项"
+    after: "新增降级说明：从「项目前提的阻塞项」降为「设计余量的探究」；**设计一字未改**，只改优先级"
+    signal: user-directive
+    provenance: user-revised
+  - turn: 4
+    entry: problem.md / A4
+    field: 状态
+    before: "明确被标为需要第二个 workload 才能支撑"
+    after: "部分推进：补上的是 workload 形态的第二个实例，不是轨迹结构；第二个实例上轨迹量仍为零观测"
+    signal: dependency-change
+    provenance: ai-suggested
+    note: "近失记录见 pm_reasoning_log —— 考虑过标为已满足，否决。"
 
 key_context:
   - turn: 3

@@ -61,6 +61,10 @@ prefix-cache 与代理优化都已生效之后的批次上，实测中位数是�
    计数，会系统性高估步数多的执行风格的成本。
 3. **"agent 是否是这类任务的正确执行抽象" 从未被验证过。** 直接去优化 ReAct 的 cache
    locality，可能是在优化一种并非必要的执行方式。
+   **（2026-09-01 修订）** 这条 gap 的**风险性质**变了，但问题本身没被回答。`liu2026ara`
+   的 ARA Compiler 是同一 workload 类别的第二个独立实例，由第三方**以 agent skill 的形态
+   部署**（C12）。因此"优化了一种没人真在用的执行方式"这个 strawman 风险已被排除；
+   而"agency 是否*必要*"仍然完全开放——RW03 没有做 autonomy-level 消融。
 
 ## 4. 核心 insight
 
@@ -81,7 +85,7 @@ knowledge 被重复执行了多少次——只有后者决定跨 run 前缀复�
 > Can agent planning and execution be designed to improve cache reuse without
 > significantly reducing agent capability or task performance?
 
-**但这个问题被一个前置问题挡住**（`docs/open-questions/Necessity-of-agentic-execution.md`）：
+这个问题原本被一个前置问题挡住（`docs/open-questions/Necessity-of-agentic-execution.md`）：
 
 > **How much agency is actually necessary for end-to-end data-intensive processing
 > tasks such as P4A?**
@@ -89,7 +93,15 @@ knowledge 被重复执行了多少次——只有后者决定跨 run 前缀复�
 **Sources**
 - ← `docs/open-questions/Necessity-of-agentic-execution.md:13` «**How much agency is actually necessary for end-to-end data-intensive processing tasks such as P4A?**» [input]
 
-两种结果导向两条不同的路：
+**（2026-09-01）该前置问题已从阻塞项降级为背景问题，理由见 C12。** 它挡路的原因是
+"可能在优化一种没人真在用的执行方式"；而 `liu2026ara` 表明这类 workload 在第三方手里
+**就是以 agent 形态部署的**（~482 行自然语言规格 + coding agent + 在环校验修复，
+首轮通过率 0/30）。研究对象的真实性因此不再依赖 OQ1 的答案。
+
+需要说清楚这一步**换掉了什么**：它换掉的是"研究对象是否真实存在"，**不是**"需要多少
+agency"。后者仍完全开放，且仍然有研究价值——只是它现在是一个关于**设计余量**的问题
+（这类系统能省下多少 agency），而不是一个关于**本项目是否成立**的问题。下面两条路依然是
+E02 要分的岔，只是走哪条都不再否定项目前提：
 
 - 若 Full ReAct 与强 workflow baseline 任务质量基本相当 → 优化 ReAct 的 cache locality
   是在优化一种非必要的执行方式，方向应转向 **cache-aware execution of LLM workflows**。
@@ -108,7 +120,7 @@ knowledge 被重复执行了多少次——只有后者决定跨 run 前缀复�
 | A1 | 模型是 frozen 的，本项目不训练模型 | 工作假设，未在任何文档中被质疑 |
 | A2 | P4A 类 workload 的 agency 需求是非均匀的：普通样本可 workflow 化，困难样本需要 adaptive reasoning | 假设，正是 OQ 要验证的 |
 | A3 | 跨 run 前缀复用的空间足够大到值得优化 | **未测量**，被先决核查项阻塞 |
-| A4 | P4A 的轨迹结构可推广到其他批量 agent workload | 明确被标为需要第二个 workload 才能支撑 |
+| A4 | P4A 的轨迹结构可推广到其他批量 agent workload | **部分推进（2026-09-01）**：C12 用 `liu2026ara` 补上了第二个实例，但补的是 **workload 形态**，不是**轨迹结构**——我们没有 ARA Compiler 的任何 session 日志。放大倍数、轮数分布、前缀断点这些轨迹量在第二个实例上**仍为零观测** |
 
 ## 7. 明确的"不能下的结论"
 

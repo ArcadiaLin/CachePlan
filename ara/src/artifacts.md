@@ -7,8 +7,9 @@ P4A 这个历史项目的代码——它按 `constraints.md` 第 1 条是**只�
 > 而这套代码是 autonomy ladder 上一个已经实现并评估过的臂（见下方 §3）。
 > **2026-09-01 已把它补记进 `docs/PROGRESS.md` 的 Experiments 节**，并按定位纠正记为
 > 继承观测 B02（P4A 自己的工程验收），不是本项目的实验。
-> `docs/PROGRESS.md:36` 仍把 controlled comparison 列为待办，这是正确的——B02 不构成
-> 那个受控实验。**处置方式仍待用户裁定**，见 `../trace/exploration_tree.yaml` 的
+> 同日 OQ1 降级为 DEFERRED（C12），那条独立的 controlled comparison 待办已并入
+> `docs/PROGRESS.md` 的 Open Questions 表；**受控对比未取消，B02 也依然不构成那个受控
+> 实验**。**处置方式仍待用户裁定**，见 `../trace/exploration_tree.yaml` 的
 > `n11-docs-code-drift`。
 
 ---

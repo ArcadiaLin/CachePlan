@@ -179,7 +179,7 @@ nodes:
     title: "docs/ 与代码不一致：PROGRESS 说待办，代码里已有实现与评估"
     support_level: explicit
     source_refs:
-      - "docs/PROGRESS.md:36"
+      - "docs/PROGRESS.md:68-72"
       - "experiments/p4a/src/extract/layer4_v2/README.md:162"
     evidence: []
     outcome: >
@@ -192,14 +192,23 @@ nodes:
       (b) 认为 v2 是 p4a 的工程决定、与 OQ 的受控实验无关，维持现状；
       (c) 先取回 reports/layer4_v2_eval200.md 核实后再定。
       本 artifact 不擅自判定，也不把 OQ 标为 RESOLVED。
-    update:  # 2026-09-01 —— 前向引用，上方 outcome 保留编译当时的状态描述
-      date: "2026-09-01"
-      what: >
-        记录缺失的那一半已修复：docs/PROGRESS.md 的 Experiments 节现在记录了 layer4_v2 的
-        存在、200 篇评估、以及它为什么不能直接结案 open question。按 n17-repositioning，
-        它被记为继承观测 B02（P4A 自己的工程验收），不是本项目的实验。
-        docs/PROGRESS.md:36 仍把 controlled comparison 列为待办 —— 这是正确的。
-      still_open: "上面三个处置选项 (a)/(b)/(c) 仍未裁定。"
+    updates:  # 前向引用，按时间追加；上方 outcome 保留编译当时的状态描述，不改写
+      - date: "2026-09-01"
+        turn: 3
+        what: >
+          记录缺失的那一半已修复：docs/PROGRESS.md 的 Experiments 节现在记录了 layer4_v2 的
+          存在、200 篇评估、以及它为什么不能直接结案 open question。按 n17-repositioning，
+          它被记为继承观测 B02（P4A 自己的工程验收），不是本项目的实验。
+          docs/PROGRESS.md:36 仍把 controlled comparison 列为待办 —— 这是正确的。
+        still_open: "上面三个处置选项 (a)/(b)/(c) 仍未裁定。"
+      - date: "2026-09-01"
+        turn: 4
+        what: >
+          上一条末句已失效：随 n19-oq1-deferred，docs/PROGRESS.md 里那条独立的
+          「controlled comparison 待办」bullet 已被删除，其内容并入 Open Questions 表的
+          DEFERRED 行与 Experiments 节的 layer4_v2 记录。controlled comparison 本身
+          没有被取消 —— E02 保留、设计不变，只是不再是阻塞项。
+        still_open: "(a)/(b)/(c) 仍未裁定；随 E02 降级，此项不再紧急。"
 
   # ─────────────────────────────────────────────────────────────
   # 分支 2：workload 定名（唯一已收敛的 decision）
@@ -225,9 +234,9 @@ nodes:
     support_level: explicit
     source_refs:
       - "docs/open-questions/Necessity-of-agentic-execution.md:13"
-      - "docs/PROGRESS.md:43"
-    evidence: [C04, C05, C06, C07]
-    status: OPEN
+      - "docs/PROGRESS.md:44"
+    evidence: [C04, C05, C06, C07, C12]
+    status: DEFERRED  # 2026-09-01 turn 4，由 OPEN 降级；见 n19-oq1-deferred。未被回答
     outcome: >
       设立四级 autonomy ladder（Static Workflow / Workflow+LLM Nodes / Workflow+Repair /
       Full ReAct-Coding Agent）作为实验骨架。明确不预设 agent 是正确的执行抽象。
@@ -258,7 +267,7 @@ nodes:
     role: "文献工作，不是实验"
     support_level: explicit
     source_refs:
-      - "docs/PROGRESS.md:35"
+      - "docs/PROGRESS.md:36"
       - "references/papers/fan2026deepprep/close-read.md:577"
       - "references/papers/anon2026longda/close-read.md:24"
     evidence: [C04, C05, C06, C07, C08, C09]
@@ -314,7 +323,7 @@ nodes:
     title: "E02：四级 autonomy 的受控对比（未开始）"
     support_level: explicit
     source_refs:
-      - "docs/PROGRESS.md:36"
+      - "docs/PROGRESS.md:44"
       - "docs/open-questions/Necessity-of-agentic-execution.md:15-17"
     evidence: []
     outcome: >
@@ -373,3 +382,60 @@ nodes:
       只读；不得修改原始日志或 p4a 流水线代码；分析必须落成脚本（补上 B01 的可复现性
       缺口）；汇总产物入 data/processed/（gitignored）并标注来源 tar.gz 版本、脚本、日期。
     unblocks: [n4-precheck-blocked, n14-e02-planned]
+
+  # ─────────────────────────────────────────────────────────────
+  # 分支 5：OQ1 降级（2026-09-01 turn 4，用户）
+  # ─────────────────────────────────────────────────────────────
+  - id: n20-rw03-intake
+    type: experiment
+    attribution: cacheplan
+    role: "文献工作，不是实验 —— 本项目第一篇一手核实并入库的论文"
+    title: "入库 liu2026ara：ARA Compiler 是本 workload 类别的第二个独立实例"
+    support_level: explicit
+    provenance: user
+    date: "2026-09-01"
+    source_refs:
+      - "references/refs.bib:9"
+      - "references/papers/liu2026ara.pdf p7 §4"
+      - "references/papers/liu2026ara.pdf p44"
+    evidence: [C12, C03, C07]
+    outcome: >
+      用户提供论文 PDF 与配套仓库 github.com/AmberLJC/ara-paperbench。一手读原文核实：
+      ARA Compiler 是一份 agent skill（~482 行自然语言规格载入 host agent 上下文），
+      在 workload-definition.md 的五条判据上逐条落位，23+7 篇输入上首轮通过率 0/30。
+      与前两篇 staged 精读稿不同，本篇按 references/README.md 的门槛正式入库，可引用，
+      依据类型记为「已入库文献」（claims.md 新增的类别）。
+      它在 cache 上同样沉默 —— 这构成 C07 盲区论述的第三个独立佐证，且是唯一可引用的。
+    caveat: >
+      "大规模导入 legacy 文献"在该论文中是纲领方向（§6 生态论述），已实际编译的是
+      几十篇量级。引用时不可把纲领当作已达成的规模。
+
+  - id: n19-oq1-deferred
+    type: decision
+    title: "OQ1「agentic execution 是否必要」降级为 DEFERRED，不再阻塞主线"
+    support_level: explicit
+    provenance: user
+    date: "2026-09-01"
+    source_refs:
+      - "conversation:2026-09-01 用户原话"
+      - "docs/PROGRESS.md:44"
+    evidence: [C12]
+    also_depends_on: [n20-rw03-intake, n9-open-question]
+    choice: >
+      用一条 claim（C12）暂时把 OQ1 移出关键路径，而不是继续等 E02 的受控实验。
+      理由：OQ1 的阻塞力来自 strawman 风险 —— "可能在优化一种没人真在用的执行方式"。
+      liu2026ara 表明这类 workload 在第三方手里就是以 agent 形态部署的，风险排除。
+    alternatives: >
+      (被否决) 标为 RESOLVED —— 会谎称必要性问题已有答案。RW03 没有做 autonomy-level
+      消融，"需要多少 agency"完全没被触及。
+      (被否决) 维持 OPEN 且继续阻塞 —— 会让主线无限期等待一个已不再决定项目成立与否的
+      问题。
+    consequences: >
+      1. PROGRESS.md 的 Open Questions 表引入第三种状态 DEFERRED，并显式写明它不是
+         RESOLVED 的弱化版：问题未被回答，只是阻塞作用被消解；
+      2. E02 保留、设计一字不改，但从阻塞项降为"设计余量"的探究，排在 E01 之后；
+      3. problem.md 的 Gap 3 与 §5 相应改写；A4 标为部分推进 —— 补上的是 workload
+         形态，不是轨迹结构，第二个实例上仍是零轨迹观测；
+      4. n11-docs-code-drift 的处置随之不再紧急。
+    user_words: >
+      "先不纠结 openquestions1，我们用一个比较简单的 claim 来暂时将其解决"

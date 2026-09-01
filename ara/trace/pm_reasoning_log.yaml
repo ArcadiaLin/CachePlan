@@ -20,3 +20,33 @@ entries:
       - "本轮顺带发现原编译的引文校验有假阴性：两处 launch_kimi_layer4.py 的引文把 \\n
          同时当行分隔符和 Python 字面量，两种解释都不匹配，而当时的正则过窄没抓到。
          已拆成逐行 verbatim 引用；校验器改为 literal-or-unescaped 双判。"
+
+  - turn: "2026-09-01_001#4"
+    notes:
+      - "用户给的那句话（'Emerging agent-native research infrastructures such as ARA require
+         large-scale compilation...'）是一段论文 intro 的动机句，不是一条 claim。拆成两半处理：
+         前半（这类基础设施需要大规模编译 legacy 材料）是新的、可核实的，落成 C12；
+         后半（重复执行冗余高但 cache locality 差）是既有的 C01/C02/C10，**没有因为 ARA 存在
+         而获得任何新支撑**，因此没有动那几条的 status。整句照搬会把两种证据强度混在一起。"
+      - "OQ1 记 DEFERRED 而不是 RESOLVED。用户说的是「暂时将其解决」，而 RW03 没有做
+         autonomy-level 消融，必要性问题一个字都没被回答。降级消解的是它的**阻塞作用**
+         （strawman 风险），不是问题本身。为此在 PROGRESS.md 显式写了 DEFERRED ≠ RESOLVED
+         的说明，防止后续把它当结论引用。"
+      - "C12 的 Conditions 里写进了一个用户没提的混淆项：P4A 与 ARA Compiler 同属科学文档处理、
+         同跑在 coding-agent 基座上，形态一致有可能来自共同基座而非任务类别本身。n=2 且共基座，
+         '收敛解'这个说法必须带着这个限制才成立。"
+      - "近失：考虑过把 A4（轨迹结构可推广）从「需要第二个 workload」标为已满足 —— 否决了。
+         RW03 补的是 workload **形态**的第二个实例，我们没有它的任何 session 日志，
+         放大倍数/轮数分布/前缀断点在第二个实例上仍是零观测。改标为「部分推进」。"
+      - "近失：论文摘要里 'large-scale compilation of legacy scientific artifacts' 与实际编译的
+         23+7 篇差两个量级。没有把'大规模'写进 C12 的 Statement，只在 Conditions 与 RW03 里
+         记为「纲领方向而非已达成规模」。引用别人的愿景当作其结果是一种常见的失真。"
+      - "liu2026ara 引入了新的依据类型「已入库文献」，与既有的「staged 文献」区分开：
+         区别是核实路径（一手读原文、可回到页码逐字复核）而不是权威性。它仍然不能支撑
+         「本项目的方法有效」。"
+      - "0/30 首轮通过率是本轮最有价值的一个数字：它把 validation-and-repair 从 workload
+         定义里的一条设计判据变成了独立系统上的实测常态，比 P4A 一侧的证据更干净。
+         已写进 workload-definition.md 的筛选表与 C12 的 Evidence basis。"
+      - "n11 的 update 字段改成了 updates 列表并追加第二条。上一轮那条 update 里写的
+         'PROGRESS.md:36 仍把 controlled comparison 列为待办'本轮已失效，但按 append-only
+         没有改写它，而是追加一条说明其失效。"

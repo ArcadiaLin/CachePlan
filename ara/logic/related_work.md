@@ -1,10 +1,11 @@
 # Related Work
 
-> **本层的特殊状态。** 本项目的 `references/refs.bib` 当前为空——两篇曾入库的论文条目已于
-> commit `c6ece08`（2026-09-01）被移除，`docs/literature/` 的索引表也仍是"尚无笔记"。
-> 两篇论文的**精读稿存在但处于 gitignored 的暂存区，未经人工评审**。
+> **本层的特殊状态。** `references/refs.bib` 当前只有一条入库文献（RW03，`liu2026ara`），
+> 它是**一手读原文核实**的，可引用。RW01 / RW02 两篇的条目已于 commit `c6ece08`
+> （2026-09-01）被移除，其**精读稿存在但处于 gitignored 的暂存区，未经人工评审**，
+> `docs/literature/` 的索引表仍是"尚无笔记"。
 >
-> 因此下面的条目记录的是**已发生的调研轨迹**，不是本项目已采信的文献基础。每条都标了
+> 因此 RW01 / RW02 记录的是**已发生的调研轨迹**，不是本项目已采信的文献基础；两条都标了
 > `Status: staged`，其结论不可引用。规则出处：`references/README.md:38`
 > «未经评审的内容不进 `docs/`，`refs.bib` 的 note 字段也不写它的结论。»
 
@@ -80,7 +81,48 @@ workload 形态与本项目定义的五条判据高度吻合（固定 procedural
 
 ---
 
-## 经这两篇浮现、值得追但尚未取回的工作
+## RW03 — The Last Human-Written Paper: Agent-Native Research Artifacts
+
+- **Citekey**: `liu2026ara`（**已入库**）
+- **Venue**: arXiv:2604.24658v3 [cs.LG], 19 May 2026
+- **Type**: `extends` — 它提供本项目 workload 类别的**第二个独立实例**，把研究对象从单实例
+  扩成一个类别
+- **Status**: **read（一手核实）**。本项目**第一篇可引用的文献**。
+- **本地材料**: `references/papers/liu2026ara.pdf`（gitignored）；已编译 artifact
+  `github.com/AmberLJC/ara-paperbench`；代码 `github.com/AmberLJC/Agent-Native-Research-Artifact`
+
+**它对我们说了什么**
+它的三个机制之一 **ARA Compiler（§4）** 把 legacy PDF 与仓库编译成结构化 artifact，而这个
+编译器**是一份 agent skill，不是一条 pipeline**：~482 行自然语言规格载入 host agent 上下文，
+驱动 coding agent 分四阶段执行，用 Seal Level 1 做在环校验、迭代 2–3 轮直到通过。这在
+`workload-definition.md` 的五条判据上逐条落位——**这就是本项目定义的那类 workload，由另一个
+团队独立造出来的**。支撑 C12。
+
+**它最硬的一个数字**
+23 篇 PaperBench + 7 篇 RE-Bench，**首轮通过率 0/30**，全部 artifact 都至少需要一轮反馈。
+"validation-and-repair" 因此不是这类 workload 的边缘分支，而是**实测常态**——这一点比 P4A
+一侧的证据更干净，因为它是在一个独立系统上、以通过率形式直接报出来的。
+
+**它给出的边界**
+- **规模是纲领而非事实。** "把 legacy 文献大规模导入"是它第 6 节的生态论述；已实际编译的
+  是几十篇量级。引用时必须区分方向与已达成规模，否则就是把它的愿景当成它的结果。
+- **它不回答 agency 是否必要。** 它没有做 autonomy-level 消融，把 agent 形态当作设计前提。
+  因此它能证明"这个 workload 的**部署形态**是 agentic"，**不能**证明"agentic 是必要的"。
+  这正是它与 OQ1 的关系：它让 OQ1 从**阻塞项**降为**背景问题**，而不是回答了 OQ1。
+- **它不谈 cache。** 与 RW01 / RW02 一样，跨 run 前缀复用不在它的视野里——尽管它那 ~482 行
+  规格对每一篇输入逐字相同，正是一个教科书式的 *a priori* 共享前缀。这使它成为 C07 "盲区"
+  论述的**第三个独立佐证**，且是唯一一个可引用的。
+
+**支撑的 claim**: C12（主）；C03（外部有效性）；C07（盲区论述的可引用佐证）
+
+**Sources**
+- 三机制之一 ← `references/papers/liu2026ara.pdf` p1 摘要 «an ARA Compiler that translates legacy PDFs and repos into ARAs» [input]
+- 是 agent skill ← `references/papers/liu2026ara.pdf` p7 §4 «we introduce the ARA Compiler, an agent skill that translates any combination of legacy research sources into a» [input]
+- 首轮通过率 ← `references/papers/liu2026ara.pdf` p44 «First-iteration pass rate is 0/30; all artifacts require at least one feedback round, confirming that Level 1 is a non-trivial filter rather than a rubber stamp.» [result]
+
+---
+
+## 经 RW01 / RW02 浮现、值得追但尚未取回的工作
 
 这些名字出现在上面两篇精读稿的相关工作里。**本项目尚未读过任何一篇**，列在这里是为了
 不丢线索，不代表任何判断。
@@ -100,8 +142,10 @@ workload 形态与本项目定义的五条判据高度吻合（固定 procedural
 ## 本项目自己的 related work 缺口（诚实记录）
 
 本项目的核心主张涉及 prompt caching / KV cache reuse 的系统侧工作（如 prefix caching
-调度、cache-aware serving、prompt 结构优化），而 **`refs.bib` 目前对这一整块是空的**。
-两篇已精读的论文都不是 cache 方向的——RW01 明确正交，RW02 全文不出现 cache 概念。
+调度、cache-aware serving、prompt 结构优化），而 **`refs.bib` 对这一整块仍然是空的**。
+现有三篇没有一篇是 cache 方向的——RW01 明确正交，RW02 全文不出现 cache 概念，RW03 同样
+不谈跨 run 前缀复用。
 
-也就是说：**本项目在自己的主线方向上尚未做过任何文献工作。** 这是当前 related work 层
-最大的缺口，比两篇 staged 论文的评审更优先。
+**三篇论文在 cache 上的共同沉默恰恰是 C07 的证据**，但沉默只能证明盲区存在，不能替代
+本项目在这条主线上的文献工作。**本项目在自己的主线方向上仍未做过任何文献工作**——这是
+当前 related work 层最大的缺口，优先级高于两篇 staged 论文的评审。

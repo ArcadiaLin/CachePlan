@@ -31,3 +31,41 @@ observations:
     promoted_to: null
     crystallized_via: null
     stale: false
+
+  - id: O03
+    timestamp: "2026-09-01T13:20"
+    provenance: ai-suggested
+    content: >
+      ARA Compiler 可能是本项目**唯一可获得的第二个轨迹数据源**：与 RW01/RW02 不同，
+      它的 skill 规格是公开的、compiler 本身就装在本机、已编译产物在
+      github.com/AmberLJC/ara-paperbench 公开可取。也就是说，若需要第二个 workload 的
+      *轨迹*（而不只是形态），重跑一批 ARA 编译并采日志在技术上是可行的 —— 这正是
+      A4 与约束 5 当前缺的那一块。
+    context: >
+      入库 liu2026ara 时浮现。用户只要求用它暂时解决 OQ1，没有提第二 workload 的事。
+      未与用户讨论过，成本也未评估（每篇编译要跑一个 coding agent）。
+    potential_type: claim
+    bound_to: [n20-rw03-intake, n18-e01-planned]
+    promoted: false
+    promoted_to: null
+    crystallized_via: null
+    stale: false
+
+  - id: O04
+    timestamp: "2026-09-01T13:20"
+    provenance: ai-suggested
+    content: >
+      本次会话自身就是一个 cache-hostile ordering 的现场实例：compiler skill 的
+      ~482 行规格（跨所有编译任务逐字相同）在本次上下文里排在用户的 per-run 消息之后，
+      与 C10 描述的 P4A v1 反模式结构相同 —— 固定知识通过 skill 加载机制进入上下文，
+      但位置由调用时机决定，而非由其不变性决定。
+    context: >
+      核实 compiler skill 文件时浮现。**未经验证**：harness 如何拼装 skill 文本进 prompt
+      是未知的，本条只是形态上的相似，不能当作证据。若要坐实，需要 E01 阶段 3 的
+      同类方法用在 Claude Code 自己的会话日志上。
+    potential_type: claim
+    bound_to: [n10-v1-cache-hostile, n20-rw03-intake]
+    promoted: false
+    promoted_to: null
+    crystallized_via: null
+    stale: false

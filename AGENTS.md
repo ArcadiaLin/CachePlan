@@ -111,28 +111,40 @@ When making such updates, preserve useful historical or experimental constraints
 
 ## ARA: agent-native research artifacts
 
-This project records its research in an `ara/` artifact
-(https://github.com/ARA-Labs/Agent-Native-Research-Artifact).
-Route work to the matching ARA skill — invoke these yourself, without being asked:
+> **Opt-in only (2026-09-01).** Everything in this section runs **only when the user
+> explicitly asks for it by name**. Do not invoke any ARA skill on your own initiative,
+> and do not maintain `ara/` as a side effect of doing research — not at milestones,
+> not at end of turn, not in autonomous runs (loops, heartbeats, long experiments).
+>
+> The reason is a measured cost/benefit call, not a judgement on the standard: keeping
+> the artifact continuously in sync costs several times more editing than the research
+> it records, and every edit to `docs/PROGRESS.md` invalidates the artifact's
+> `file:line` citations and forces a remapping pass. The mainline research record is
+> `docs/` (see Documentation Conventions above); `ara/` is a **frozen snapshot**,
+> recompiled on demand rather than maintained per turn.
 
-- `/research-manager` — trigger whenever a research milestone lands: an
-  experiment finishes, a decision is made, a hypothesis is confirmed or killed,
-  a dead end is hit, a direction pivots, user's input. This holds equally in autonomous runs
-  (loops, heartbeats, long experiments) where the user gives no input at all —
-  crystallize the insight at the milestone. It
-  records what just happened (decisions, experiments, dead ends, claims) into
-  `ara/`. Skip when nothing research-significant happened (greetings, pure formatting).
-- `/research-visualizer <ara-dir>` — to inspect the research trajectory as an
-  interactive process map (add `--serve` for a live local viewer, `--check` to
-  validate/lint via the `ara` CLI).
-- `/research-foresight <ara-dir> "<question>"` — to answer "what should I try
-  next / why did this work / what if I change X", grounded in the artifact.
-- `/submit-ara <dir>` — when an artifact is ready to publish to the ARA Hub,
-  or a conference wants it as a submission.
-- `/context-drop <path>` — when a file, folder, or artifact needs to reach
-  somebody else's agent as one link.
+This project has an `ara/` artifact
+(https://github.com/ARA-Labs/Agent-Native-Research-Artifact), last built 2026-09-01.
+It is out of sync with `docs/` by design. When — and only when — the user asks:
 
-**ARA badge on the paper.** Whenever you compile or build this project's paper PDF
+- `/compiler` — rebuild `ara/` from `docs/` + `experiments/` + `references/`.
+  This is the intended way to refresh the artifact: one batch recompile, not
+  incremental upkeep.
+- `/research-manager` — record recent research events into `ara/`. **Never invoke
+  automatically**, including at end of turn; the skill's own text says to run it as a
+  per-turn epilogue, and that instruction is overridden here.
+- `/research-visualizer <ara-dir>` — inspect the trajectory as an interactive process
+  map (`--serve` for a live viewer, `--check` to validate/lint via the `ara` CLI,
+  which is **not installed**).
+- `/research-foresight <ara-dir> "<question>"` — answer "what should I try next / why
+  did this work / what if I change X", grounded in the artifact.
+- `/submit-ara <dir>` — publish to the ARA Hub, or submit to a conference.
+- `/context-drop <path>` — hand a file or folder to somebody else's agent as one link.
+
+Also installed but not listed above: `/research-fuzzer`, `/rigor-reviewer`. Same rule.
+
+**ARA badge on the paper** — also opt-in; add it only if the user asks. Should they ask,
+here is how. Whenever you compile or build this project's paper PDF
 (LaTeX, Typst, Markdown-to-PDF — any path that yields the paper), place the ARA badge in the
 **top-right corner of the first page**, ~2.2 cm wide (a landscape paper tag), hyperlinked to the artifact's ARA Hub
 URL (fall back to https://github.com/ARA-Labs/Agent-Native-Research-Artifact until
@@ -142,5 +154,4 @@ https://raw.githubusercontent.com/ARA-Labs/Agent-Native-Research-Artifact/main/d
 https://raw.githubusercontent.com/ARA-Labs/Agent-Native-Research-Artifact/main/docs/badge/ara-badge.tex
 (uses `graphicx` + `eso-pic` + `hyperref`; place it after the venue style package). Do not
 cover the title or author block; if the template already fills that corner, shift the badge
-down just enough to clear it. Ask nothing — add it by default; remove it only if the user
-says so.
+down just enough to clear it.

@@ -31,29 +31,33 @@
   产物入 `data/processed/`（gitignored）并标注来源 tar.gz 版本、脚本、日期。详见 [`ara/logic/experiments.md`](../ara/logic/experiments.md) 的 E01。
 - 已把研究 workload 定名为 data-intensive / data-processing agent workflows（见上节），`AGENTS.md`、本文档、open-question 文档三处术语已对齐。
 - 已确认 P4A 的定位为起点而非实验（见上节），并据此重组了 `ara/` 的实验层与 claim 依据表述。
-- 研究记录已按 ARA 标准落成 [`ara/`](../ara/)：11 条 claim、5 个未开始的实验、2 条继承观测、19 个轨迹节点、10 张证据表。**没有任何一条 claim 由本项目的实验支撑**——每条 claim 显式标注「依据类型」（继承观测 / 代码事实 / 方法论约定 / staged 文献 / 无）。
-- 文献管理规范已建立（`references/` + `docs/literature/`，见下方 Literature 节），骨架就位但**尚无任何文献入库**。两篇已精读论文的 `refs.bib` 条目已于 `c6ece08` 移除，精读稿留在 gitignored 暂存区，其结论一律 staged、不可引用。
-- 待办：验证 open question「Is agentic execution necessary」——构造不同 autonomy level 的 P4A 实现做 controlled comparison。**注意 `experiments/p4a/src/extract/layer4_v2/` 已存在一个 L2–L3 实现且跑过 200 篇评估**（见下方 Experiments 节），但它是 P4A 自己的工程验收，不能直接当作本实验的一臂——如何处理待定。
-- 待办：`refs.bib` 在 prompt/KV cache 系统方向上完全为空，这是当前 related work 层最大的缺口，优先级高于两篇 staged 精读稿的评审。
+- **OQ1 已降级为 DEFERRED**（见下方 Open Questions 表），主线不再被它挡住。E02（四级 autonomy 对比）保留、设计不变，但从阻塞项变为设计余量的探究，排在 E01 之后。
+- [`ara/`](../ara/) 已按 ARA 标准编译过一次（12 条 claim、5 个未开始的实验、2 条继承观测、10 张证据表；每条 claim 标注「依据类型」）。**2026-09-01 起冻结**：逐轮维护它的成本数倍于它记录的研究，且每次改本文档都会让它的 `file:line` 引用失效。**本项目的主线研究记录是 `docs/`**；`ara/` 是快照，需要时用 `/compiler` 整体重编译，不做增量维护。规则见 [`AGENTS.md` → ARA](../AGENTS.md#ara-agent-native-research-artifacts)。
+- 文献：`refs.bib` **已有第一篇入库文献** `liu2026ara`（一手读原文核实，可引用），支撑 C12 与 OQ1 的降级。两篇已精读论文的条目仍处于 `c6ece08` 移除后的状态，精读稿留在 gitignored 暂存区，结论一律 staged、不可引用。
+- 待办：`refs.bib` 在 prompt/KV cache 系统方向上**仍然完全为空**。三篇现有文献（含 `liu2026ara`）无一是 cache 方向——它们在 cache 上的共同沉默是 C07 的证据，但不能替代主线文献工作。这是 related work 层最大的缺口，优先级高于两篇 staged 精读稿的评审。
+- 待办：`experiments/p4a/src/extract/layer4_v2/` 的处置（见下方 Experiments 节）。随 E02 降级，此项也不再紧急。
 
 ## Open Questions
 
 | Question | Status | Doc | Refs | Resolution |
 |---|---|---|---|---|
-| Is agentic execution necessary for data-intensive workloads (P4A)? | OPEN | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | — | — |
+| Is agentic execution necessary for data-intensive workloads (P4A)? | **DEFERRED** | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | `liu2026ara` | 2026-09-01：**未被回答，被降级。** 该问题原本挡路的理由是"可能在优化一种没人真在用的执行方式"。`liu2026ara` 的 ARA Compiler（§4）是本 workload 类别的第二个独立实例，由第三方以 **agent skill** 形态部署——~482 行自然语言规格载入 coding agent 上下文，Seal Level 1 在环校验迭代 2–3 轮，23+7 篇输入上首轮通过率 0/30。研究对象的真实性因此不再依赖本问题的答案，strawman 风险排除。**"需要多少 agency"仍完全开放**：RW03 未做 autonomy-level 消融。E02 保留、设计不变，但从阻塞项降为设计余量的探究。见 `ara/logic/claims.md` C12。 |
 
 `Refs` 列填支撑该问题的文献 citekey（见 [Literature](#literature)）；一个问题在有文献支撑之前被 RESOLVED，应当在 Resolution 里说明结论是纯实验得出的。
+
+`Status` 取值：`OPEN` / `RESOLVED` / `DEFERRED`。**`DEFERRED` 不是 `RESOLVED` 的弱化版，是另一回事**——它表示问题本身没有被回答，但它对主线的**阻塞作用**被消解了，因此不再排在关键路径上。把 DEFERRED 当成"已解决"来引用是错误的：它的 Resolution 栏记的是**为什么可以先不答**，不是答案。
 
 ## Decisions
 
 问题被解决后，在此追加一行，并可选地在 `docs/decisions/` 下补充完整推导过程。下表也记录**不由 open question 触发**的研究级决定（这类行的 Doc 列指向 `ara/` 的轨迹节点）。
 
-**尚无任何 open question 被 RESOLVED。**
+**尚无任何 open question 被 RESOLVED**（OQ1 是 DEFERRED，含义见上表下方说明，不等于已解决）。
 
 | Decision | Date | Doc | Rationale (short) |
 |---|---|---|---|
 | workload 定名为 data-intensive / data-processing agent workflows | 2026-08-31 | [`AGENTS.md` → Workload Under Study](../AGENTS.md#workload-under-study)；ara 节点 `n8-workload-naming` | 跨 run 的固定过程 + 大量重复才是 cache 复用空间的来源；按任务语义命名指向错误的属性 |
 | P4A 定位为起点而非实验；确认本项目零实验 | 2026-09-01 | 上方 Current direction；ara 节点 `n17-repositioning` | 把 P4A 的工程记录编号进 E-series 并标「已完成」会让研究记录看起来已有实验产出，是失真的。继承观测与本项目实验的证据地位不同，必须分开 |
+| OQ「agentic execution 是否必要」降级为 DEFERRED，不再阻塞主线 | 2026-09-01 | 上方 Open Questions 表；`ara/logic/claims.md` C12；ara 节点 `n19-oq1-deferred` | 该 OQ 的阻塞力来自 strawman 风险（优化一种没人真在用的执行方式）。`liu2026ara` 提供了同类 workload 的第二个独立实例且部署形态就是 agent，风险排除。必要性问题本身仍未回答，故记 DEFERRED 而非 RESOLVED |
 
 ## Experiments
 
@@ -72,3 +76,5 @@
 - 索引与笔记规范：[`literature/README.md`](literature/README.md)
 - 文献元数据（唯一来源）：[`../references/refs.bib`](../references/refs.bib)
 - PDF 等外部材料：`references/papers/`（gitignored，靠 `refs.bib` 里的 url 取回）
+
+**已入库**：`liu2026ara`（The Last Human-Written Paper: Agent-Native Research Artifacts, arXiv:2604.24658v3）。支撑 OQ1 的降级与 C12。判断记在 [`ara/logic/related_work.md`](../ara/logic/related_work.md) 的 RW03；尚未在 `docs/literature/` 下单独立笔记——按该目录的规范，笔记只在需要展开判断时才写，当前 RW03 已足够。

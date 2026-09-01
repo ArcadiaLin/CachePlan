@@ -62,8 +62,9 @@
 
 **2026-09-01 已修复记录缺失的那一半**：`docs/PROGRESS.md` 的 Experiments 节现在记录了
 `layer4_v2` 的存在、它的 200 篇评估、以及它为什么不能直接结案 open question。
-`docs/PROGRESS.md:36` 仍把 controlled comparison 列为待办——这是正确的，因为本评估不构成
-那个受控实验。
+同日 OQ1 被降级为 DEFERRED（见 C12），`docs/PROGRESS.md` 里那条独立的 controlled comparison
+待办 bullet 并入了 Open Questions 表。**受控对比没有被取消**，本评估也依然不构成那个受控
+实验——变的只是它的优先级。
 
 **仍待裁定的是处置方式**（见下方三个选项）。**本 artifact 不擅自把 open question 判为
 RESOLVED**——按上面三条限制，它也确实不够格结案；但这处不一致本身需要被处理。
