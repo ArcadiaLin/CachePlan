@@ -1,0 +1,22 @@
+entries:
+  - turn: "2026-09-01_001#3"
+    notes:
+      - "把用户的定位纠正 direct 路由为 decision n17，不走 staging —— 它是第一人称、明确、
+         且当场就被落成了文件改动（artifact commitment），符合 verbal-affirmation 的判据。"
+      - "n17 的 provenance 记为 user；由它连带产生的编号传播（C03/C08/C09 的 Proof 修复）
+         记为 ai-suggested，因为用户没有指定新编号，只指定了定位。"
+      - "刻意没有把 B01/B02 从 trace 里删掉或改写 —— trace 是 append-only 的旅程记录，
+         n1/n2/n6 保持原样，只加 attribution 与 role 字段说明它们属于谁。"
+      - "考虑过把 n7/n10/n13/n16 的 type 从 experiment 改成别的值，否决了：ARA 的节点词汇表
+         里没有更贴切的槽位，自造类型会让校验器失效。改为在文件头声明 type: experiment
+         不等于「本项目的实验」，并给每个节点加 role: 说明它实际是什么。"
+      - "没有把前置 open question 标为 RESOLVED。定位纠正明确把 layer4_v2 降为 B02（P4A 自己的
+         工程验收），这反而加强了不结案的理由 —— 它不是本项目的对照实验。"
+      - "近失：用户说「本质上我们还没有做任何实验不是吗？」是反问句。没有把它当作对某条具体
+         claim 的 status 声明来处理；它改变的是 artifact 的呈现方式与 Proof 的归属，不是任何
+         claim 的真值，因此没有做任何 status 翻转。"
+      - "E01 的五个测量目标是从用户「检测和观察」四个字展开的，超出了原话字面范围，
+         已记入 ai_suggestions_pending 待确认，未标为用户决定。"
+      - "本轮顺带发现原编译的引文校验有假阴性：两处 launch_kimi_layer4.py 的引文把 \\n
+         同时当行分隔符和 Python 字面量，两种解释都不匹配，而当时的正则过窄没抓到。
+         已拆成逐行 verbatim 引用；校验器改为 literal-or-unescaped 双判。"

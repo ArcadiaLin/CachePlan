@@ -1,0 +1,375 @@
+# CachePlan — exploration tree
+#
+# support_level:
+#   explicit  = 该节点在源文件里有直接依据，source_refs 指向可打开的位置
+#   inferred  = 由本 artifact 从多处材料重建，源文件没有直接这么说
+#
+# 本树刻意不虚构任何 decision / dead_end / experiment。研究程序目前只有两个已收敛的
+# decision（workload 更名、P4A 的定位），一个真正的 dead_end（cache 字段不可用，且尚未
+# 确认范围），其余全是 open。
+#
+# attribution:
+#   p4a        = 这个节点属于 P4A 这个历史项目，不是 CachePlan 的活动
+#   cacheplan  = 本项目自己的活动
+#
+# ⚠️ `type: experiment` 是 ARA 的节点词汇表里最接近的槽位，**不代表这些节点是本项目的
+# 实验**。每个这样的节点都带 `role:` 说明它究竟是什么：继承观测 / 一次性复核 / 阅读代码
+# 得到的发现 / 文献工作。截至 2026-09-01，本项目**尚未做过任何实验** —— 第一个是
+# n18-e01-planned，未开始。定位见 n17-repositioning。
+
+meta:
+  project: CachePlan
+  compiled_at: "2026-09-01"
+  compiled_from: "docs/, experiments/p4a/, references/papers/, AGENTS.md"
+  note: >
+    这是一个进行中的研究程序，不是一篇已完成论文。树的叶子大多是 open 而不是结论。
+
+nodes:
+
+  # ─────────────────────────────────────────────────────────────
+  # 根：驱动整个程序的问题
+  # ─────────────────────────────────────────────────────────────
+  - id: n0-root
+    type: question
+    title: "能否在不明显牺牲 agent 能力的前提下，设计 agent 的规划/执行以提升 prompt-cache 复用率？"
+    support_level: explicit
+    source_refs:
+      - "AGENTS.md:21-25"
+    evidence: []
+    children: [n1-p4a-observation, n8-workload-naming, n12-related-work-gap]
+
+  # ─────────────────────────────────────────────────────────────
+  # 分支 1：立项观测
+  # ─────────────────────────────────────────────────────────────
+  - id: n1-p4a-observation
+    type: experiment
+    title: "P4A 现网实测：ReAct 每步重发历史，计费 input 放大 10–18×"
+    support_level: explicit
+    source_refs:
+      - "experiments/p4a/refractor.md:10-21"
+      - "experiments/p4a/refractor.md:250-256"
+    evidence: [C01]
+    attribution: p4a
+    role: "motivating origin —— 让问题被看见的观测，不是本项目的实验"
+    outcome: >
+      单篇累计计费 input 中位约 140 万 token，最终真实上下文仅 8–11 万。归因为 ReAct 循环
+      每步重发全部历史，而非某个工具慢。这是 CachePlan 立项的直接来源。
+    caveat: "放大倍数区间来自仅 3 个会话的逐事件解剖。"
+    children: [n2-session-repro, n5-refactor-plan]
+
+  - id: n2-session-repro
+    type: experiment
+    title: "单 session 独立复现（session_0b334391-…, 2025.acl-long.114）"
+    support_level: explicit
+    source_refs:
+      - "docs/experiments/p4a.md:18-21"
+    evidence: [C01, C02]
+    attribution: cacheplan
+    role: "起点观测的一次性人工复核（B01），n=1，无对照、无预注册 —— 不是实验"
+    outcome: >
+      19 轮，1,893,916 / 121,499 = 15.6x，落在 10–18× 区间内，确认不是长尾个例。
+      同时发现全部 19 条 usage.record 的 inputCacheRead / inputCacheCreation 均为 0。
+    children: [n3-accounting-split]
+
+  - id: n3-accounting-split
+    type: decision
+    title: "把成本拆成两本账：billed input vs actual prefill"
+    support_level: inferred
+    source_refs:
+      - "experiments/p4a/refractor.md:256"
+      - "docs/experiments/p4a.md:21"
+    evidence: [C02]
+    rationale: >
+      serving 侧报 prefix cache 命中率 89%，agent 日志侧 cache 字段全 0。两者不矛盾——
+      记的是两本账。由此确立本项目的记账规则：未经 cache 折算的 token 计数不能用来比较
+      不同执行范式，因为它对步数多的风格高估更严重。
+    note: "inferred —— 源文件并置了这两个数字，但没有把'两本账'这个结论写出来。"
+    children: [n4-precheck-blocked]
+
+  - id: n4-precheck-blocked
+    type: dead_end
+    title: "无法基于 cache 命中率下结论 —— 先决核查项未完成"
+    support_level: explicit
+    source_refs:
+      - "docs/experiments/p4a.md:36-38"
+      - "docs/PROGRESS.md:26"
+    evidence: [C02]
+    status: blocking
+    outcome: >
+      cache 字段在这套 openai 兼容 provider 下疑似未被正确采集，但只在 1 条 session 上验证。
+      在批量核实全部 12,801 个 session 之前，不得基于 cache 命中率下任何结论。
+      若确认恒为零，只能退回基于 prompt 前缀 token 重叠度的代理指标，且必须标注为估算值。
+    unblocks_via: E01   # 见 n18-e01-planned 阶段 1
+
+  # ─────────────────────────────────────────────────────────────
+  # 分支 1b：重构方案 —— docs/ 未记录的那一整支
+  # ─────────────────────────────────────────────────────────────
+  - id: n5-refactor-plan
+    type: decision
+    title: "把 Layer4 从「每篇一个 ReAct agent」重构为「程序批处理 + 两次 LLM 调用」"
+    support_level: explicit
+    source_refs:
+      - "experiments/p4a/refractor.md:25-42"
+    evidence: []
+    rationale: >
+      换职责分工而不减少抽取内容：程序做批处理/索引/下载/缓存/验证/YAML 生成，
+      LLM 只做语义判断（是不是资源、资源类型、introduced/used/evaluated）。
+    note: >
+      这是 P4A 项目自身的工程决定，不是 CachePlan 的研究决定。但它在 autonomy ladder 上
+      恰好构成 L2–L3 臂，因此对 open question 有直接价值。
+    children: [n6-v2-implemented, n7-prefix-by-instinct]
+
+  - id: n6-v2-implemented
+    type: experiment
+    title: "layer4_v2 完整实现并做 200 篇 v1/v2 对照评估"
+    support_level: explicit
+    source_refs:
+      - "experiments/p4a/src/extract/layer4_v2/README.md:1-5"
+      - "experiments/p4a/src/extract/layer4_v2/README.md:162-163"
+    evidence: [C11]
+    attribution: p4a
+    role: "P4A 自己的工程验收（B02）。形状接近 E02，但不是本项目设计的对照实验"
+    outcome: "README 称裁定召回 96.1% 通过（通过线 ≥95%）。"
+    caveat: >
+      三条限制使它不能结案 open question：(1) 原始报告 reports/layer4_v2_eval200.md
+      不在本仓库，数字未核实；(2) v1 被当作参照系而非独立对照臂，而 v1 自身已知有质量
+      问题（T03）；(3) 两臂不独立 —— v2 失败会回退 v1 agent。且完全没有行为统计与
+      双口径成本。
+    children: [n11-docs-code-drift]
+
+  - id: n7-prefix-by-instinct
+    type: experiment
+    title: "跨 run 前缀设计被自发采用，但没有被测量"
+    attribution: cacheplan
+    role: "阅读代码得到的发现（代码事实），不是实验"
+    support_level: explicit
+    source_refs:
+      - "experiments/p4a/src/extract/layer4_v2/prompts.py:4-5"
+      - "experiments/p4a/src/extract/layer4_v2/llm_client.py:138-139"
+    evidence: [C11]
+    outcome: >
+      prompts.py 的 docstring 明写「静态块必须跨论文字节级一致，以便 vLLM prefix caching
+      把它们变成共享缓存前缀」—— 本项目关心的杠杆，在自己的代码里已被自觉使用。
+      但 llm_client.py 只采集 prompt_tokens / completion_tokens，无任何 cache 字段；
+      refractor.md §8 的通过线里也没有一项 cache 指标。
+    note: "把'盲区'从'没人想到'精确成了'想到了、做了、依然没测'——缺的是口径不是意识。"
+    children: [n10-v1-cache-hostile]
+
+  - id: n10-v1-cache-hostile
+    type: experiment
+    title: "P4A v1 自身就是 cache-hostile ordering 的实例"
+    attribution: cacheplan
+    role: "阅读代码得到的发现（代码事实），不是实验"
+    support_level: explicit
+    source_refs:
+      - "experiments/p4a/src/extract/layer4/launch_kimi_layer4.py:422-427"
+      - "experiments/p4a/src/extract/layer4/prepare_mineru_layer4.py:319"
+    evidence: [C10]
+    outcome: >
+      v1 不把 Skill 内联进 prompt，而是传一个指向逐篇生成的 agent_prompt.md 的路径，
+      让 agent 自己用工具去读 SKILL.md（460 行 / 21,014 字节）。于是这份跨 run 逐字相同的
+      最大固定前缀候选，在上下文里排在 per-run 内容之后，对跨 run 前缀复用贡献为 0。
+    caveat: >
+      从代码路径推断，未对实际 token 序列做测量。session 日志里的 context.append_message /
+      tool.result 事件可以直接验证，尚未做。
+    children: []
+
+  - id: n11-docs-code-drift
+    type: open
+    title: "docs/ 与代码不一致：PROGRESS 说待办，代码里已有实现与评估"
+    support_level: explicit
+    source_refs:
+      - "docs/PROGRESS.md:36"
+      - "experiments/p4a/src/extract/layer4_v2/README.md:162"
+    evidence: []
+    outcome: >
+      docs/PROGRESS.md 把「构造不同 autonomy level 的 P4A 实现做 controlled comparison」
+      列为待办，而 experiments/p4a/src/extract/layer4_v2/ 已有完整实现并跑过 200 篇评估。
+      docs/ 全文没有提到过 layer4_v2 的存在。
+    needs_user_decision: true
+    question: >
+      这处 drift 如何处理？(a) 把 v2 正式纳入 open question 的 L2–L3 臂并更新 PROGRESS；
+      (b) 认为 v2 是 p4a 的工程决定、与 OQ 的受控实验无关，维持现状；
+      (c) 先取回 reports/layer4_v2_eval200.md 核实后再定。
+      本 artifact 不擅自判定，也不把 OQ 标为 RESOLVED。
+    update:  # 2026-09-01 —— 前向引用，上方 outcome 保留编译当时的状态描述
+      date: "2026-09-01"
+      what: >
+        记录缺失的那一半已修复：docs/PROGRESS.md 的 Experiments 节现在记录了 layer4_v2 的
+        存在、200 篇评估、以及它为什么不能直接结案 open question。按 n17-repositioning，
+        它被记为继承观测 B02（P4A 自己的工程验收），不是本项目的实验。
+        docs/PROGRESS.md:36 仍把 controlled comparison 列为待办 —— 这是正确的。
+      still_open: "上面三个处置选项 (a)/(b)/(c) 仍未裁定。"
+
+  # ─────────────────────────────────────────────────────────────
+  # 分支 2：workload 定名（唯一已收敛的 decision）
+  # ─────────────────────────────────────────────────────────────
+  - id: n8-workload-naming
+    type: decision
+    title: "workload 定名为 data-intensive / data-processing agent workflows"
+    support_level: explicit
+    source_refs:
+      - "docs/PROGRESS.md:11"
+      - "AGENTS.md:33-39"
+    evidence: [C03]
+    date: "2026-08-31"
+    rationale: >
+      跨 run 的「固定过程 + 大量重复」才是 cache 复用空间的来源；"data analysis agent"
+      强调的是任务语义，指向了错误的属性。已在 AGENTS.md、PROGRESS.md、open-question
+      文档三处对齐。
+    children: [n9-open-question]
+
+  - id: n9-open-question
+    type: question
+    title: "How much agency is actually necessary for data-intensive processing tasks like P4A?"
+    support_level: explicit
+    source_refs:
+      - "docs/open-questions/Necessity-of-agentic-execution.md:13"
+      - "docs/PROGRESS.md:43"
+    evidence: [C04, C05, C06, C07]
+    status: OPEN
+    outcome: >
+      设立四级 autonomy ladder（Static Workflow / Workflow+LLM Nodes / Workflow+Repair /
+      Full ReAct-Coding Agent）作为实验骨架。明确不预设 agent 是正确的执行抽象。
+      结论决定研究方向本身：若差距不大则转向 cache-aware execution of LLM workflows。
+    children: [n13-lit-search, n14-e02-planned]
+    also_depends_on: [n6-v2-implemented]
+
+  # ─────────────────────────────────────────────────────────────
+  # 分支 3：文献 —— 一次已发生的回撤
+  # ─────────────────────────────────────────────────────────────
+  - id: n12-related-work-gap
+    type: open
+    title: "本项目在自己的主线方向（prompt/KV cache 系统工作）上尚无任何文献"
+    support_level: explicit
+    source_refs:
+      - "references/refs.bib:9"
+      - "docs/literature/README.md:13"
+    evidence: []
+    outcome: >
+      refs.bib 为空（"尚无入库文献"），literature 索引为空（"尚无笔记"）。已精读的两篇
+      都不是 cache 方向的。这是当前 related work 层最大的缺口，优先级高于两篇 staged
+      论文的评审。
+
+  - id: n13-lit-search
+    type: experiment
+    title: "为 open question 找支撑文献：精读两篇，均判为间接证据"
+    attribution: cacheplan
+    role: "文献工作，不是实验"
+    support_level: explicit
+    source_refs:
+      - "docs/PROGRESS.md:35"
+      - "references/papers/fan2026deepprep/close-read.md:577"
+      - "references/papers/anon2026longda/close-read.md:24"
+    evidence: [C04, C05, C06, C07, C08, C09]
+    outcome: >
+      两篇 workload 形态吻合的论文精读完成。判定一致：方向上支持「这类 workload 不需要
+      full ReAct」，但都不构成对 OQ 的回答 —— 一篇从未做 workflow vs agent 的受控对照，
+      另一篇根本没有非 agent 基线。两篇均与 cache 主线正交：一篇说的"复用"是物化中间表的
+      算子复用（与 KV 无关），另一篇全文不出现 cache 概念。
+    children: [n15-refs-withdrawn, n16-cache-hostile-found]
+
+  - id: n15-refs-withdrawn
+    type: decision
+    title: "把两篇论文的条目从 refs.bib 移除"
+    support_level: explicit
+    source_refs:
+      - "git:c6ece08"
+      - "references/README.md:38"
+    evidence: []
+    date: "2026-09-01"
+    outcome: >
+      commit c6ece08 "remove references" 删除了 fan2026deepprep 与 anon2026longda 两个
+      条目，refs.bib 回到"尚无入库文献"。精读稿仍在 gitignored 的暂存区。
+    rationale_available: false
+    note: >
+      **移除的理由没有被记录在任何文档里**——本 artifact 不推测。可以确定的是它与仓库规范
+      一致：精读稿未经人工评审，未经评审的内容不进 docs/，refs.bib 的 note 也不写其结论。
+      因此本 artifact 把两篇的全部结论标为 staged：记录推理痕迹，但不承担论证责任。
+    children: []
+
+  - id: n16-cache-hostile-found
+    type: experiment
+    title: "在外部工作里发现 cache-hostile ordering 的干净实例"
+    attribution: cacheplan
+    role: "精读外部论文得到的发现（staged），不是实验"
+    support_level: explicit
+    source_refs:
+      - "references/papers/anon2026longda/close-read.md:509-526"
+    evidence: [C08, C09]
+    outcome: >
+      一个 prompt 模板把跨 30 个 run 逐字相同、且是模板中最长的固定块（约 250–300 token）
+      放在了全部 per-run 变量之后，导致朴素共享前缀只剩第一行。修复是纯重排、代价为零。
+      绝对收益可忽略（约 9k token），但它暴露的设计习惯才是信号。
+      同一处还提出：把重复的"发现"步骤固化成前缀知识，同时是 cache 优化与 agency 削减
+      —— 这成为 C09（hypothesis，无任何证据）。
+    children: []
+    also_depends_on: [n10-v1-cache-hostile]
+
+  # ─────────────────────────────────────────────────────────────
+  # 待办分支
+  # ─────────────────────────────────────────────────────────────
+  - id: n14-e02-planned
+    type: open
+    title: "E02：四级 autonomy 的受控对比（未开始）"
+    support_level: explicit
+    source_refs:
+      - "docs/PROGRESS.md:36"
+      - "docs/open-questions/Necessity-of-agentic-execution.md:15-17"
+    evidence: []
+    outcome: >
+      要求：固定模型与 serving 环境，只换执行范式；按任务难度分层报告；
+      把行为统计（实际轮数分布、repair 触发率、回溯频率、外部检索调用比例）与双口径成本
+      作为一等指标 —— 这两项正是 n6 的评估与两篇 staged 论文共同缺失的东西。
+    blocked_by: [n4-precheck-blocked]
+    also_depends_on: [n6-v2-implemented, n11-docs-code-drift, n18-e01-planned]
+
+  # ─────────────────────────────────────────────────────────────
+  # 分支 4：定位纠正（2026-09-01，用户）
+  # ─────────────────────────────────────────────────────────────
+  - id: n17-repositioning
+    type: decision
+    title: "P4A 是起点，不是本项目的实验；本项目至今零实验"
+    support_level: explicit
+    provenance: user
+    date: "2026-09-01"
+    source_refs:
+      - "conversation:2026-09-01 用户原话"
+    evidence: [C01, C02, C10, C11]
+    choice: >
+      P4A 的定位被明确为 motivating origin —— 它让这个问题被看见，并且是下一个实验要去
+      观测的数据来源，但它本身不是 CachePlan 的核心实验、不是对照臂、不是结果。
+      随之确认：CachePlan 至今没有完成过任何实验。
+    alternatives: >
+      (被否决) 继续把 P4A 的既有记录（单 session 解剖、layer4_v2 200 篇评估）编号进
+      E-series 并标为"已完成" —— 这会让 artifact 看起来已有实验产出，是失真的。
+    consequences: >
+      1. 新增 logic/inherited-observations.md，把原 E01 / E07 迁出为 B01 / B02；
+      2. logic/experiments.md 只保留 CachePlan 自己的实验，全部为未开始；
+      3. E-series 重编号：原 E03→E02，原 E06→E03，原 E02 并入新 E01；E04/E05 不变；
+      4. claims.md 每条新增「依据类型」字段，区分 继承观测 / 代码事实 / 方法论约定 /
+         staged 文献 / 无 —— 因为没有一条 claim 是被本项目实验支撑的。
+    children: [n18-e01-planned]
+
+  - id: n18-e01-planned
+    type: open
+    title: "E01：P4A 历史轨迹的全量观测研究（本项目的第一个实验，未开始）"
+    support_level: explicit
+    provenance: user
+    attribution: cacheplan
+    source_refs:
+      - "docs/experiments/p4a.md:36-38"
+      - "docs/PROGRESS.md:26"
+    evidence: [C01, C02, C10]
+    outcome: >
+      性质是观测研究而非干预实验：对象是已存在且不可变的 P4A session 日志，只读不跑。
+      五个测量目标：(1) cache 字段可用性核查（先决闸门，解除 n4-precheck-blocked）；
+      (2) 放大倍数的全量分布与分层归因（把 C01 从 n=80 抽样扩到全量）；
+      (3) 跨 run 前缀重叠结构 —— 从事件流重建 token 序列，实测共享前缀在哪断，
+          这是 C10 从代码推断升级为实测的唯一途径，也是 A3 第一次被真正测量；
+      (4) 轨迹分叉点 —— 语义等价措辞不同的行为在何处首次分叉；
+      (5) 行为统计 —— 被赋予的 agency 有多少真的被行使。
+    constraints: >
+      只读；不得修改原始日志或 p4a 流水线代码；分析必须落成脚本（补上 B01 的可复现性
+      缺口）；汇总产物入 data/processed/（gitignored）并标注来源 tar.gz 版本、脚本、日期。
+    unblocks: [n4-precheck-blocked, n14-e02-planned]

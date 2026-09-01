@@ -1,0 +1,170 @@
+session:
+  id: "2026-09-01_001"
+  date: "2026-09-01"
+  started: "2026-09-01T10:50"
+  last_turn: "2026-09-01T11:40"
+  turn_count: 3
+  summary: >
+    接入 ARA 标准并编译初始 artifact；随后用户纠正 P4A 的定位 —— P4A 是起点不是实验，
+    本项目至今零实验，下一步的第一个实验是拿 P4A 历史轨迹做观测研究。
+
+events_logged:
+  - turn: 1
+    type: decision
+    id: "wire-ara"
+    routing: direct
+    provenance: user
+    summary: "按 wire-ara.md 接入 ARA：安装 8 个 ara skill 到 ~/.claude/skills/，路由规则写入 AGENTS.md。ara Rust CLI 未装（skill 要求先征得同意）。"
+  - turn: 2
+    type: experiment
+    id: "compile-ara"
+    routing: direct
+    provenance: ai-executed
+    summary: "用 /compiler 把 docs/ + experiments/p4a/ + references/ 编译成 ara/：11 claims、7 experiments、17 nodes、10 tables。"
+  - turn: 3
+    type: decision
+    id: "n17-repositioning"
+    routing: direct
+    provenance: user
+    summary: "P4A 定位为 motivating origin，非核心实验非对照臂；确认本项目零实验；E-series 重编号并迁出 B-series。"
+  - turn: 3
+    type: open
+    id: "n18-e01-planned"
+    routing: direct
+    provenance: user
+    summary: "E01 = P4A 历史轨迹全量观测研究，五个测量目标，本项目第一个实验，未开始。"
+
+ai_actions:
+  - turn: 3
+    action: "新建 inherited-observations.md，把原 E01/E07 迁出为 B01/B02"
+    provenance: ai-executed
+    files_changed: ["ara/logic/inherited-observations.md"]
+  - turn: 3
+    action: "重写 experiments.md：只保留 CachePlan 自己的实验，全部标未开始；新 E01 吸收原 E02 的先决核查项并扩展为五阶段观测研究"
+    provenance: ai-executed
+    files_changed: ["ara/logic/experiments.md"]
+  - turn: 3
+    action: "claims.md 每条新增「依据类型」字段；修正 Proof 指向"
+    provenance: ai-executed
+    files_changed: ["ara/logic/claims.md"]
+  - turn: 3
+    action: "trace 新增 n17/n18，全部节点加 attribution 字段区分 p4a / cacheplan"
+    provenance: ai-executed
+    files_changed: ["ara/trace/exploration_tree.yaml"]
+  - turn: 3
+    action: "跨层传播编号变更（PAPER.md、evidence/*、concepts、constraints、related_work、environment、artifacts）"
+    provenance: ai-executed
+    files_changed: ["ara/PAPER.md", "ara/evidence/README.md", "ara/evidence/tables/", "ara/logic/concepts.md", "ara/logic/solution/constraints.md", "ara/logic/related_work.md", "ara/src/environment.md", "ara/src/artifacts.md"]
+  - turn: 3
+    action: "同步 docs/PROGRESS.md：Current direction 增加 P4A 定位段；Current Work 整节重写（本节自身规范要求全量覆盖）；Decisions 表补两行；Experiments 节补记 layer4_v2 与其四条限制。随后重映射 artifact 内所有 docs/PROGRESS.md 行号引用。"
+    provenance: ai-executed
+    files_changed: ["docs/PROGRESS.md", "ara/logic/claims.md", "ara/trace/exploration_tree.yaml", "ara/PAPER.md", "ara/src/artifacts.md", "ara/evidence/tables/table10-layer4v2-eval200.md"]
+  - turn: 3
+    action: "修复两处 malformed 引文（launch_kimi_layer4.py:422-427），拆成逐行 verbatim 引用。原编译的 90/90 校验因正则过窄放过了它们。"
+    provenance: ai-executed
+    files_changed: ["ara/logic/claims.md", "ara/src/artifacts.md"]
+
+claims_touched:
+  - {id: C01, action: revised, turn: 3}
+  - {id: C02, action: revised, turn: 3}
+  - {id: C03, action: revised, turn: 3}
+  - {id: C04, action: revised, turn: 3}
+  - {id: C05, action: revised, turn: 3}
+  - {id: C06, action: revised, turn: 3}
+  - {id: C07, action: revised, turn: 3}
+  - {id: C08, action: revised, turn: 3}
+  - {id: C09, action: revised, turn: 3}
+  - {id: C10, action: revised, turn: 3}
+  - {id: C11, action: revised, turn: 3}
+
+logic_revisions:
+  - turn: 3
+    entry: claims.md (header)
+    field: Status legend
+    before: "`supported` — 由本仓库自有的实测数据支撑，可在内部使用。"
+    after: "`supported` — 有可核实的依据支撑…**但请同时读 依据类型**：支撑它的可能是继承观测或代码事实，而非本项目的实验。（并新增全局声明：没有任何一条 claim 由本项目的实验支撑）"
+    signal: user-directive
+    provenance: user-revised
+    note: "用户指出本项目至今零实验，原表述让 supported 读起来像有实验背书。"
+  - turn: 3
+    entry: C01
+    field: Proof
+    before: "E01"
+    after: "B01（n=1 复核）+ refractor.md 的抽样（n=80 token / n=3 逐事件解剖）；待做 E01 阶段 2"
+    signal: user-directive
+    provenance: user-revised
+  - turn: 3
+    entry: C02
+    field: Proof
+    before: "E01, E02"
+    after: "B01（口径分离的观测，n=1）；待做 E01 阶段 1（先决核查闸门）"
+    signal: user-directive
+    provenance: user-revised
+  - turn: 3
+    entry: C03
+    field: Proof
+    before: "E03（本 claim 决定 E03 的分层维度）"
+    after: "E02（本 claim 决定 E02 的分层维度）"
+    signal: dependency-change
+    provenance: ai-suggested
+    note: "E-series 重编号的连带修复。"
+  - turn: 3
+    entry: C08
+    field: Proof
+    before: "E06"
+    after: "E03"
+    signal: dependency-change
+    provenance: ai-suggested
+  - turn: 3
+    entry: C09
+    field: Proof
+    before: "E06（本 claim 是 E06 的设计假设）"
+    after: "E03（本 claim 是 E03 的设计假设）"
+    signal: dependency-change
+    provenance: ai-suggested
+  - turn: 3
+    entry: C10
+    field: Proof
+    before: "E02（顺带验证），E03（L4 臂的前缀测量）"
+    after: "代码路径（可在本仓库内直接核实）；待做 E01 阶段 3、E02"
+    signal: user-directive
+    provenance: user-revised
+    note: "原来把一条代码事实挂在两个未做的实验上，读起来像实验支撑。"
+  - turn: 3
+    entry: C11
+    field: Proof
+    before: "E07"
+    after: "代码事实（prompts.py 设计意图 + llm_client.py 采集字段）；背景见 B02"
+    signal: user-directive
+    provenance: user-revised
+  - turn: 3
+    entry: C01–C11
+    field: 依据类型 (new)
+    before: "(字段不存在)"
+    after: "继承观测 / 代码事实 / 方法论约定 / staged 文献 / 无 —— 每条 claim 显式声明它站在哪种依据上"
+    signal: user-directive
+    provenance: user-revised
+  - turn: 3
+    entry: experiments.md
+    field: 全文结构
+    before: "E01–E07，其中 E01 与 E07 标「已完成」"
+    after: "E01–E05 全部未开始；顶部声明本项目零实验；原 E01→B01、原 E07→B02 迁至 inherited-observations.md；原 E02 并入新 E01 阶段 1；原 E03→E02；原 E06→E03"
+    signal: user-directive
+    provenance: user-revised
+
+key_context:
+  - turn: 3
+    excerpt: >
+      用户原话：「p4a 并不是我们的核心实验，而是使我意识到这个问题可做的起点。本质上我们
+      还没有做任何实验不是吗？下一步的实验才是，我要拿着 p4a 的历史轨迹来检测和观察」
+
+open_threads:
+  - "n11-docs-code-drift 仍待用户裁定：layer4_v2 的 200 篇评估如何处理（a/b/c 三选项）。定位纠正后它记为继承观测 B02；记录缺失的那一半已于 2026-09-01 补进 docs/PROGRESS.md，剩下的是处置方式。"
+  - "reports/layer4_v2_eval200.md 不在本仓库，需取回核实。"
+  - "(已完成 2026-09-01) docs/PROGRESS.md 已同步定位纠正，并补记 layer4_v2 的存在。"
+  - "refs.bib 在 cache 系统方向上完全为空，是 related work 层最大缺口。"
+  - "ara Rust CLI 未安装（用户当前不需要）。"
+  - "AGENTS.md 的 ARA 路由段只列了 5 个 skill，实际装了 8 个（research-fuzzer、rigor-reviewer 未列）。"
+
+ai_suggestions_pending:
+  - "E01 的五个测量目标是本轮由 AI 从用户「检测和观察」一句展开的，用户尚未逐项确认范围。"

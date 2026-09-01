@@ -1,0 +1,33 @@
+observations:
+  - id: O01
+    timestamp: "2026-09-01T11:40"
+    provenance: ai-suggested
+    content: >
+      E01 阶段 3（跨 run 前缀重叠结构）可能同时是 C10 的证伪通道与 A3 的首次测量：
+      若从日志重建的 token 序列显示共享前缀已经覆盖了 SKILL.md 内容，则 C10 与
+      "cache-hostile ordering 是本项目的核心机制描述" 一起被推翻。
+    context: >
+      定位纠正后重写 E01 时浮现。用户只说了「检测和观察」，没有指定这条依赖关系。
+    potential_type: claim
+    bound_to: [n18-e01-planned, n10-v1-cache-hostile]
+    promoted: false
+    promoted_to: null
+    crystallized_via: null
+    stale: false
+
+  - id: O02
+    timestamp: "2026-09-01T11:40"
+    provenance: ai-suggested
+    content: >
+      "被赋予的 agency" 与 "被行使的 agency" 的差值本身可能是一个可测量的量，
+      且是本项目区别于既有 agent 评测的地方 —— 现有工作（含两篇 staged 论文与 B02）
+      都不报告它。若 E01 阶段 5 能给出这个差值的分布，它可以独立于 cache 主线成立。
+    context: >
+      来自 T03（checked_by 分布）与 C06（agency 自发退化）的交叉，在重写
+      autonomy-ladder 的评测维度时浮现。尚未与用户讨论过。
+    potential_type: claim
+    bound_to: [n18-e01-planned, n9-open-question]
+    promoted: false
+    promoted_to: null
+    crystallized_via: null
+    stale: false

@@ -1,0 +1,10 @@
+sessions:
+  - id: "2026-09-01_001"
+    date: "2026-09-01"
+    summary: >
+      接入 ARA 并编译初始 artifact；随后纠正 P4A 的定位（起点而非实验），确认本项目零实验，
+      确立 E01 为第一个实验：拿 P4A 历史轨迹做全量观测研究。
+    turn_count: 3
+    events_count: 4
+    claims_touched: [C01, C02, C03, C04, C05, C06, C07, C08, C09, C10, C11]
+    open_threads: 6
