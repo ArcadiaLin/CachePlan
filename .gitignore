@@ -14,6 +14,7 @@
 # Generated experiment output. Keep experiment code and configs under experiments/ tracked.
 /runs/
 /results/
+/tmps/
 
 # Node.js dependencies, build output, and profiling artifacts.
 node_modules/
@@ -32,6 +33,10 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# WIDI 变体的凭据。settings/profiles/extensions 要跟踪（它们是实验配置的一部分），
+# auth.json 是本机登录态，任何变体的都不进版本管理。
+widis/*/auth.json
 
 # Python environments, bytecode, test, type-checker, and build caches.
 .venv/
