@@ -11,7 +11,7 @@ This is an offline, fixture-backed workflow. Do not access the network, invoke M
 
 ## Output contract
 
-Write only the requested `agent_judgment.json`. Do not manually write YAML or alter any generated artifact. The later fixed merge and validation tools own YAML generation, schema normalization, resource ids, and validation.
+Write only the requested `agent_judgment.json`. Do not manually write YAML or alter any generated artifact. The fixed apply and validation tools canonically serialize that JSON and check its schema and consistency.
 
 The judgment must be valid JSON. Read `input/judgment_contract.json`, copy its `output_template`, replace `<paper_id>`, and add `resource_template`-derived records to `resources`.
 
@@ -24,6 +24,8 @@ The judgment must be valid JSON. Read `input/judgment_contract.json`, copy its `
 3. Identify reusable artifacts materially introduced, used, evaluated, or required by the paper: datasets, benchmarks, code, models, tools, skills, protocols, APIs, project pages, and released artifacts.
 4. Read fixture-local evidence only when it is relevant to an identified artifact. Treat it as verification evidence, not as a replacement for paper evidence.
 5. Write `agent_judgment.json` once all required fields can be supported by the prepared evidence.
+6. Call `p4a_apply_judgment`. If it reports invalid judgment fields, rewrite only `agent_judgment.json` to correct them.
+7. Call `p4a_validate_outputs`. Do not finish while it reports an invalid result; correct only `agent_judgment.json`, then repeat steps 6–7.
 
 ## Semantic rules
 
