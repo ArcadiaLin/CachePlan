@@ -9,7 +9,7 @@
 UV ?= uv
 RUN = $(UV) run
 
-.PHONY: setup setup-render s0 s1 s2 s3 all verify smoke clean
+.PHONY: setup setup-render s0 s1 s2 s3 s4 dump all verify smoke clean
 
 setup:
 	$(UV) sync
@@ -29,6 +29,14 @@ s2:
 
 s3:
 	$(UV) run --extra render python -m e01.s3_render
+
+# 导出某份 session 的逐步上下文供肉眼查看：make dump SID=2d549e55
+dump:
+	$(UV) run --extra render python -m e01.s3_dump $(SID)
+
+# --check 在 ground truth 上重新标定作废量公式（慢，约 3 分钟）
+s4:
+	$(UV) run --extra render python -m e01.s4_divergence --check
 
 all: s0 s1 s2
 
