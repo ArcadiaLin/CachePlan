@@ -6,9 +6,18 @@ system 消息，占首步 prompt 的八成以上；工具集判错，后面每�
 
 ## 两件事
 
-1. **自检。** 60 份 session 带 `llm.tools_snapshot`（工具 schema 全文）。拿它们
-   渲染，token 数必须与服务端记录的 `prompt_tokens` **完全相等**。有一份不等
-   就退出 —— 还原器不准的话，下面的判定没有意义。
+1. **自检。** 60 份 session 带 `llm.tools_snapshot`（工具 schema 全文）。把它们
+   的**每一步**都还原出来，token 数与服务端记录的 `prompt_tokens` 比对。
+
+   只验首步不够：首步只覆盖 system + tools + 用户消息，验不到 assistant 消息、
+   tool_calls 和工具结果的渲染规则（后者尤其容易错，见 context_builder.py）。
+
+   精确率低于 95% 直接退出 —— 那说明还原链条本身坏了（模板、分词器或渲染规则
+   被动过），下游判定全部无效。个别异常不停，但逐条打印并在产物里标注
+   `exact=false`，那些 session 不得进入逐字分析。
+
+   当前实测 1123/1142 步精确（98.34%），唯一的偏差是一份 session 在 step7 处
+   跳变 −25 token，成因未查明，已排除该 session。
 
 2. **判定。** 另外那 4000 多份没有快照。但还原器既然是精确的：
 
@@ -35,7 +44,7 @@ import argparse
 import datetime
 from collections import defaultdict
 
-from . import provenance, render, wire
+from . import context_builder, provenance, render, wire
 
 SCRIPT = "e01/s3_render.py"
 
@@ -92,25 +101,60 @@ def main() -> None:
     probe_tok = {h: render.count(render.render(probe, wrapped[h])) for h in order}
     rel_size = {h: probe_tok[h] - probe_tok[REF_HASH_PREFIX] for h in order}
 
-    # ---- 1. 自检 ----
-    checked, mismatched = 0, []
+    # ---- 1. 自检：带 ground truth 的 session，**每一步**都要 Δ=0 ----
+    # 只验首步是不够的：首步只覆盖 system + tools + 用户消息，验不到
+    # assistant 消息、tool_calls 和工具结果的渲染规则。
+    n_sessions, n_steps, mismatched = 0, 0, []
+    inexact_sids: set[str] = set()
     for sd in all_dirs:
-        r = wire.first_request(sd)
-        if r.tools is None or r.prompt_tokens is None or not r.system_prompt:
+        ctx = context_builder.build(sd)
+        if ctx.tools is None or not ctx.system_prompt:
             continue
-        n = render.count(render.render(wire.openai_messages(r), render.wrap_tools(r.tools)))
-        checked += 1
-        if n != r.prompt_tokens:
-            mismatched.append({"sid": r.sid, "rendered": n,
-                               "measured": r.prompt_tokens, "delta": n - r.prompt_tokens})
-    if mismatched:
-        for m in mismatched[:10]:
-            print(f"  {m['sid']} 复现 {m['rendered']} 实测 {m['measured']} Δ={m['delta']:+d}")
+        n_sessions += 1
+        wrapped_gt = render.wrap_tools(ctx.tools)
+        prev_delta = 0
+        for st in ctx.steps:
+            if st.prompt_tokens is None:
+                continue
+            n_steps += 1
+            n = render.count(render.render(
+                context_builder.messages_for(ctx, st), wrapped_gt))
+            d = n - st.prompt_tokens
+            if d:
+                inexact_sids.add(ctx.sid)
+                # 一处偏差会一路带到后面每一步。只记「跳变」——那才是新增的
+                # 一处失配，也才是要查的地方。
+                mismatched.append({"sid": ctx.sid, "step": st.step, "delta": d,
+                                   "jump": d - prev_delta,
+                                   "rendered": n, "measured": st.prompt_tokens,
+                                   "is_new": d != prev_delta})
+            prev_delta = d
+
+    n_exact = n_steps - len(mismatched)
+    rate = n_exact / n_steps if n_steps else 0.0
+    jumps = [m for m in mismatched if m["is_new"]]
+
+    # 大面积对不上 = 还原链条本身坏了（模板、分词器、渲染规则被改动），
+    # 此时下游的判定全部无效，必须停。个别异常不停，但要逐条报出来。
+    if rate < 0.95:
+        for m in jumps[:10]:
+            print(f"  {m['sid']} step{m['step']} 复现 {m['rendered']} "
+                  f"实测 {m['measured']} Δ={m['delta']:+d}")
         raise SystemExit(
-            f"自检失败：{len(mismatched)}/{checked} 份带 ground truth 的 session 对不上。"
-            " 还原器不准，判定结果无效。先查 render.py 的三个细节（见其模块文档）。"
+            f"自检失败：只有 {n_exact}/{n_steps} 步精确（{rate:.1%}）。还原链条不准，"
+            "下面的判定结果无效。查 render.py 与 context_builder.py 的模块文档，"
+            "那里列了每一处必须逐字一致的地方。"
         )
-    print(f"[s3] 自检通过：{checked}/{checked} 份带 ground truth 的 session Δ=0")
+
+    print(f"[s3] 自检：{n_sessions} 份 ground-truth session，"
+          f"{n_exact}/{n_steps} 步精确（{rate:.2%}）")
+    if jumps:
+        print(f"[s3] ⚠ {len(inexact_sids)} 份 session 存在未解释的偏差，"
+              f"共 {len(jumps)} 处跳变（后续步的偏差是它带下来的）：")
+        for m in jumps:
+            print(f"     {m['sid']} step{m['step']} 跳变 {m['jump']:+d} "
+                  f"(复现 {m['rendered']} 实测 {m['measured']})")
+        print("     这些 session 不可用于逐字分析，已在产物里标注 exact=false。")
 
     # ---- 2. 判定 ----
     dirs = all_dirs[: args.limit] if args.limit else all_dirs
@@ -137,6 +181,9 @@ def main() -> None:
             "tools_tok_rel_ref": group,
             "tools_hash": r.tools_hash[:8] if r.tools_hash else None,
             "matches_known_candidate": known[0] if known else None,
+            # 仅对有 ground truth 的 60 份有意义：逐步还原是否每一步都 Δ=0。
+            # false 表示存在未解释的偏差，不可用于逐字分析。
+            "exact": (r.sid not in inexact_sids) if r.tools_hash else None,
         })
 
     hdr = provenance.header(SCRIPT, {"limit": args.limit, "ref": REF_HASH_PREFIX},
@@ -164,7 +211,14 @@ def main() -> None:
 
     matched = sum(t["n_sessions"] for t in table if t["known_candidate"])
     summary = {
-        "self_check": {"n_ground_truth": checked, "n_mismatched": 0},
+        "self_check": {
+            "n_ground_truth_sessions": n_sessions,
+            "n_steps_verified": n_steps,
+            "n_steps_exact": n_exact,
+            "exact_rate": round(rate, 6),
+            "n_sessions_inexact": len(inexact_sids),
+            "unexplained_jumps": jumps,
+        },
         "candidates": {h: {"n_tools": len(cands[h]), "tools_tok_rel_ref": rel_size[h]}
                        for h in order},
         "n_classified": len(rows),

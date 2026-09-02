@@ -5,24 +5,24 @@ description: 在 CachePlan 中开发、修改或调试 WIDI extension；覆盖 C
 
 # 在 CachePlan 中开发 WIDI extension
 
-本仓库将每个 WIDI runtime 版本或实现变体作为独立的消融对象：其 runtime 位于 `packages/widi-<variant>/` Git submodule，对应的项目配置位于 `widis/.widi-<variant>/`。WIDI extension 使用 WIDI 自己的运行时协议，**不是** Pi coding-agent 的 `ExtensionAPI`。不要使用 Pi 文档中的 `pi.registerTool()`、`pi.on()` 等 API；必须遵守所选变体固定 revision 的 Core/TUI 契约。
+本仓库通过 `packages/widi/` Git submodule 使用一个固定 revision 的 WIDI runtime；可比较的 WIDI 版本由 `widis/.widi-<variant>/` 下独立的 agent-dir 配置组装。WIDI extension 使用 WIDI 自己的运行时协议，**不是** Pi coding-agent 的 `ExtensionAPI`。不要使用 Pi 文档中的 `pi.registerTool()`、`pi.on()` 等 API；必须遵守当前固定 WIDI revision 的 Core/TUI 契约。
 
-当前 `packages/widi/` 是最先加入的 runtime，在它拥有稳定的 `<variant>` 标识及配对的 `widis/.widi-<variant>/` agent dir 前，不得将它用于跨变体消融。新建或迁移运行配置时，先确定该标识，再将 runtime、agent dir、启动封装和实验记录同步命名。
+WIDI runtime 是可演化的个人项目。需要新的通用 runtime 能力时，在 `packages/widi` 对应仓库中提交该改动，再更新父仓库 gitlink；不要复制、重命名或向父仓库引入第二份 runtime。比较 WIDI revision 时，分别以每个 gitlink revision 完整运行同一组 `widis/.widi-<variant>/` 配置，并在实验 manifest 中记录 revision。
 
-研究工作流的领域逻辑、工具和编排应放在父仓库的、按变体隔离的项目级 extension 中。WIDI submodule 只提供通用运行时能力；除非公开 extension API 经最小复现证明无法表达所需的通用能力，否则不要修改 submodule 源码。确需修改时，在该 submodule 内单独提交，再更新父仓库的 gitlink。
+研究工作流的领域逻辑、工具和编排应放在父仓库的、按配置变体隔离的项目级 extension 中。`packages/widi/` 只提供通用运行时能力；除非公开 extension API 经最小复现证明无法表达所需的通用能力，否则不要修改 submodule 源码。
 
 ## 0. 写代码前必须读取
 
-按此顺序读取，不要凭记忆写 API；将 `<variant>` 替换为目标消融对象：
+按此顺序读取，不要凭记忆写 API：
 
-1. `packages/widi-<variant>/apps/widi/docs/extensions.md`：目标 revision 的 extension 合约与发现规则。
-2. `packages/widi-<variant>/apps/widi/src/core/extension/api.ts`：extension 作者可依赖的 Core 导出面。
-3. `packages/widi-<variant>/apps/widi/src/core/extension/types.ts`：`ExtensionActivationApi`、`ExtensionContext`、`ExtensionActions`、拦截器和观察事件的完整签名。
-4. `packages/widi-<variant>/apps/widi/src/tui/extension-host/types.ts`：`WidiTuiExtensionApi` 和 TUI 类型。
-5. `packages/widi-<variant>/.widi/extensions/drill/`：上游双入口行为基准；只作参考，不能作为 CachePlan extension 的落点。
-6. 根目录 `AGENTS.md` 和目标 `packages/widi-<variant>/AGENTS.md`：本仓库研究约束与该 WIDI submodule 规则。
+1. `packages/widi/apps/widi/docs/extensions.md`：当前固定 revision 的 extension 合约与发现规则。
+2. `packages/widi/apps/widi/src/core/extension/api.ts`：extension 作者可依赖的 Core 导出面。
+3. `packages/widi/apps/widi/src/core/extension/types.ts`：`ExtensionActivationApi`、`ExtensionContext`、`ExtensionActions`、拦截器和观察事件的完整签名。
+4. `packages/widi/apps/widi/src/tui/extension-host/types.ts`：`WidiTuiExtensionApi` 和 TUI 类型。
+5. `packages/widi/.widi/extensions/drill/`：上游双入口行为基准；只作参考，不能作为 CachePlan extension 的落点。
+6. 根目录 `AGENTS.md` 和 `packages/widi/AGENTS.md`：本仓库研究约束与 WIDI submodule 规则。
 
-Extension 只能依赖目标 `packages/widi-<variant>/apps/widi/src/core/extension/api.ts` 及其中明确重导出的公共类型，以及 TUI host 的公开类型。禁止导入 `orchestrator`、`loader`、`runner` 或其他 WIDI 内部实现，也不要保存内部 runtime 对象。
+Extension 只能依赖 `packages/widi/apps/widi/src/core/extension/api.ts` 及其中明确重导出的公共类型，以及 TUI host 的公开类型。禁止导入 `orchestrator`、`loader`、`runner` 或其他 WIDI 内部实现，也不要保存内部 runtime 对象。
 
 ## 1. 先确定入口形态
 
@@ -34,22 +34,21 @@ Extension 只能依赖目标 `packages/widi-<variant>/apps/widi/src/core/extensi
 
 只需要一半时只实现一半，不要为了对称增加空的另一半。需要独立评测的确定性算法保持纯净边界：使用显式输入输出和注入的 provider、cache、clock；extension 仅负责适配和编排。
 
-## 2. 按 WIDI 变体隔离落点、发现与 scaffold
+## 2. 按 WIDI 配置变体隔离落点、发现与 scaffold
 
-WIDI runtime 版本或实现变体是本项目的消融对象。每个变体都必须有独立且可复现的组合：
+每个实验 arm 或 WIDI 组装变体都必须有独立、可复现的 agent dir：
 
 ```text
 packages/
-├── widi-<variant-a>/              # 固定到该变体 revision 的 submodule
-└── widi-<variant-b>/              # 另一消融对象的 submodule
+└── widi/                           # 所有配置共享的固定 runtime gitlink
 widis/
-├── .widi-<variant-a>/             # 只供 variant-a 使用的 agent dir
+├── .widi-<variant-a>/
 │   ├── settings.json
 │   ├── profiles/
 │   ├── prompts/
 │   ├── skills/
 │   └── extensions/
-└── .widi-<variant-b>/             # 只供 variant-b 使用的 agent dir
+└── .widi-<variant-b>/
     ├── settings.json
     ├── profiles/
     ├── prompts/
@@ -57,9 +56,9 @@ widis/
     └── extensions/
 ```
 
-`<variant>` 是实验清单和启动命令共用的稳定标识，不是分支名或临时目录名。每个实验记录必须同时给出 WIDI submodule 的 gitlink revision、`widis/.widi-<variant>/` 路径，以及实际启动命令。禁止在一次比较中让两个变体共享 agent dir，或让运行回退到 WIDI submodule 自己的 `.widi/` 配置；否则 extension、profile、prompt 或设置漂移会污染消融结论。
+`<variant>` 是实验清单和启动命令共用的稳定配置标识，不是 WIDI branch 或 submodule 路径。每个实验记录必须同时给出 `packages/widi` 的 gitlink revision、`widis/.widi-<variant>/` 路径、配置文件 digest 及实际启动命令。禁止在一次比较中让两个变体共享 agent dir，或让运行回退到 WIDI submodule 自己的 `.widi/` 配置；否则 extension、profile、prompt 或设置漂移会污染消融结论。
 
-运行每个变体时，启动封装必须显式传入 `--agent-dir widis/.widi-<variant>`，并从对应 `packages/widi-<variant>/` runtime 启动。不要把项目 extension 写入 `packages/widi-<variant>/.widi/extensions/`；那是 submodule 自己的配置与 `drill` 示例，不属于父仓库的实验配置。
+运行每个变体时，启动封装必须从 `packages/widi/` runtime 启动并显式传入 `--agent-dir widis/.widi-<variant>`。不要把项目 extension 写入 `packages/widi/.widi/extensions/`；那是 submodule 自己的配置与 `drill` 示例，不属于父仓库的实验配置。
 
 extension id 是入口文件名或目录名。扩展只属于一个变体时，落在：
 
@@ -76,17 +75,17 @@ widis/.widi-<variant>/extensions/<id>/
 
 入口按 `package.json` 的 `widi.extensions`（兼容 `pi.extensions`）第一项解析，否则按 `index.ts`、`index.js`、`index.mjs`、`index.cjs` 解析。入口由 jiti 动态加载，TypeScript 不需要预编译。
 
-从项目级 extension 到其所属 WIDI 作者 API 的相对导入路径取决于 agent dir 与 submodule 的实际目录深度。必须在创建时计算并类型检查；不得复制其他变体或 `drill` 的相对路径：
+从项目级 extension 到 WIDI 作者 API 的相对导入路径取决于 agent dir 的实际目录深度。必须在创建时计算并类型检查；不得复制其他变体或 `drill` 的相对路径：
 
 ```ts
 import {
 	EXTENSION_API_VERSION,
 	type ExtensionDefinition,
-} from "<relative>/packages/widi-<variant>/apps/widi/src/core/extension/api.ts";
-import type { TuiExtensionModule } from "<relative>/packages/widi-<variant>/apps/widi/src/tui/extension-host/index.ts";
+} from "<relative>/packages/widi/apps/widi/src/core/extension/api.ts";
+import type { TuiExtensionModule } from "<relative>/packages/widi/apps/widi/src/tui/extension-host/index.ts";
 ```
 
-`apiVersion` 使用 `EXTENSION_API_VERSION`，不要自行写版本常量。`tsconfig.json` 应继承所属 `packages/widi-<variant>/tsconfig.base.json`，并为 `@arcadialin/agent-core` 配置指向该 submodule 的路径映射；路径同样必须按实际深度计算。
+`apiVersion` 使用 `EXTENSION_API_VERSION`，不要自行写版本常量。`tsconfig.json` 应继承 `packages/widi/tsconfig.base.json`，并为 `@arcadialin/agent-core` 配置指向该 submodule 的路径映射；路径同样必须按实际深度计算。
 
 在该变体的 agent dir 的 `settings.json` 中启用：
 
@@ -150,16 +149,16 @@ Core 与 TUI 绝不互相 import。共享内容只放纯数据模块；事件定
 npm ci
 ```
 
-对每个变体的项目级 extension 单独类型检查与格式检查。将 `<variant>` 和 `<extension-dir>` 替换为实际落点：
+对每个配置变体的项目级 extension 单独类型检查与格式检查。将 `<extension-dir>` 替换为实际落点：
 
 ```bash
-npm --prefix packages/widi-<variant> exec -- tsgo --noEmit -p <extension-dir>/tsconfig.json
-npm --prefix packages/widi-<variant> exec -- biome check --config-path packages/widi-<variant>/biome.json <extension-dir>
+npm --prefix packages/widi exec -- tsgo --noEmit -p <extension-dir>/tsconfig.json
+npm --prefix packages/widi exec -- biome check --config-path packages/widi/biome.json <extension-dir>
 ```
 
-动态加载的 extension 不被 WIDI workspace 的 `npm run check` 自动覆盖，上述检查不可省略。修改 Core half 后在该变体 TUI 输入 `/reload`；修改 TUI half 后重启该变体的 TUI。必须以对应 `packages/widi-<variant>/` runtime 和显式 `--agent-dir widis/.widi-<variant>` 启动实际 surface 验证，不要以裸 `npm run tui`、抓取 TUI 文本或直接读取 session 文件替代。
+动态加载的 extension 不被 WIDI workspace 的 `npm run check` 自动覆盖，上述检查不可省略。修改 Core half 后在目标变体 TUI 输入 `/reload`；修改 TUI half 后重启该变体的 TUI。必须从 `packages/widi/` runtime 以显式 `--agent-dir widis/.widi-<variant>` 启动实际 surface 验证，不要以裸 `npm run tui`、抓取 TUI 文本或直接读取 session 文件替代。
 
-排查顺序：确认目标变体、agent dir 和 `enabledExtensions`；查看启动或 `/reload` 诊断中的 `extension.load_failed`、`extension.version_incompatible`、`extension.activation_failed`；检查 division；重启目标 TUI；最后与目标 `packages/widi-<variant>/.widi/extensions/drill/` 和 `packages/widi-<variant>/apps/widi/docs/extensions.md` 对照。
+排查顺序：确认目标配置变体、agent dir 和 `enabledExtensions`；查看启动或 `/reload` 诊断中的 `extension.load_failed`、`extension.version_incompatible`、`extension.activation_failed`；检查 division；重启目标 TUI；最后与 `packages/widi/.widi/extensions/drill/` 和 `packages/widi/apps/widi/docs/extensions.md` 对照。
 
 ## 7. 交付前检查
 
