@@ -20,20 +20,20 @@
 
 > **本章节的维护规范**（仅适用于本章节）：这里只记录**当前正在进行的工作**，保持简短。**不对历史进行维护**——每次更新本章节都是**整节完整重写**，直接覆盖旧内容，不追加、不保留历史条目、不写变更记录。仅当用户显式要求"只调整某一处"时才做局部修改。需要留存的历史属于 Open Questions / Decisions / Experiments 各表，不属于这里。
 
-**当前状态：本项目已完成的实验数为 0。** 下面第一条是下一步要做的事。
+**当前状态：本项目已完成的实验数为 0。** 主线顺序是 E01 → E06 → E02/E03。
 
-- **下一步（第一个实验，E01）：拿 P4A 的历史 session 轨迹做全量观测研究。** 性质是观测而非干预——对象是已存在且不可变的日志，只读、不跑 agent、不改 p4a 代码，分析必须落成脚本。五个测量目标：
-  1. **cache 字段可用性核查**（即下方原「先决核查项」，现为本实验的阶段 1，是闸门）；
-  2. 放大倍数的**全量分布与分层归因**（把现有的 n=80 抽样扩到全量，检验它究竟与轮数还是与论文长度相关）；
-  3. **跨 run 前缀重叠结构**——从事件流重建 token 序列，实测共享前缀有多长、在哪里断；
-  4. **轨迹分叉点**——语义等价但措辞不同的行为在何处首次产生不同 token；
-  5. **行为统计**——被赋予的 agency 有多少真的被行使（轮数分布、repair 触发率、回溯频率、开放工具调用比例）。
-  产物入 `data/processed/`（gitignored）并标注来源 tar.gz 版本、脚本、日期。详见 [`ara/logic/experiments.md`](../ara/logic/experiments.md) 的 E01。
-- 已把研究 workload 定名为 data-intensive / data-processing agent workflows（见上节），`AGENTS.md`、本文档、open-question 文档三处术语已对齐。
-- 已确认 P4A 的定位为起点而非实验（见上节），并据此重组了 `ara/` 的实验层与 claim 依据表述。
-- **OQ1 已降级为 DEFERRED**（见下方 Open Questions 表），主线不再被它挡住。E02（四级 autonomy 对比）保留、设计不变，但从阻塞项变为设计余量的探究，排在 E01 之后。
-- [`ara/`](../ara/) 已按 ARA 标准编译过一次（12 条 claim、5 个未开始的实验、2 条继承观测、10 张证据表；每条 claim 标注「依据类型」）。**2026-09-01 起冻结**：逐轮维护它的成本数倍于它记录的研究，且每次改本文档都会让它的 `file:line` 引用失效。**本项目的主线研究记录是 `docs/`**；`ara/` 是快照，需要时用 `/compiler` 整体重编译，不做增量维护。规则见 [`AGENTS.md` → ARA](../AGENTS.md#ara-agent-native-research-artifacts)。
-- 文献：`refs.bib` **已有第一篇入库文献** `liu2026ara`（一手读原文核实，可引用），支撑 C12 与 OQ1 的降级。两篇已精读论文的条目仍处于 `c6ece08` 移除后的状态，精读稿留在 gitignored 暂存区，结论一律 staged、不可引用。
+- **进行中（E01，第一个实验）：P4A 历史 session 轨迹的全量观测。** 详见 [`experiments/e01-p4a-trajectory.md`](experiments/e01-p4a-trajectory.md)。s0–s2 完成，s3（精确复现器）是闸门，未验收不进 s4。
+
+  **OQ2 对 s3 追加了一项交付物**：把每个 run 的 token 拆成**静态前缀 / 每输入私有内容（论文正文）/ 生成轨迹**三段并给出分布。这三个数决定 E06 的 baseline 上界，也决定本项目方法相对该 baseline 还剩多少空间；没有它无法给 OQ2 定价。
+
+- **下一个（E06）：A2 静态前缀 baseline —— "把可复用指令全部写进 system prompt"。** 由 [OQ2](open-questions/Placement-of-reusable-context.md) 提出，排在 E01 之后。这是本项目**必须先打败的第一个 baseline**，审稿人一定会问 *Why don't you simply put the reusable instructions into the system prompt?*
+
+  四臂：A0 现状（两跳动态加载）／A1 天真拼接（验证"追加到易变块之后 = 缓存不到"这个陷阱真实存在）／**A2 static-first layout（工具集固化 + `tools → skill → 易变块`，要打败的就是它）**／A3 本项目方法叠加其上。
+
+  两条硬约束：**贡献报告为 $A3-A2$，不是 $A3-A0$**；代价模型必须含命中/未命中 prefill、KV 占用、decode 侧成本、任务质量四项，否则 A2 白嫖指标。多 skill（$N \gg 2$）场景 P4A 给不出，需另造。E02 的 infra 约束（vLLM 0.22.1 + `--enable-prompt-tokens-details`、单轮、MCP 固化）同样适用。
+
+- E02（四级 autonomy 对比）保留、设计不变，排在 E06 之后；已非阻塞项。E03 的干预 (a) 是 E06 在 micro-benchmark 上的缩小版，其"收益方向正确但绝对量可忽略"的预期需按 OQ2 重估——若 skill 确实落在跨 run 分叉点之后，重排的绝对量未必可忽略。
+
 - 待办：`refs.bib` 在 prompt/KV cache 系统方向上**仍然完全为空**。三篇现有文献（含 `liu2026ara`）无一是 cache 方向——它们在 cache 上的共同沉默是 C07 的证据，但不能替代主线文献工作。这是 related work 层最大的缺口，优先级高于两篇 staged 精读稿的评审。
 - 待办：`experiments/p4a/src/extract/layer4_v2/` 的处置（见下方 Experiments 节）。随 E02 降级，此项也不再紧急。
 
@@ -41,7 +41,8 @@
 
 | Question | Status | Doc | Refs | Resolution |
 |---|---|---|---|---|
-| Is agentic execution necessary for data-intensive workloads (P4A)? | **DEFERRED** | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | `liu2026ara` | 2026-09-01：**未被回答，被降级。** 该问题原本挡路的理由是"可能在优化一种没人真在用的执行方式"。`liu2026ara` 的 ARA Compiler（§4）是本 workload 类别的第二个独立实例，由第三方以 **agent skill** 形态部署——~482 行自然语言规格载入 coding agent 上下文，Seal Level 1 在环校验迭代 2–3 轮，23+7 篇输入上首轮通过率 0/30。研究对象的真实性因此不再依赖本问题的答案，strawman 风险排除。**"需要多少 agency"仍完全开放**：RW03 未做 autonomy-level 消融。E02 保留、设计不变，但从阻塞项降为设计余量的探究。见 `ara/logic/claims.md` C12。 |
+| OQ2：可复用上下文（Skill）应该放在哪？"全部写进 system prompt" 是不是已经够用？ | **OPEN** | [open-questions/Placement-of-reusable-context.md](open-questions/Placement-of-reusable-context.md) | — | 2026-09-02 提出。本项目**必须先打败的第一个 baseline**：若每个 run 都必用同一份 Skill，静态注入天然形成稳定可缓存前缀，还省掉读 skill 的 step 与轨迹不稳定。已核实 P4A 现状是两跳动态加载、且第一个 assistant 动作即含论文 id，故 skill 落在跨 run 分叉点之后。待 E01 s3 给出「静态前缀 / 每输入私有内容 / 生成轨迹」三分解后才能定价；贡献须报告为 $A3-A2$（对静态布局强 baseline）而非 $A3-A0$。 |
+| OQ1：Is agentic execution necessary for data-intensive workloads (P4A)? | **DEFERRED** | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | `liu2026ara` | 2026-09-01：**未被回答，被降级。** 该问题原本挡路的理由是"可能在优化一种没人真在用的执行方式"。`liu2026ara` 的 ARA Compiler（§4）是本 workload 类别的第二个独立实例，由第三方以 **agent skill** 形态部署——~482 行自然语言规格载入 coding agent 上下文，Seal Level 1 在环校验迭代 2–3 轮，23+7 篇输入上首轮通过率 0/30。研究对象的真实性因此不再依赖本问题的答案，strawman 风险排除。**"需要多少 agency"仍完全开放**：RW03 未做 autonomy-level 消融。E02 保留、设计不变，但从阻塞项降为设计余量的探究。见 `ara/logic/claims.md` C12。 |
 
 `Refs` 列填支撑该问题的文献 citekey（见 [Literature](#literature)）；一个问题在有文献支撑之前被 RESOLVED，应当在 Resolution 里说明结论是纯实验得出的。
 
@@ -63,7 +64,8 @@
 
 **本项目已完成的实验：0。** 下面第一项是本项目的实验计划，其余两项是 P4A 这个历史项目的记录（继承观测，只支撑动机，不支撑结论）。
 
-- **计划中** — [`ara/logic/experiments.md`](../ara/logic/experiments.md)：E01（P4A 轨迹全量观测，下一步）、E02（四级 autonomy 受控对比）、E03（前缀重排与发现固化 micro-benchmark）、E04/E05（两篇精读稿的人工评审）。全部未开始。
+- **计划中** — [`ara/logic/experiments.md`](../ara/logic/experiments.md)：E01（P4A 轨迹全量观测，进行中）、E02（四级 autonomy 受控对比）、E03（前缀重排与发现固化 micro-benchmark）、E04/E05（两篇精读稿的人工评审）。除 E01 外全部未开始。
+- **计划中（不在 `ara/` 快照内）** — **E06：A2 静态前缀 baseline**，由 [OQ2](open-questions/Placement-of-reusable-context.md) 提出，排在 E01 之后。编号取 E06 而非插进 E01–E05，是为了避开 2026-09-01 冻结的 `ara/` 快照里已占用的编号；下次 `/compiler` 整体重编译时并入。
 - [`experiments/p4a.md`](experiments/p4a.md) — P4A 项目实验记录（含数据资产与使用边界）
 - **`experiments/p4a/src/extract/layer4_v2/`** — `refractor.md` 重构方案的完整实现：程序批处理 + 两次纯文本 LLM 调用 + 轻量修补 + v1 agent 兜底，替代 v1 的「每篇一个 ReAct agent」。按 autonomy ladder 落在 L2–L3，其 README 称已完成 200 篇 v1/v2 对照评估、裁定召回 96.1% 通过。
 
