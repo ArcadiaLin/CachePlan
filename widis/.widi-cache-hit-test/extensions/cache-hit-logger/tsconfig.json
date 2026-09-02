@@ -1,0 +1,14 @@
+{
+	"extends": "/home/ArcadiaLin/projs/CachePlan/packages/widi/tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"baseUrl": "/home/ArcadiaLin/projs/CachePlan/packages/widi",
+		"typeRoots": ["/home/ArcadiaLin/projs/CachePlan/packages/widi/node_modules/@types"],
+		"paths": {
+			"@arcadialin/agent-core": ["packages/agent/src/index.ts"],
+			"@arcadialin/agent-core/node": ["packages/agent/src/node.ts"],
+			"@arcadialin/agent-core/*": ["packages/agent/src/*.ts"]
+		}
+	},
+	"include": ["**/*.ts"]
+}
