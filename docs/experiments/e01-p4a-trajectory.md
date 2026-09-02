@@ -1,284 +1,191 @@
 # E01 — P4A 历史 session 轨迹的全量观测
 
-**本项目的第一个实验。** 代码在 [`experiments/e01-p4a-trajectory/`](../../experiments/e01-p4a-trajectory/)，
-运行方式与环境约定见该目录的 README。
+首个实验。代码：[`experiments/e01-p4a-trajectory/`](../../experiments/e01-p4a-trajectory/)；运行方式和环境见该目录 README。
 
-- 性质：**观测，不是干预**。对象是已存在且不可变的 4083 份日志，只读、不跑 agent、不改 p4a 代码。
-- 边界：P4A 数据只能做诊断性/动机性分析，**不能**作为「CachePlan 方法是否有效」的对照基线
-  （见 [`p4a.md`](p4a.md) 第 4 节）。本页所有数字都受这条约束。
-- 状态：**s0–s2 已完成；s3–s5 处于计划阶段，尚未实现。**
+- 性质：**观测**。对象是既有、不可变的 4083 份日志；只读，不运行 agent，不修改 P4A。
+- 边界：P4A 数据只用于诊断和动机，不能作为 CachePlan 有效性的对照基线（见 [`p4a.md`](p4a.md) 第 4 节）。
+- 状态：s0–s2 完成；s3–s5 尚未实现。
 
 | 阶段 | 脚本 | 目标 | 状态 |
 |---|---|---|---|
-| s0 | `s0_manifest.py` | 语料清单与纳入过滤 | 已完成 |
-| s1 | `s1_cache_fields.py` | 闸门：cache 字段是否可用 | 已完成（闸门关闭） |
-| s2 | `s2_session_stats.py` | 放大倍数的全量分布与分层归因 | 已完成 |
-| s3 | `s3_render.py` | **精确复现器**：还原每步真实进入模型的 token 序列 | 计划 |
-| s4 | `s4_divergence.py` | 前缀分歧图谱：共享前缀在哪断、每类分歧值多少 token | 计划 |
-| s5 | `s5_behavior.py` | 轨迹统计与可视化：router 条件、agency 行使程度 | 计划 |
+| s0 | `s0_manifest.py` | 语料清单与纳入过滤 | 完成 |
+| s1 | `s1_cache_fields.py` | cache 字段闸门 | 完成；现成字段不可用 |
+| s2 | `s2_session_stats.py` | 放大倍数分布与归因 | 完成 |
+| s3 | `s3_render.py` | 还原每步进入模型的 token 序列 | 计划 |
+| s4 | `s4_divergence.py` | 前缀分歧位置和 token 代价 | 计划 |
+| s5 | `s5_behavior.py` | 轨迹、router 条件和 agency 统计 | 计划 |
 
 ---
 
 ## 1. 语料
 
-4083 份 session，纳入 **3999**（extract 3762 / repair 237），覆盖 **3321** 篇不同论文。
-单机单工作目录顺序执行，无并发混淆。
+4083 份 session 中纳入 3999 份（extract 3762、repair 237），覆盖 3321 篇论文。单机单工作目录顺序执行，无并发混淆。
 
-排除 84 份，理由逐条可统计（`data/processed/e01/s0_summary.json`）：
+排除 84 份；理由见 `data/processed/e01/s0_summary.json`：
 
-| 理由 | 份数 | 说明 |
-|---|---|---|
-| `aborted` | 73 | 起了步但一步没跑完。**是观测量而非噪声**，`abort_rate()` 单独统计 |
-| `operator_chat` | 12 | 非 extract/repair 家族的人工会话 |
-| `no_steps` | 5 | 一个 LLM 调用都没发生 |
+| 理由 | 数量 | 说明 |
+|---|---:|---|
+| `aborted` | 73 | 已开始但没有完整 step；作为观测量，`abort_rate()` 单列 |
+| `operator_chat` | 12 | 非 extract/repair 的人工会话 |
+| `no_steps` | 5 | 没有 LLM 调用 |
 | `multi_turn` | 4 | 多轮用户输入或 harness auto-continue |
 
----
+## 2. 已完成结果
 
-## 2. 已完成阶段的结论
+### s1：历史 cache 字段不可用
 
-### s1（闸门）：cache 字段恒为零 — 闸门关闭，但**原因已查明**
-
-| | |
+| 指标 | 值 |
 |---|---|
-| 判定 | `identically_zero`（字段上报了，值确实是零，**不是字段缺失**） |
-| 范围 | 全语料 3999 份 / **62,649** 条 usage 记录 |
+| 判定 | `identically_zero`：字段存在但值恒为 0 |
+| 语料 / usage 记录 | 3999 / 62,649 |
 | 非零 `inputCacheRead` / `inputCacheCreation` | 0 / 0 |
-| 全语料累计 prefill | **5,604,823,657 tokens** |
+| 累计 prefill | 5,604,823,657 tokens |
 
-**归因（2026-09-01 补充，此前记为「原因未知」）**：零值是**上报缺陷，不是缓存未命中**。
+原因是上报缺陷，不是缓存未命中：服务端当时启用了 `--enable-prefix-caching`，在 vLLM 0.21.0 上，重复前缀请求的 `/metrics` 命中率为 $2112/2443=86.5\%$；但非流式响应的 `prompt_tokens_details` 为 `null`，流式响应甚至没有该字段。`kimi-code` 的 `extractUsage`（`packages/kosong/src/providers/openai-common.ts:204`）取不到 `cached_tokens` 时记为 0；`inputCacheCreation` 也在 openai provider 路径中硬编码为 0（同文件 `:230`）。
 
-- 服务端**当时开着** `--enable-prefix-caching`（`experiments/p4a/infra/vllm/docker-compose-qwen36-35B.yml`）。
-- 对同一台服务（vLLM **0.21.0**）实测：重复前缀请求的服务端命中率为 **86.5%**
-  （`/metrics` 的 `prefix_cache_hits_total` / `queries_total`），但响应体里
-  非流式返回 `prompt_tokens_details: null`、流式**连这个 key 都没有**。
-- kimi-code 的 `extractUsage`（`packages/kosong/src/providers/openai-common.ts:204`）
-  取不到 `cached_tokens` 就记 0，于是日志里恒为零。
-- `inputCacheCreation` 在 openai provider 路径上是**硬编码常量 0**（同文件 `:230`），
-  不携带任何信息，**不应作为证据使用**。
+因此历史语料无法恢复真实命中率。s3 之后应根据复现出的 token 序列计算前缀重叠量，并标为**结构性度量**，不能称作命中率。
 
-**后果（对下游仍是硬约束）**：历史语料的真实命中率**不可恢复**，加任何 vLLM 参数都救不回来。
-s3 之后一律基于复现出的 token 序列计算前缀重叠量，且必须标注为**结构性度量**，不得称作命中率。
+未来运行已验证的处置：使用 vLLM 0.22.1 和 `--enable-prompt-tokens-details`。同一请求、同一前缀在非流式和流式路径均得到与 `/metrics` 增量一致的 `cached_tokens: 2112`：
 
-**对未来运行的处置：已完成并验证（2026-09-01）。**
+| 版本 / 路径 | `/metrics` | 响应 usage | kimi-code 记录 |
+|---|---:|---|---:|
+| 0.21.0 非流式 | 2112 / 2443 | `prompt_tokens_details: null` | 0 |
+| 0.21.0 流式 | 2112 / 2443 | 无该 key | 0 |
+| 0.22.1 非流式 | 2112 / 2443 | `cached_tokens: 2112` | 2112 |
+| 0.22.1 流式 | 2112 / 2443 | `cached_tokens: 2112` | 2112 |
 
-升级到 vLLM **0.22.1** 并加 `--enable-prompt-tokens-details` 后，用同一脚本、同一前缀复测，
-**非流式与流式各验一次**（kimi-code 实际走流式，此前两条路径行为不一致，必须分别验）：
+`cached_tokens` 是服务端实测值，故 E02 可逐请求归因，无需对 `/metrics` 做差，也不再要求请求串行或服务器无其他流量。四次测量均为 $2112/2443=86.5\%$，即 132 个 16-token block；理论公共前缀约 2440 token，331 token 的确定性残差尚未解释。镜像已从 `vllm/vllm-openai:latest` 钉为 `:v0.22.1`（`experiments/p4a/infra/vllm/docker-compose-qwen36-35B.yml`）；版本变更必须复验上报。
 
-| | 服务端实测 `/metrics` | 响应体 usage | kimi-code 会记 | |
-|---|---|---|---|---|
-| 0.21.0 非流式 | 2112 / 2443 = 86.5% | `prompt_tokens_details: null` | 0 | ❌ |
-| 0.21.0 流式 | 2112 / 2443 = 86.5% | **连这个 key 都没有** | 0 | ❌ |
-| 0.22.1 非流式 | 2112 / 2443 = 86.5% | `prompt_tokens_details: {cached_tokens: 2112}` | **2112** | ✅ |
-| 0.22.1 流式 | 2112 / 2443 = 86.5% | `prompt_tokens_details: {cached_tokens: 2112}` | **2112** | ✅ |
+> `inputOther = prompt_tokens - cached`。历史数据中 cached 恒为 0，故 `inputOther` 是完整 prompt；新数据中它只表示未命中部分。跨新旧比较必须使用 `inputOther + inputCacheRead`。
 
-三点结论：
+### s2：放大倍数主要由轨迹长度驱动
 
-1. **流式风险解除。** 0.22.1 下两条路径返回的 usage 逐字相同。
-2. **上报值 = 服务端实测值，非估算。** `cached_tokens` 与 `/metrics` 的
-   `prefix_cache_hits_total` 增量精确相等。因此**可以丢掉 `/metrics` 做差那套**——
-   它要求请求串行且服务器上无其他流量；有了这个字段，并发运行也能逐请求归因。
-   这对 E02 是实打实的解绑。
-3. **命中率 86.5% 四次测量完全稳定**（升级前后各两次，均为 2112/2443，恰好 132 × 16-token block）。
-   理论公共前缀约 2440 tok，未命中的约 331 tok 尚无解释，但它是**确定性残差而非噪声**；
-   若日后影响结论再单独查。
+放大倍数：
 
-**镜像版本已钉死**：`experiments/p4a/infra/vllm/docker-compose-qwen36-35B.yml` 从
-`vllm/vllm-openai:latest` 改为 `:v0.22.1`，并在文件内注明成因。同一个 `:latest` tag
-在两天内改变了上报语义——结论一旦依赖它，`latest` 就是复现性隐患。
-**任何版本变更都必须重跑一次上报验证。**
+$$
+\frac{\sum_{\text{step}} \text{inputOther}}
+{\max_{\text{step}} \text{inputOther}}
+$$
 
-> ⚠️ **跨新旧数据的字段陷阱**：`inputOther = prompt_tokens - cached`。历史语料 cached 恒为 0，
-> 故 `inputOther` **等于完整 prompt_tokens**；上报修好后 `inputOther` 只剩未命中部分。
-> **跨新旧对比必须用 `inputOther + inputCacheRead`**，否则会得到看似合理的错误数字。
+分子是 run 的累计 prefill；分母是会话内前缀完全复用时，每个 token 仅处理一次的总量。该解释依赖上下文单调增长；3999/3999 session 的最后一步均为峰值。它衡量**会话内**重复 prefill，不衡量跨 run 复用。
 
-### s2：放大倍数由**轮数**决定，不由输入体量决定
+| 指标 | extract (n=3762) | repair (n=237) |
+|---|---:|---:|
+| LLM 调用步数 | p50 15，p10 10，p90 23，max 52 | p50 8，p90 19 |
+| 工具调用数 | p50 25，p90 37 | p50 10 |
+| 峰值上下文 | p50 106,416，p90 147,375 tok | p50 85,042 tok |
+| 单 run 累计 prefill | p50 1,285,334 tok | p50 559,591 tok |
+| 放大倍数 | p50 12.0，p90 18.8，max 40.9 | p50 6.7，max 44.4 |
 
-放大倍数定义写死为 `Σ_step inputOther / max_step inputOther`：分子是这次 run 实际付出的
-prefill 总量，分母是会话内前缀缓存完全命中时只需付一次的部分。
-**它衡量会话内重复 prefill，与跨 run 复用是两回事。**
-（分母的合法性依赖上下文单调增长，已验证：3999/3999 的末步即峰值。）
+extract 子集 Pearson 相关：`n_steps` ↔ `sum_input` 为 0.882，`peak_input` ↔ `sum_input` 为 0.690，`n_steps` ↔ `peak_input` 为 0.345。累计成本的主要驱动因素是轨迹长度，而非输入体量；前者可干预，论文长度不可干预。
 
-| | extract (n=3762) | repair (n=237) |
-|---|---|---|
-| LLM 调用步数 | p50 **15**，p10 10，p90 23，max 52 | p50 8，p90 19 |
-| 工具调用数 | p50 **25**，p90 37 | p50 10 |
-| 峰值上下文 | p50 **106,416** tok，p90 147,375 | p50 85,042 |
-| 单 run 累计 prefill | p50 **1,285,334** tok | p50 559,591 |
-| 放大倍数 | p50 **12.0**，p90 18.8，max 40.9 | p50 6.7，max 44.4 |
-
-归因（extract 子集，Pearson）：`n_steps` ↔ `sum_input` = **0.882**；
-`peak_input` ↔ `sum_input` = 0.690；`n_steps` ↔ `peak_input` = 0.345。
-
-**结论**：成本增长的驱动因素是**轨迹长度**，不是**输入大小**。这对研究方向有利——
-轨迹是可干预的，论文长度不是。
-
-### s2 附带：轨迹分叉从第 2 个工具调用开始
+### s2 附带：第 2 个工具调用开始分叉
 
 | 调用位置 | 1 | 2 | 3 | 4 | 5 | 6 |
-|---|---|---|---|---|---|---|
+|---|---:|---:|---:|---:|---:|---:|
 | 去重工具数 | 1 | 7 | 7 | 8 | 9 | 10 |
-| 众数占比 | Read **100.0%** | Read 54.5% | 79.5% | 97.8% | 98.6% | 90.3% |
+| 众数占比 | Read 100.0% | Read 54.5% | 79.5% | 97.8% | 98.6% | 90.3% |
 
-第一个动作在全部 run 里完全一致，第二个动作就跌到 54.5%。这是 s4 要精确定位的分叉点的
-**粗粒度版本**——工具名级别，尚未下到 token 级别。
+首个动作完全一致；第二个动作的众数占比降至 54.5%。这是工具名级别的粗粒度分歧，s4 将定位 token 级断点。
 
----
+## 3. 侦察：s3 可以精确复现
 
-## 3. 侦察发现（2026-09-01）——s3 计划变更的依据
+原先认为工具 schema 和拼装模板不可得，只能使用代理指标。`wire.jsonl` 中实际有：
 
-README 原先记载 s3 只能做**代理指标**，理由是「工具 schema 不可得、拼装模板未知」。
-这条判断**已被推翻**。侦察确认 `wire.jsonl` 里存在三类此前未使用的事件：
-
-| 事件 | 内容 | 作用 |
+| 事件 | 内容 | 用途 |
 |---|---|---|
-| `config.update` | **完整 systemPrompt 原文**（15–21K 字符） | 无需从 TS 源码复原 |
-| `llm.tools_snapshot` | **完整 tool schema JSON**（88K 字符）+ `hash` | 无需从 TS 源码复原 |
-| `llm.request` | `systemPromptHash` / `toolsHash` / `messageCount` | 现成的一致性校验 |
+| `config.update` | 完整 `systemPrompt`（15–21K 字符） | 无需从 TS 源码复原 |
+| `llm.tools_snapshot` | 完整 tool schema JSON（88K 字符）和 hash | 无需从 TS 源码复原 |
+| `llm.request` | `systemPromptHash`、`toolsHash`、`messageCount` | 一致性校验 |
 
-配合 `references/repos/qwen3.6-35b-a3b-tokenizer/`（含 `chat_template.jinja`），
-**精确复现是可行的**。三条关键侦察结果：
+结合 `references/repos/qwen3.6-35b-a3b-tokenizer/` 中的 `chat_template.jinja`，可以精确重建 token 序列。
 
-### 3.1 复现原型：首次尝试误差 0.27%
+### 3.1 原型误差
 
-手工按 chat template 渲染某 session 的 step 1：
+手工渲染一个 session 的 step 1：
 
 ```
-tools 段（含模板头尾）   22575 tok   ← 占 83%
+tools 段（含模板头尾）   22575 tok
 systemPrompt 段          4483 tok
 user 段                   109 tok
 生成引导                     5 tok
-复现 = 27178   观测 inputOther = 27251   Δ = -73  (0.27%)
+复现 = 27178；观测 inputOther = 27251；Δ = -73（0.27%）
 ```
 
-零调参。残差大概率来自未计入的 `permission_mode` 注入消息与 JSON 序列化细节。
+tools 占 83%。未调参；残差可能来自未计入的 `permission_mode` 注入和 JSON 序列化。每个 `step.end` 的 `inputOther` 都是服务端 `prompt_tokens`，因此 62,649 个 step 可直接构成复现器的 Δ 分布验收。
 
-**免费的验证 oracle**：每个 `step.end` 都记了 `inputOther` = 服务端算的 `prompt_tokens`。
-全语料 **62,649** 个 step 各是一次独立打分。复现器正确与否**不需要论证，跑一遍看 Δ 分布即可**。
+### 3.2 system prompt 损失跨 run 前缀
 
-### 3.2 渲染顺序：tools 在前（83%），systemPrompt 在后且**每 run 都变**
+模板将 tools 放在首条 system message 的最前面，再接 `systemPrompt`。后者包含毫秒级 ISO 时间戳和工作目录树；P4A 运行时目录树也在变化。
 
-`chat_template.jinja` 把 tools 渲染进**第一条 system 消息的最前面**，systemPrompt 接在其后。
-而 systemPrompt 里嵌了两样每次都变的东西：
+300 份采样中，`systemPrompt` 跨 run 的公共前缀中位数为 1952 / 3270 token（60%）。真实跨 run 公共前缀约在 $22575+1952\approx24.5k$ token 处断裂，约 1318 token 无法复用。它只影响每个 session 的首次请求，直接损失约 $1318\times4083\approx540$ 万 token；但因果明确，可作为测量装置标定样例，也可 A/B 测试将易变块后移至 `systemPrompt` 末尾或首条 user 消息。
 
-- **毫秒精度的 ISO 时间戳**（`The current date and time in ISO format is ...`）
-- **工作目录树**——P4A 自己跑的时候还在往里写文件，所以树本身在变
+### 3.3 MCP 启动导致四种工具集
 
-300 份采样的 systemPrompt 跨 run 公共前缀：**中位长度 3270 tok，公共前缀仅 1952 tok（60%）**。
-即真实跨 run 公共前缀 ≈ 22575 + 1952 ≈ **24.5K tok 后断裂**，其后约 1318 tok 纯属白算。
+全语料有 4 个 `toolsHash`。24 个内置工具逐字相同；差异完全来自三台远程 MCP 是否在 `startupTimeoutMs: 30000` 内连上：
 
-直接损失不大（≈ 1318 × 4083 ≈ 540 万 token，只影响每个 session 的首次请求），
-但**因果链完全可见，适合作为整套测量装置的标定样例**，也是一个可直接 A/B 的干预
-（把易变块挪到 systemPrompt 末尾或首条 user 消息）。
-
-### 3.3 语料**不同质**：4 个工具集变体，源头是 MCP 启动成败
-
-全语料扫描发现 4 个 `toolsHash`，其工具清单恰好是三台 MCP 服务器的启动结果组合。
-**24 个内置工具在四个变体里逐字相同**，差异 100% 来自远程 MCP 在
-`startupTimeoutMs: 30000` 内有没有连上：
-
-| toolsHash | 工具数 | arxiv(3) | github(12) | hf(5) | 标定 step1 `inputOther` |
-|---|---|---|---|---|---|
+| toolsHash | 工具数 | arxiv(3) | github(12) | hf(5) | step-1 `inputOther` |
+|---|---:|---|---|---|---:|
 | `aca0350b` | 44 | ✅ | ✅ | ✅ | 27258 (n=57) |
 | `fd590e4c` | 39 | ✅ | ✅ | ❌ | 25867 (n=1) |
 | `8bbbefcb` | 32 | ✅ | ❌ | ✅ | 24281 (n=1) |
 | `98480f75` | 27 | ✅ | ❌ | ❌ | 22890 (n=1) |
 
-四个变体**全都有 `llm.tools_snapshot`**，因此复现不依赖任何外部服务，离线可跑。
-（MCP 配置只起解释作用；重跑 workload 才需要它，见第 6 节。）
+所有变体均有 `llm.tools_snapshot`，故复现不依赖外部服务。因为 tools 段位于 prompt 开头且占 83%，github MCP 启动超时会使跨 run 公共前缀从 token 0 断裂。缺少 GitHub 工具的 `8bbbefcb` 和 `98480f75` 也构成质量混淆变量，作为动机数据使用时必须声明。
 
-**这条本身就是一个研究发现**：tools 段在最前面且占 83%，所以
-> 一次与任务无关的网络抖动（github MCP 启动超时），使该 run 的跨 run 公共前缀
-> **从第 0 个 token 就断裂**，摧毁 100% 的前缀复用。
+### 3.4 未解决的复现问题
 
-**同时是一个质量混淆变量**：`8bbbefcb` / `98480f75` 两批 run 手上没有 github 工具，
-根本查不了 GitHub 上的 resource。既然这批数据用于 motivation，此点必须随结论一并声明。
+- 仅 60/4083 session 有 `llm.tools_snapshot` / `llm.request`；其余 4023 份须由 Δ oracle 判定工具集变体。
+- 多轮用户输入会触发模板剥离先前所有 assistant `<think>` 内容，使前缀从 step 1 起失效；E02 应保持单轮。
+- `context.append_message` 的 `todo_list_reminder`（全语料 2625 条）插入上下文中段；当前 `wire.py` 忽略它，s3 必须重建。
 
-### 3.4 其他待处理的观测
+## 4. 后续阶段
 
-- `llm.tools_snapshot` / `llm.request` **只存在于 60/4083 份 session**（kimi-code 版本差异），
-  其余 4023 份没有任何工具集记录——这是 s3 第一步要解决的问题（见 4.1）。
-- chat template 的 `loop.index0 > ns.last_query_index` 决定是否保留 `<think>`。
-  单轮 session 全程保留（与观测到的前缀单调一致）；**但只要出现第二轮用户输入，
-  之前所有 assistant 的思考内容会被整体剥掉，前缀从 step 1 起全废**。多轮 = 缓存归零。
-  这条影响 E02 的设计。
-- `context.append_message` 的 `todo_list_reminder` 注入（全语料 2625 条）插在上下文中段，
-  其后所有内容位移。`wire.py` 现在**忽略** `context.append_message`，s3 必须补上。
+s3 未通过验收前不进入 s4；否则无法给观察到的行为分歧定价。
 
----
+### s3：精确复现器
 
-## 4. 计划
+重建每步 token 序列，以 `inputOther` 验收。
 
-三个阶段严格按序，**s3 不通过验收不进 s4**。理由：没有精确 token 序列，s5 观察到的
-分歧无法定价，会导致我们去优化一个其实不值钱的分歧。
+首项任务：对全部 4083 份 session，以 4 个候选 snapshot 分别渲染，按
 
-### 4.1 s3 — 精确复现器（`s3_render.py`）
+$$
+\lvert \text{复现} - \text{inputOther} \rvert
+$$
 
-把「每步真实进入模型的 token 序列」还原出来，并用 `inputOther` 全量验收。
+最小者判定工具集变体；输出“变体 × session 数 × Δ 分布”。四种候选均不匹配的 session 必须逐条列出，它们代表未发现的变体或复现缺陷，不能静默归类。
 
-**第一步（异质语料判定任务，本轮不做）**
+已知先验：step-1 `inputOther` 的 22–23k 众数桶有 1545 份，21–24k 共约 3638 份；27–28k 的 77 份对应 `aca0350b`。现有标定点多为 $n=1$，不能据此定论。
 
-> 用 Δ oracle 给全部 4083 份 session 判定工具集变体：拿 4 个候选 snapshot 分别渲染，
-> 取 `|复现 − inputOther|` 最小者。输出一张 **(变体 × session 数 × Δ 分布)** 表。
->
-> **四个候选都对不上的必须显式列出**——那说明存在第五个未见过的变体，或复现器本身有问题。
-> 这两种情况都不得糊过去。
+验收交付物：完整 Δ 分布、$\lvert\Delta\rvert\le\text{阈值}$ 的 step 占比、无法判定的 session 清单。依赖：`tokenizers` 由 optional 改为必需；`wire.py` 重建 `context.append_message`。
 
-已知的先验：step-1 `inputOther` 分箱中，众数桶 22–23k（1545 份）落在 27 工具那一档，
-21–24k 合计约 3638 份；27–28k（77 份）对应上表 `aca0350b`。但标定点多为 n=1，
-**不足以下结论，须由 oracle 判定**。
+### s4：前缀分歧图谱
 
-**验收条件**：给出 Δ 的全量分布；报告 |Δ| ≤ 阈值的 step 占比；判不出变体的 session 逐条列出。
-**不设「差不多就行」的通过标准——分布本身就是交付物。**
+以精确 token 序列计算 run 对之间的公共前缀断点，并归因于时间戳、目录树、todo 注入、工具集变体、工具调用顺序或措辞。交付每类分歧对应的可避免 prefill 账。
 
-**依赖变更**：`tokenizers` 从 optional 提升为**必需依赖**；`wire.py` 补上
-`context.append_message` 的重建。
+### s5：轨迹统计与可视化
 
-### 4.2 s4 — 前缀分歧图谱（`s4_divergence.py`）
-
-有了精确 token 序列，对 run 两两（或按组）计算公共前缀断点，并**给每个断点归因**：
-时间戳 / 目录树 / todo 注入 / 工具集变体 / 工具调用顺序 / 措辞差异。
-
-**交付物**：一张「每类分歧造成多少可避免 prefill」的账。这是对研究问题的正面回答。
-
-### 4.3 s5 — 轨迹统计与可视化（`s5_behavior.py`）
-
-以工具调用序列为字母表做聚类，找出典型 router 条件与可归约的分支；
-统计被赋予的 agency 有多少真的被行使。
-
-**归约建议是否采纳，取决于 s4 给出的 token 账**，不由观感决定。
-可视化倾向做成交互式 artifact（轨迹泳道 + 分歧点热力），静态图信息量不足。
-
----
+按工具调用序列聚类，识别 router 条件和可归约分支，统计被赋予的 agency 实际行使程度。是否采纳归约建议由 s4 的 token 账决定。可视化倾向交互式 artifact（轨迹泳道与分歧热力）。
 
 ## 5. 风险
 
 | 风险 | 影响 | 处置 |
 |---|---|---|
-| 4023 份 session 无工具集记录 | 复现不了 98.5% 的语料 | 由 4.1 的 Δ oracle 判定；判不出的显式剔除并说明 |
-| `micro_compaction = true`（`experiments/p4a/infra/kimi/config.toml`） | 压缩若触发则消息列表被重写，复现静默偏离 | Δ oracle 会捕获（复现值将显著高于观测值）；需专门核查是否有压缩事件 |
-| kimi-code 对工具结果的截断/改写 | 复现值偏高 | 同上，由 Δ 分布暴露 |
-| 语料异质（4 变体 + ≥2 个 systemPrompt 变体） | 混在一起统计会得到无意义的均值 | 分组统计；是否只保留主变体待定 |
+| 4023 份 session 无工具集记录 | 98.5% 语料无法直接复现 | Δ oracle 判定；不能判定者显式剔除 |
+| `micro_compaction = true` | 触发后消息列表被重写 | Δ oracle 捕获；核查压缩事件 |
+| kimi-code 截断或改写工具结果 | 复现值偏高 | Δ 分布暴露 |
+| 4 种工具集和至少 2 种 system prompt | 混合统计无意义 | 分组统计；是否只保留主变体待定 |
 
----
+## 6. 对 E02 的约束
 
-## 6. 与 E02 的接口
+E01 不依赖 vLLM 或 MCP，但 E02 必须：
 
-本实验是**离线观测**，不依赖 vLLM 或 MCP。但其发现对 E02（受控重跑）有三条硬性输入：
+1. 固化 MCP schema，或至少 fail-fast。远程 schema 可变且位于 prompt 前缀；启动失败会静默改变前缀并削弱能力。
+2. 固定 vLLM 0.22.1 并开启 `--enable-prompt-tokens-details`。`wire.jsonl` 可直接提供逐请求真实命中数；版本变更必须复验。
+3. 保持单轮，避免 `<think>` 剥离使前缀失效。
 
-1. **固化 MCP schema**。两台远程 MCP（`api.githubcopilot.com`、`huggingface.co`）的 schema
-   由他人维护、随时会变，而它就在 prompt 最前面。启动失败是**静默降级**——run 照样成功，
-   只是换了个前缀、少了一半能力。应本地供给 snapshot，或至少改为 fail-fast。
-2. **cache 上报已就绪**（2026-09-01 完成）：镜像钉死 `v0.22.1` + `--enable-prompt-tokens-details`，
-   非流式与流式均已验证。E02 可以直接从 `wire.jsonl` 读逐请求真实命中数，
-   不必再在外面套一层 `/metrics` 测量装置。变更版本时须重跑验证。
-3. **单轮**。多轮会因 `<think>` 剥离导致前缀从 step 1 起全废（3.4）。
+## 数据来源
 
----
-
-## 附：本页数据来源
-
-- `data/processed/e01/s0_summary.json`、`s1_cache_fields.json`、`s2_summary.json`
-  （gitignored，由 `make all` 重建，均带 `_provenance` 头）
-- 源数据 `data/raw/kimi-p4a-sessions.tar.gz`，md5 `9cfa1d2400d2fe283c0850a14804940b`
-- 第 3 节的侦察数字为一次性探查所得，**尚未落成脚本**；s3 实现后应由脚本重新产出并覆盖本节。
+- `data/processed/e01/s0_summary.json`、`s1_cache_fields.json`、`s2_summary.json`：gitignored，可由 `make all` 重建，均含 `_provenance`。
+- 源数据：`data/raw/kimi-p4a-sessions.tar.gz`，md5 `9cfa1d2400d2fe283c0850a14804940b`。
+- 第 3 节为一次性侦察，尚无脚本；s3 实现后应以脚本产出替换。
