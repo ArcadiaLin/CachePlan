@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "output_template": {
+    "paper_id": "<paper_id>",
+    "paper_record": {
+      "intent": {
+        "paper_type": "unknown",
+        "research_problem": "",
+        "target_domain": []
+      },
+      "contributions": [],
+      "claims": [],
+      "experiments": [],
+      "limitations": [],
+      "future_work": [],
+      "citation_functions": [],
+      "metadata": {
+        "arxiv_id": "",
+        "url": ""
+      },
+      "source_artifacts": {
+        "arxiv": {
+          "arxiv_id": "",
+          "version": "",
+          "url": "",
+          "metadata_status": "unfetched",
+          "metadata_checked_by": "",
+          "title": "",
+          "authors": [],
+          "submitted": "",
+          "updated": "",
+          "primary_category": "",
+          "categories": [],
+          "abstract": "",
+          "notes": ""
+        },
+        "html_downloaded": {
+          "exists": false,
+          "status": "unfetched",
+          "path": "",
+          "url": "",
+          "checked_by": "",
+          "notes": ""
+        },
+        "tex_source_downloaded": {
+          "exists": false,
+          "status": "unfetched",
+          "path": "",
+          "url": "",
+          "checked_by": "",
+          "notes": ""
+        }
+      }
+    },
+    "resources": [],
+    "verification_checks": [],
+    "warnings": []
+  },
+  "resource_template": {
+    "kind": "resource",
+    "name": "",
+    "aliases": [],
+    "description": "",
+    "relation_type": "used",
+    "evidence": {
+      "section": "",
+      "quote": "",
+      "citation_context_ids": []
+    },
+    "access": {
+      "url": "",
+      "access_type": "unknown",
+      "license": ""
+    },
+    "availability": {
+      "status": "unknown",
+      "checked_by": "",
+      "notes": ""
+    },
+    "repository": {
+      "canonical_url": "",
+      "verification": {
+        "checked_by": "",
+        "status": "unknown",
+        "notes": ""
+      }
+    },
+    "agent_callable": {
+      "can_wrap": false,
+      "estimated_wrapping_difficulty": "unknown",
+      "notes": ""
+    },
+    "confidence": "medium"
+  },
+  "enums": {
+    "paper_type": ["survey", "empirical", "benchmark", "dataset", "method", "theory", "position", "unknown"],
+    "resource_kind": ["dataset", "benchmark", "code", "model", "tool", "skill", "protocol", "resource"],
+    "relation_type": ["introduced", "used", "evaluated", "extended", "cited_only", "unknown"],
+    "citation_function": ["", "background", "method_source", "dataset_source", "benchmark_source", "baseline", "tool_source", "model_source", "claim_support", "comparison", "contrast", "related_work", "other", "unknown"],
+    "access_type": ["public", "request_only", "restricted", "missing", "unknown"],
+    "availability_status": ["available", "partial", "missing", "broken", "empty", "unknown"],
+    "artifact_status": ["available", "missing", "failed", "unfetched", "unknown"],
+    "wrapping_difficulty": ["low", "medium", "high", "unknown"]
+  },
+  "instructions": [
+    "Copy output_template, replace <paper_id>, and append resource_template-derived objects to resources.",
+    "Do not retain resource_template, enums, or instructions in agent_judgment.json.",
+    "Use an empty or unknown value when prepared evidence is insufficient; do not invent a value."
+  ]
+}

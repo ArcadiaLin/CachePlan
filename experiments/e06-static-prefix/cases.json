@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "selection_version": "e06-v1",
+  "cases": [
+    {
+      "case_id": "smoke-01",
+      "split": "smoke",
+      "stratum": "low",
+      "paper_id": "2025.acl-long.90",
+      "session_id": "session_effffe3d-ddb3-4700-a63e-2564ca50163f",
+      "historical": { "steps": 12, "tools": 15, "external_tools": 2, "amplification": 9.99 }
+    },
+    {
+      "case_id": "smoke-02",
+      "split": "smoke",
+      "stratum": "low",
+      "paper_id": "2025.acl-long.467",
+      "session_id": "session_77b45095-0196-46b0-81ad-3ecc84e55ea4",
+      "historical": { "steps": 10, "tools": 16, "external_tools": 1, "amplification": 7.66 }
+    },
+    {
+      "case_id": "smoke-03",
+      "split": "smoke",
+      "stratum": "low",
+      "paper_id": "2025.acl-long.1110",
+      "session_id": "session_cb457177-d26c-4210-9c3f-90e9800caa19",
+      "historical": { "steps": 12, "tools": 25, "external_tools": 0, "amplification": 9.57 }
+    },
+    {
+      "case_id": "smoke-04",
+      "split": "smoke",
+      "stratum": "low",
+      "paper_id": "2025.acl-long.1105",
+      "session_id": "session_565141b5-3529-4f19-9027-411dc1587685",
+      "historical": { "steps": 10, "tools": 16, "external_tools": 2, "amplification": 7.97 }
+    },
+    {
+      "case_id": "eval-low-01",
+      "split": "evaluation",
+      "stratum": "low",
+      "paper_id": "2025.acl-demo.28",
+      "session_id": "session_e50daead-386b-43d0-bc66-06295cc64e76",
+      "historical": { "steps": 11, "tools": 16, "external_tools": 2, "amplification": 8.64 }
+    },
+    {
+      "case_id": "eval-low-02",
+      "split": "evaluation",
+      "stratum": "low",
+      "paper_id": "2025.acl-industry.105",
+      "session_id": "session_93b2e77d-df00-4962-bc80-8cfb648c7afb",
+      "historical": { "steps": 11, "tools": 17, "external_tools": 1, "amplification": 8.97 }
+    },
+    {
+      "case_id": "eval-low-03",
+      "split": "evaluation",
+      "stratum": "low",
+      "paper_id": "2025.acl-long.1005",
+      "session_id": "session_cb3910ec-7a26-413a-be20-9ad044341df9",
+      "historical": { "steps": 10, "tools": 20, "external_tools": 0, "amplification": 7.35 }
+    },
+    {
+      "case_id": "eval-low-04",
+      "split": "evaluation",
+      "stratum": "low",
+      "paper_id": "2025.acl-long.463",
+      "session_id": "session_da49eebd-772f-4292-a15d-b93e62f0fcc7",
+      "historical": { "steps": 11, "tools": 19, "external_tools": 3, "amplification": 8.49 }
+    },
+    {
+      "case_id": "eval-low-05",
+      "split": "evaluation",
+      "stratum": "low",
+      "paper_id": "2025.acl-industry.88",
+      "session_id": "session_8dc3a497-4c51-406f-b656-da2ecbcef7a9",
+      "historical": { "steps": 11, "tools": 17, "external_tools": 2, "amplification": 8.07 }
+    },
+    {
+      "case_id": "eval-mid-01",
+      "split": "evaluation",
+      "stratum": "mid",
+      "paper_id": "2025.acl-long.104",
+      "session_id": "session_55ab03fb-7d41-414f-a33f-39d1d0653e3f",
+      "historical": { "steps": 14, "tools": 23, "external_tools": 6, "amplification": 11.39 }
+    },
+    {
+      "case_id": "eval-mid-02",
+      "split": "evaluation",
+      "stratum": "mid",
+      "paper_id": "2025.acl-long.1123",
+      "session_id": "session_e6193eec-5df1-4401-8601-ec5109084d72",
+      "historical": { "steps": 16, "tools": 24, "external_tools": 5, "amplification": 12.77 }
+    },
+    {
+      "case_id": "eval-mid-03",
+      "split": "evaluation",
+      "stratum": "mid",
+      "paper_id": "2025.acl-long.635",
+      "session_id": "session_119dd565-3030-4725-b935-b64548e81ce5",
+      "historical": { "steps": 15, "tools": 27, "external_tools": 4, "amplification": 11.44 }
+    },
+    {
+      "case_id": "eval-mid-04",
+      "split": "evaluation",
+      "stratum": "mid",
+      "paper_id": "2025.acl-long.1317",
+      "session_id": "session_a3afc0f6-2a94-4e02-ae76-72740be0bb32",
+      "historical": { "steps": 16, "tools": 22, "external_tools": 5, "amplification": 11.69 }
+    },
+    {
+      "case_id": "eval-mid-05",
+      "split": "evaluation",
+      "stratum": "mid",
+      "paper_id": "2025.acl-long.1595",
+      "session_id": "session_902a967c-5b59-4879-93c5-49237a750b49",
+      "historical": { "steps": 16, "tools": 22, "external_tools": 4, "amplification": 12.41 }
+    },
+    {
+      "case_id": "eval-long-01",
+      "split": "evaluation",
+      "stratum": "long",
+      "paper_id": "2025.acl-long.947",
+      "session_id": "session_041d1464-675e-4980-b08c-80598c16bc16",
+      "historical": { "steps": 23, "tools": 29, "external_tools": 6, "amplification": 19.29 }
+    },
+    {
+      "case_id": "eval-long-02",
+      "split": "evaluation",
+      "stratum": "long",
+      "paper_id": "2025.acl-long.1187",
+      "session_id": "session_049ce4a2-60de-4ba7-b590-b88b38a13931",
+      "historical": { "steps": 19, "tools": 28, "external_tools": 9, "amplification": 14.49 }
+    },
+    {
+      "case_id": "eval-long-03",
+      "split": "evaluation",
+      "stratum": "long",
+      "paper_id": "2025.acl-long.1360",
+      "session_id": "session_083c3208-924b-47a9-a2a6-7e2d16987c47",
+      "historical": { "steps": 19, "tools": 31, "external_tools": 6, "amplification": 16.09 }
+    },
+    {
+      "case_id": "eval-long-04",
+      "split": "evaluation",
+      "stratum": "long",
+      "paper_id": "2025.acl-demo.46",
+      "session_id": "session_12bbc217-3ed1-4d50-a3bc-cdde2a7f39e1",
+      "historical": { "steps": 22, "tools": 26, "external_tools": 5, "amplification": 17.55 }
+    },
+    {
+      "case_id": "eval-long-05",
+      "split": "evaluation",
+      "stratum": "long",
+      "paper_id": "2025.acl-long.1130",
+      "session_id": "session_01900267-9336-4429-9197-c69e27da0b45",
+      "historical": { "steps": 23, "tools": 33, "external_tools": 9, "amplification": 16.86 }
+    },
+    {
+      "case_id": "eval-high-01",
+      "split": "evaluation",
+      "stratum": "high",
+      "paper_id": "2025.acl-long.699",
+      "session_id": "session_28e3d6f5-35e0-4d7f-a917-6860905ec590",
+      "historical": { "steps": 24, "tools": 38, "external_tools": 12, "amplification": 18.22 }
+    },
+    {
+      "case_id": "eval-high-02",
+      "split": "evaluation",
+      "stratum": "high",
+      "paper_id": "2025.acl-long.787",
+      "session_id": "session_16a1de1b-4d05-4689-8492-4843e834bcd4",
+      "historical": { "steps": 27, "tools": 49, "external_tools": 11, "amplification": 18.4 }
+    },
+    {
+      "case_id": "eval-high-03",
+      "split": "evaluation",
+      "stratum": "high",
+      "paper_id": "2025.acl-long.341",
+      "session_id": "session_ced9b54a-dc60-4474-b407-36ead842956f",
+      "historical": { "steps": 25, "tools": 39, "external_tools": 16, "amplification": 21.57 }
+    },
+    {
+      "case_id": "eval-high-04",
+      "split": "evaluation",
+      "stratum": "high",
+      "paper_id": "2025.acl-long.811",
+      "session_id": "session_09c5dffd-6fde-4490-bc5e-41b461724765",
+      "historical": { "steps": 25, "tools": 32, "external_tools": 10, "amplification": 21.08 }
+    },
+    {
+      "case_id": "eval-high-05",
+      "split": "evaluation",
+      "stratum": "high",
+      "paper_id": "2025.acl-long.294",
+      "session_id": "session_8d2e1537-d15c-4d48-a534-ca07f755c906",
+      "historical": { "steps": 28, "tools": 50, "external_tools": 27, "amplification": 22.14 }
+    }
+  ]
+}

@@ -3,7 +3,8 @@
   "defaultModel": "qwen3.6-35b-a3b",
   "defaultProfile": "p4a-e06",
   "enabledProfiles": ["p4a-e06"],
-  "enabledExtensions": [],
+  "extensions": ["experiments/e06-static-prefix/extensions/e06-fixture-tools"],
+  "enabledExtensions": ["e06-fixture-tools"],
   "compaction": {
     "enabled": false
   }
