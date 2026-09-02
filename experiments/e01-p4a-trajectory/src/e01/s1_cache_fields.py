@@ -1,11 +1,17 @@
-"""阶段 1（闸门）：cache 字段可用性核查。
+"""阶段 1：cache 字段可用性核查。**结论已定，此处只保留复现路径。**
 
-在这一步给出结论之前，**任何基于 cache 命中率的分析都不得进行**
-（见 docs/experiments/p4a.md 的使用边界）。
+结论（见 docs/experiments/e01-p4a-trajectory.md 第 2 节）：全语料
+`inputCacheRead` / `inputCacheCreation` 恒为 0，判定 `identically_zero`。
+成因是上报缺陷而非未命中 —— 服务端当时开着 `--enable-prefix-caching`，
+实测命中率 86.5%，但 vLLM 0.21.0 的响应体不带 `prompt_tokens_details`，
+kimi-code 的 `extractUsage` 取不到 `cached_tokens` 便记 0。
 
-本脚本只回答一件事：`inputCacheRead` / `inputCacheCreation` 这两个字段
-在全语料里是否恒为 0。若恒为 0，则真实命中率不可得，下游必须改用
-重建流上的前缀重叠量，并且**只能标注为估计量，不得称作命中率**。
+**历史语料的真实命中率不可得，且不会再变**（语料冻结、不可重跑）。下游
+一律改用 s3 复现序列上的前缀重叠量，并标为**结构性度量**，不得称作命中率。
+新数据不受此限：vLLM 0.22.1 + `--enable-prompt-tokens-details` 已验证可逐
+请求上报真实命中数。
+
+本脚本保留的唯一理由，是让文档里那几个数字可被 `make all` 原样重建。
 
 产物：data/processed/e01/s1_cache_fields.json
 
@@ -79,7 +85,6 @@ def main() -> None:
 
     payload = {
         "verdict": verdict,
-        "gate_open_for_hit_rate": not identically_zero,
         "n_sessions_checked": n_sessions,
         "n_usage_records": n_records,
         "n_records_with_nonzero_cache_read": nonzero_read,
@@ -92,11 +97,15 @@ def main() -> None:
         "sum_input_other_tokens": sum_input,
         "sum_output_tokens": sum_output,
         "per_family_sessions": dict(per_family),
+        # 成因是上报缺陷（vLLM 0.21.0 不返回 prompt_tokens_details），不是未命中；
+        # 服务端当时实测命中率 86.5%。语料冻结，这条结论不会再变。
+        "cause": "vllm_0.21.0_does_not_report_prompt_tokens_details",
         "consequence": (
-            "两个 cache 字段在全语料恒为 0，真实命中率不可得。下游一律改用重建流上的"
-            "前缀重叠量，并必须标注为估计量，不得称作命中率。"
+            "历史语料真实命中率不可得。下游改用 s3 复现序列上的前缀重叠量，"
+            "标为结构性度量，不得称作命中率。"
             if identically_zero else
-            "存在非零记录，命中率分析的闸门打开；但需先核实非零记录的分布是否代表全语料。"
+            "出现了非零记录 —— 与已定谳的结论矛盾，说明输入语料不是 P4A 那份，"
+            "或读取逻辑被改坏了。先查这个，不要直接采信。"
         ),
     }
 
@@ -112,7 +121,9 @@ def main() -> None:
     print(f"[s1] 本范围累计 prefill: {sum_input:,} tokens；累计 output: {sum_output:,} tokens")
     print(f"[s1] → {path}")
     if identically_zero:
-        print("[s1] 闸门结论：命中率不可得。下游只能用前缀重叠估计量。")
+        print("[s1] 与已定谳结论一致：历史命中率不可得（上报缺陷，非未命中）。")
+    else:
+        print("[s1] ⚠ 出现非零 cache 记录，与已定谳结论矛盾 —— 先查输入语料与读取逻辑。")
 
 
 if __name__ == "__main__":

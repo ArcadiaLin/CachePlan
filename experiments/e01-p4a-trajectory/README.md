@@ -29,12 +29,13 @@ data/raw/kimi-p4a-sessions/.kimi-code/sessions/
 
 | 现象 | 数量 | 处置 |
 |---|---|---|
-| `state.json` 的 `lastPrompt`/`title` 被 redact | 1671 | **不从 state.json 取 prompt**，改用 `wire.jsonl` 的 `turn.prompt`（未 redact）。改用 wire 之后 paper_id 的定位率从 2696/4083 升到 3999/4001（纳入集） |
+| `state.json` 的 `lastPrompt`/`title` 被 redact | 1671 | **不从 state.json 取 prompt**，改用 `wire.jsonl` 的 `turn.prompt`（未 redact）。改用 wire 之后 paper_id 的定位率从 2696/4083 升到 3997/3999（纳入集） |
 | 流产的 run：`step.begin` 发了、`step.end` 没到（形态一致为 n_steps=1 / n_tools=0 / model=None） | 73 | 排除，理由 `aborted`。**不并入 `no_usage`** —— 它的发生率是这个 workload 的一个观测量，不是噪声：extract 1/3765 (0.03%)，repair **68/306 (22.2%)** |
 | 操作者本人的交互（"Say ok only."、"继续你的工作"、空 prompt 等） | 12 | 排除，理由 `operator_chat`，清单里保留原文前 200 字备查 |
 | 零步会话 | 5 | 排除，理由 `no_steps` |
+| 不止一轮：用户多次输入，或 harness auto-continue（`turnId` 有多个值但只有一条 `turn.prompt`） | 4 | 排除，理由 `multi_turn`。auto-continue 那两份在 workload 语义上仍是一次 run，但上下文里多了一段只有它才有的注入文本，前缀结构不再与其余 run 可比 |
 
-纳入 4001 份（extract 3764 / repair 237），覆盖 3323 篇不同论文。
+纳入 3999 份（extract 3762 / repair 237），覆盖 3321 篇不同论文。
 
 ## 阶段
 
@@ -43,13 +44,18 @@ data/raw/kimi-p4a-sessions/.kimi-code/sessions/
 | | 脚本 | 回答什么 | 状态 |
 |---|---|---|---|
 | s0 | `s0_manifest.py` | 语料清单与纳入过滤 | 已实现 |
-| s1 | `s1_cache_fields.py` | **闸门**：cache 字段是否可用 | 已实现 |
+| s1 | `s1_cache_fields.py` | cache 字段是否可用 | 已实现；结论：不可用 |
 | s2 | `s2_session_stats.py` | 放大倍数的全量分布与分层归因 | 已实现 |
-| s3 | `s3_prefix.py` | 跨 run 前缀重叠结构：共享前缀有多长、在哪里断 | 未实现 |
+| s3 | `s3_render.py` | 复现每步真正进入模型的 token 序列 | 未实现 |
 | s4 | `s4_divergence.py` | 轨迹分叉点：语义等价的行为在何处首次产生不同 token | 未实现 |
 | s5 | `s5_behavior.py` | 行为统计：被赋予的 agency 有多少真的被行使 | 未实现 |
 
-s1 是闸门：**在它给出结论之前，任何基于 cache 命中率的分析都不得进行。**
+s1 已给出结论且不会再变：全语料 `inputCacheRead` / `inputCacheCreation` 恒为 0，
+成因是 vLLM 0.21.0 的上报缺陷而非缓存未命中（服务端实测命中率 86.5%）。
+**历史语料的真实命中率不可得**，s3 之后一律改用复现序列上的前缀重叠量，标为
+结构性度量，不得称作命中率。完整归因见
+[`docs/experiments/e01-p4a-trajectory.md`](../../docs/experiments/e01-p4a-trajectory.md)
+第 2 节。
 
 ## 运行
 
@@ -78,29 +84,42 @@ make verify    # 带来源 md5 核算（约 350MB，数秒）
 
 ### 分词器（仅 s3 需要）
 
-s3 的跨 run 前缀重叠要给出可比的数字，需要 token 级切分。它是**可选依赖**：
+s3 要复现进入模型的 token 序列，必须用与服务端相同的分词器。目前登记为
+**可选依赖**，s3 落地时转为必需：
 
 ```bash
 uv sync --extra tokenize
 ```
 
-未装时 s3 仍可产出字符级结果，但**只能作为量级参考**。原因：观测到的
-system prompt 是 15042 字符，而首步 prefill 的 `inputOther` 中位数是 22137
-tokens —— 差出来的部分不在日志里（推断为 27 个工具的 schema，见下），
-所以字符数与 token 数之间没有稳定的换算比。
+分词器与 chat template 在 `references/repos/qwen3.6-35b-a3b-tokenizer/`（未纳入
+版本管理）。**不存在字符数到 token 数的换算比**，字符级结果不可作为替代。
 
 ## 重建流的边界（务必先读）
 
-`wire.py` 的 `context_stream()` 把 segments 拼成一条字节流。**它不是发给模型
-的真实 prompt**，有两处已知缺口：
+`wire.py` 的 `context_stream()` 把 segments 拼成一条字节流。**它不是发给模型的
+真实 prompt** —— 它只保证「同一 harness 下、跨 run 之间可比」。s2 之前的分析
+只依赖这个性质；s3 起改为逐字复现，不再使用它。
 
-1. **工具 schema 不在日志里。** 全语料 `n_active_tools` 恒为 27，但 schema 正文
-   没有落盘。首步 prefill 22137 tokens 减去 system prompt（15042 字符）与用户
-   prompt（约 411 字符）之后，仍有约 18K tokens 无法归因，推断即为工具 schema。
-2. **段间模板/分隔符未知。** harness 如何把 system prompt、工具声明、消息序列
-   拼成最终请求，日志里看不到。
+s3 逐字复现是可行的，2026-09-01 的侦察已证实（完整记录见
+[`docs/experiments/e01-p4a-trajectory.md`](../../docs/experiments/e01-p4a-trajectory.md)
+第 3 节）。三件事必须先知道：
 
-因此重建流只保证「同一 harness 下、跨 run 之间可比」，不保证与真实 prompt
-逐字相同。前缀分析只依赖前者。**工具声明与 system prompt 谁在前，会让跨 run
-不变前缀的估计相差一个数量级**，这一点在拿到 harness 的组装逻辑之前，s3 必须
-同时报告上下界，不得只报一个数。
+1. **工具 schema 在日志里，但只有 60/4083 份带。** 事件是 `llm.tools_snapshot`。
+   这 60 份里有 **4 个不同快照**，工具数分别为 27 / 32 / 39 / 44，差异只在两个
+   远程 MCP（`github-readonly`、`hf-readonly`）是否在 `startupTimeoutMs: 30000`
+   内就绪；24 个内置工具与本地的 `arxiv-mcp` 在四者中逐字相同。其余 4023 份的
+   变体要靠 Δ oracle 判定（下条）。
+2. **`tools.set_active_tools` 不是发给模型的工具集，不能拿它判定变体。** 它在
+   全语料恒为同一份 27 名单（哈希 `2a4c24f3`），而那恰好等于最小快照
+   `5e110149` —— 说明它记的是会话初始化时已注册的本地工具，远程 MCP 那时还没
+   握手完。s0 汇总里的 `n_active_tools_values: {27: 4083}` 是这个意思，不代表
+   语料同质。
+3. **Δ oracle。** 每条 `step.end` 的 `usage.inputOther` 就是服务端算出的
+   `prompt_tokens`（历史数据 cached 恒为 0，见上），全语料 62,649 个独立校验点。
+   复现对不对不靠推断，逐条比对即可。
+
+已知的组装顺序（来自 `chat_template.jinja`）：**工具先渲染进第一条 system 消息，
+`config.update` 里的 systemPrompt 逐字附在其后**。原型复现单份 session 首步的
+结果是 Δ = −73 / 27251（0.27%），其中工具占 22575 tokens（83%）。之前「工具与
+system prompt 谁在前会差一个数量级、s3 必须报上下界」的说法就此作废 —— 顺序
+已确定，s3 报单值。

@@ -18,13 +18,20 @@
 
     metadata                 协议版本
     config.update            携带 systemPrompt / modelAlias / thinkingLevel
-    tools.set_active_tools   工具名清单（全语料恒为同一组 27 个）
+    tools.set_active_tools   工具名清单（全语料恒为同一组 27 个）。**这不是发给
+                             模型的工具集** —— 它等于最小的那个 tools_snapshot
+                             变体，记的是初始化时已注册的本地工具，远程 MCP 那
+                             时还没握手完。真正的工具集见 llm.tools_snapshot，
+                             只有 60/4083 份带，且有 4 个变体（27/32/39/44 个）。
+                             详见 README「重建流的边界」。
+    llm.tools_snapshot       实际发给模型的工具 schema 全文。只有 60/4083 份带，
+                             s3 复现的关键输入。
     permission.set_mode
     turn.prompt              用户输入（**未 redact**）
     context.append_loop_event  event.type ∈ {step.begin, content.part,
                                tool.call, tool.result, step.end}
     usage.record             usageScope=turn 的 token 计数
-    context.append_message
+    context.append_message   本读取器尚未纳入 segments，s3 复现前须补上
 
 其中 `step` 是一次 LLM 调用的序号，一个 step 可以并发多个 tool.call。
 文件内的行序即内容进入上下文的顺序 —— 前缀分析依赖这个性质。
@@ -66,10 +73,13 @@ class Usage:
     step: int | None
     input_other: int
     output: int
+    # 本语料里这两个字段恒为 0，且已查明是 vLLM 0.21.0 的上报缺陷而非未命中
+    # （见 s1_cache_fields.py）。这里照原样保留只是「不做解释，只做还原」——
+    # 不要拿它们算命中率，历史语料的命中率不可得。
     cache_read: int
     cache_creation: int
-    # 「字段缺失」与「字段存在且为 0」对闸门是实质区别：前者说明 harness
-    # 根本没上报，后者说明它上报了、值确实是零。必须分开记。
+    # 「字段缺失」与「字段存在且为 0」是两回事：前者说明 harness 根本没上报，
+    # 后者说明它上报了、值确实是零。s1 靠这个区分来定性，故分开记。
     has_cache_fields: bool = False
 
 
@@ -119,9 +129,6 @@ class Session:
     def peak_input(self) -> int:
         return max((u.input_other for u in self.usage), default=0)
 
-    @property
-    def cache_nonzero(self) -> int:
-        return sum(1 for u in self.usage if u.cache_read or u.cache_creation)
 
 
 def _as_text(value) -> str:

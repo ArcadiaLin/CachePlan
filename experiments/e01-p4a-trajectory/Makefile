@@ -3,7 +3,7 @@
 #   make setup     创建 .venv 并装依赖（主线阶段无第三方依赖，仅建环境）
 #   make s0 s1 s2  逐阶段
 #   make all       s0 -> s1 -> s2
-#   make verify    带来源 md5 核算跑一遍闸门（慢，约 350MB）
+#   make verify    带来源 md5 核算重扫一遍全语料（慢，约 350MB）
 #   make smoke     只扫前 50 份，用于改完代码后的快速自检
 
 UV ?= uv
