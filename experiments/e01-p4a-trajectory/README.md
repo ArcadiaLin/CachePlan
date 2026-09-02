@@ -46,7 +46,7 @@ data/raw/kimi-p4a-sessions/.kimi-code/sessions/
 | s0 | `s0_manifest.py` | 语料清单与纳入过滤 | 已实现 |
 | s1 | `s1_cache_fields.py` | cache 字段是否可用 | 已实现；结论：不可用 |
 | s2 | `s2_session_stats.py` | 放大倍数的全量分布与分层归因 | 已实现 |
-| s3 | `s3_render.py` | 复现每步真正进入模型的 token 序列 | 未实现 |
+| s3 | `s3_render.py` | 复现每步真正进入模型的 token 序列 | 第一步已实现：还原器自检 + 工具集判定 |
 | s4 | `s4_divergence.py` | 轨迹分叉点：语义等价的行为在何处首次产生不同 token | 未实现 |
 | s5 | `s5_behavior.py` | 行为统计：被赋予的 agency 有多少真的被行使 | 未实现 |
 
@@ -61,10 +61,13 @@ s1 已给出结论且不会再变：全语料 `inputCacheRead` / `inputCacheCrea
 
 ```bash
 cd experiments/e01-p4a-trajectory
-make setup     # 建 .venv
-make all       # s0 -> s1 -> s2
-make smoke     # 只扫前 50 份，改完代码后的快速自检
-make verify    # 带来源 md5 核算（约 350MB，数秒）
+make setup         # 建 .venv（s0-s2 无第三方依赖）
+make all           # s0 -> s1 -> s2
+make smoke         # 只扫前 50 份，改完代码后的快速自检
+make verify        # 带来源 md5 核算（约 350MB，数秒）
+
+make setup-render  # s3 起需要的 jinja2 + tokenizers
+make s3            # 还原器自检 + 全语料工具集判定（约 3 分钟）
 ```
 
 产物落在仓库根的 `data/processed/e01/`（已被根 `.gitignore` 忽略）。每个产物
@@ -84,15 +87,15 @@ make verify    # 带来源 md5 核算（约 350MB，数秒）
 
 ### 分词器（仅 s3 需要）
 
-s3 要复现进入模型的 token 序列，必须用与服务端相同的分词器。目前登记为
-**可选依赖**，s3 落地时转为必需：
+s3 要逐字复现进入模型的 token 序列，必须用与服务端相同的 chat template 和
+分词器。**没有字符级的退化路径** —— 缺依赖时 s3 直接退出，不产出估计值：
 
 ```bash
-uv sync --extra tokenize
+make setup-render        # 等价于 uv sync --extra render
 ```
 
-分词器与 chat template 在 `references/repos/qwen3.6-35b-a3b-tokenizer/`（未纳入
-版本管理）。**不存在字符数到 token 数的换算比**，字符级结果不可作为替代。
+两者都在 `references/repos/qwen3.6-35b-a3b-tokenizer/`（未纳入版本管理）。
+换模型必须换这个目录，并重跑 `make s3` 的自检。
 
 ## 重建流的边界（务必先读）
 

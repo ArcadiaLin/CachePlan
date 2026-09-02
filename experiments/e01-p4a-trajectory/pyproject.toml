@@ -10,9 +10,10 @@ requires-python = ">=3.12,<3.14"
 dependencies = []
 
 [project.optional-dependencies]
-# 阶段 3（跨 run 前缀重叠）需要 token 级切分才能给出可比的数字。
-# 字符级结果在无此依赖时仍可产出，但只能作为量级参考 —— 见 README「分词器」一节。
-tokenize = ["tokenizers>=0.20,<0.23"]
+# 阶段 3 起逐字还原进入模型的 token 序列，需要模型自带的 chat template（jinja2）
+# 和分词器。**没有字符级的退化路径** —— s3 拿不到这两样会直接退出，见 render.py。
+# 仍放在 optional 里，是为了让 s0-s2 在没有网络的机器上照样能跑。
+render = ["jinja2>=3.1,<4", "tokenizers>=0.20,<0.23"]
 
 [build-system]
 requires = ["hatchling"]

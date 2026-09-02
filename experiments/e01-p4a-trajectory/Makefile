@@ -9,10 +9,14 @@
 UV ?= uv
 RUN = $(UV) run
 
-.PHONY: setup s0 s1 s2 all verify smoke clean
+.PHONY: setup setup-render s0 s1 s2 s3 all verify smoke clean
 
 setup:
 	$(UV) sync
+
+# s3 起需要 chat template + 分词器，见 README「分词器」一节
+setup-render:
+	$(UV) sync --extra render
 
 s0:
 	$(RUN) python -m e01.s0_manifest
@@ -22,6 +26,9 @@ s1:
 
 s2:
 	$(RUN) python -m e01.s2_session_stats
+
+s3:
+	$(UV) run --extra render python -m e01.s3_render
 
 all: s0 s1 s2
 

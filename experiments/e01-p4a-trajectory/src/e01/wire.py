@@ -300,12 +300,91 @@ def load(sdir: Path, with_segments: bool = False) -> Session:
     return s
 
 
+@dataclass
+class FirstRequest:
+    """首步（step 1）那一次 LLM 调用的全部输入，够 s3 逐字还原。
+
+    单独做一个提前退出的读取器，而不是往 `load()` 里加字段：后者要把每条
+    `context.append_message` 都留在内存里（长会话里那是全部工具结果），
+    全语料扫描扛不住。首步之前只有两条消息，读到 step 1 的 step.end 就停。
+    """
+
+    sid: str
+    created_at_ms: int | None = None
+    system_prompt: str | None = None
+    messages: list[dict] = field(default_factory=list)   # 不含 system
+    tools: list[dict] | None = None      # 仅 60/4083 份有；见 README
+    tools_hash: str | None = None
+    system_prompt_hash: str | None = None
+    message_count: int | None = None
+    prompt_tokens: int | None = None     # 服务端算的，即 Δ oracle 的那一侧
+
+
+def first_request(sdir: Path) -> FirstRequest:
+    r = FirstRequest(sid=sdir.name)
+    wf = sdir / "agents" / "main" / "wire.jsonl"
+    if not wf.exists():
+        return r
+
+    started = False
+    with open(wf, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            try:
+                o = json.loads(line)
+            except Exception:
+                continue
+            t = o.get("type")
+
+            if t == "metadata":
+                try:
+                    r.created_at_ms = int(o.get("created_at"))
+                except (TypeError, ValueError):
+                    pass
+            elif t == "config.update" and o.get("systemPrompt") is not None:
+                r.system_prompt = o["systemPrompt"]
+            elif t == "context.append_message" and not started:
+                # step.begin 之后追加的消息属于下一步，不进首步请求
+                r.messages.append(o["message"])
+            elif t == "llm.tools_snapshot" and r.tools is None:
+                r.tools = o.get("tools")
+                r.tools_hash = o.get("hash")
+            elif t == "llm.request" and r.message_count is None:
+                r.message_count = o.get("messageCount")
+                r.system_prompt_hash = o.get("systemPromptHash")
+            elif t == "context.append_loop_event":
+                e = o.get("event") or {}
+                if e.get("step") != 1:
+                    continue
+                if e.get("type") == "step.begin":
+                    started = True
+                elif e.get("type") == "step.end":
+                    # 历史数据 cached 恒为 0，故 inputOther 就是 prompt_tokens
+                    # （见 s1_cache_fields.py）。新数据必须改用
+                    # inputOther + inputCacheRead。
+                    r.prompt_tokens = (e.get("usage") or {}).get("inputOther")
+                    break
+    return r
+
+
+def openai_messages(r: FirstRequest) -> list[dict]:
+    """FirstRequest -> kimi-code 实际发出的 messages 数组。
+
+    形状照抄 providers/openai-legacy.ts:557：systemPrompt 作为 messages[0]，
+    其余按 append 顺序跟在后面。**不做合并** —— openai 路径上没有
+    mergeConsecutiveUserMessages，两条相邻 user 消息就是两条。
+    """
+    msgs: list[dict] = []
+    if r.system_prompt:
+        msgs.append({"role": "system", "content": r.system_prompt})
+    for m in r.messages:
+        msgs.append({"role": m.get("role"), "content": m.get("content")})
+    return msgs
+
+
 def context_stream(s: Session) -> str:
     """把 segments 拼成一条字节流。
 
-    **这不是发给模型的真实 prompt**：工具 schema（约 18K tokens，见 README）
-    不在日志里，各段之间的模板/分隔符也无从得知。它是「同一 harness 下、
-    跨 run 可比」的一条重建流 —— 前缀分析只依赖它在各 run 之间的可比性，
-    不依赖它与真实 prompt 逐字相同。
+    **这不是发给模型的真实 prompt**，是一条「同一 harness 下、跨 run 可比」的
+    近似流。s2 及之前用它；s3 起改用 render.py 的逐字还原，本函数不再参与。
     """
     return "".join(seg.text for seg in s.segments)
