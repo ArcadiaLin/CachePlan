@@ -22,9 +22,20 @@
 
 **当前状态：本项目已完成的实验数为 0。** 主线顺序是 E01 → E06 → E02/E03。
 
-- **进行中（E01，第一个实验）：P4A 历史 session 轨迹的全量观测。** 详见 [`experiments/e01-p4a-trajectory.md`](experiments/e01-p4a-trajectory.md)。s0–s2 完成，s3（精确复现器）是闸门，未验收不进 s4。
+- **进行中（E01，第一个实验）：P4A 历史 session 轨迹的全量观测。** 详见 [`experiments/e01-p4a-trajectory.md`](experiments/e01-p4a-trajectory.md)。**s0–s4 完成，s5（轨迹统计与可视化）待做。**
 
-  **OQ2 对 s3 追加了一项交付物**：把每个 run 的 token 拆成**静态前缀 / 每输入私有内容（论文正文）/ 生成轨迹**三段并给出分布。这三个数决定 E06 的 baseline 上界，也决定本项目方法相对该 baseline 还剩多少空间；没有它无法给 OQ2 定价。
+  s3 的闸门已通过：逐步还原在 60 份带 ground truth 的 session 上 **1142 个校验点中 1123 个 Δ=0**，不是估计量。同时推翻了「语料同质」的前提——Δ oracle 判定出**至少 18 种工具配置**，按时间排成连续区块（一个月里 harness 在演进），已知工具 schema 原文只覆盖末尾 60 份。**跨区块共享前缀从 token 0 断裂，此后一切前缀分析必须在区块内做**（最大区块 1538 份）。
+
+  s4 给前缀失效定了价，两个来源量级差 35 倍：
+
+  | 来源 | tokens | 占全语料 prefill |
+  |---|---:|---:|
+  | **会话内注入**：一条 `role=user` 的 TodoList 提醒回溯性剥掉此前所有 `<think>`，改写上下文中段 | **204,579,397** | **3.65%** |
+  | 首步跨 run 分歧（时间戳 + 工作目录树） | 约 5.9M | 约 0.11% |
+
+  前者 61.1% 的 session 中招、首次触发高度集中在 step 11，且**可直接消除**（`preserve_thinking`，或改用 `role=tool` 注入）。后者的大头是 kimi-code 注入 `systemPrompt` 的工作目录树而非时间戳，且不改代码也能靠按变体分组调度回收 89%。
+
+  **OQ2 的交付物尚未完成**：s4 精确给出了静态前缀那一段（区块内 20,652–22,014 tok），但**每输入私有内容 / 生成轨迹**两段还没拆。三段齐了才能给 E06 的 baseline 上界定价，这是 s5 的前置任务，优先于可视化。
 
 - **下一个（E06）：A2 静态前缀 baseline —— "把可复用指令全部写进 system prompt"。** 由 [OQ2](open-questions/Placement-of-reusable-context.md) 提出，排在 E01 之后。这是本项目**必须先打败的第一个 baseline**，审稿人一定会问 *Why don't you simply put the reusable instructions into the system prompt?*
 
@@ -41,7 +52,7 @@
 
 | Question | Status | Doc | Refs | Resolution |
 |---|---|---|---|---|
-| OQ2：可复用上下文（Skill）应该放在哪？"全部写进 system prompt" 是不是已经够用？ | **OPEN** | [open-questions/Placement-of-reusable-context.md](open-questions/Placement-of-reusable-context.md) | — | 2026-09-02 提出。本项目**必须先打败的第一个 baseline**：若每个 run 都必用同一份 Skill，静态注入天然形成稳定可缓存前缀，还省掉读 skill 的 step 与轨迹不稳定。已核实 P4A 现状是两跳动态加载、且第一个 assistant 动作即含论文 id，故 skill 落在跨 run 分叉点之后。待 E01 s3 给出「静态前缀 / 每输入私有内容 / 生成轨迹」三分解后才能定价；贡献须报告为 $A3-A2$（对静态布局强 baseline）而非 $A3-A0$。 |
+| OQ2：可复用上下文（Skill）应该放在哪？"全部写进 system prompt" 是不是已经够用？ | **OPEN** | [open-questions/Placement-of-reusable-context.md](open-questions/Placement-of-reusable-context.md) | — | 2026-09-02 提出。本项目**必须先打败的第一个 baseline**：若每个 run 都必用同一份 Skill，静态注入天然形成稳定可缓存前缀，还省掉读 skill 的 step 与轨迹不稳定。已核实 P4A 现状是两跳动态加载、且第一个 assistant 动作即含论文 id，故 skill 落在跨 run 分叉点之后。**2026-09-02 更新**：E01 s4 已给出三分解中的静态前缀一段——最大区块内跨 run 共享前缀 20,652 tok（占首步 93.3%），把时间戳与工作目录树归一后可达 21,944 tok（99.1%），即 A2 布局的天花板已经很接近现状，静态前缀本身没剩多少空间。**但另两段（每输入私有内容 / 生成轨迹）尚未拆**，仍无法定价。s4 另有一个与本问题直接相关的发现：真正的大头不在首步前缀（约 0.11% prefill），而在会话内注入导致的回溯改写（3.65%），后者与 skill 放在哪里无关，A2 布局解决不了。贡献须报告为 $A3-A2$（对静态布局强 baseline）而非 $A3-A0$。 |
 | OQ1：Is agentic execution necessary for data-intensive workloads (P4A)? | **DEFERRED** | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | `liu2026ara` | 2026-09-01：**未被回答，被降级。** 该问题原本挡路的理由是"可能在优化一种没人真在用的执行方式"。`liu2026ara` 的 ARA Compiler（§4）是本 workload 类别的第二个独立实例，由第三方以 **agent skill** 形态部署——~482 行自然语言规格载入 coding agent 上下文，Seal Level 1 在环校验迭代 2–3 轮，23+7 篇输入上首轮通过率 0/30。研究对象的真实性因此不再依赖本问题的答案，strawman 风险排除。**"需要多少 agency"仍完全开放**：RW03 未做 autonomy-level 消融。E02 保留、设计不变，但从阻塞项降为设计余量的探究。见 `ara/logic/claims.md` C12。 |
 
 `Refs` 列填支撑该问题的文献 citekey（见 [Literature](#literature)）；一个问题在有文献支撑之前被 RESOLVED，应当在 Resolution 里说明结论是纯实验得出的。
