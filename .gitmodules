@@ -1,0 +1,4 @@
+[submodule "packages/widi"]
+	path = packages/widi
+	url = https://github.com/ArcadiaLin/widi.git
+	branch = main
