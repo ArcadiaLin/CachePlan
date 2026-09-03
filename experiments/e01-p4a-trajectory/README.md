@@ -44,6 +44,7 @@ data/raw/kimi-p4a-sessions/.kimi-code/sessions/
 | | 脚本 | 回答什么 | 状态 |
 |---|---|---|---|
 | s0 | `s0_manifest.py` | 语料清单与纳入过滤 | 已实现 |
+| s0b | `s0b_prompt_blocks.py` | systemPrompt 分块，给出各轴的类标签 | 已实现 |
 | s1 | `s1_cache_fields.py` | cache 字段是否可用 | 已实现；结论：不可用 |
 | s2 | `s2_session_stats.py` | 放大倍数的全量分布与分层归因 | 已实现 |
 | s3 | `s3_render.py` | 复现每步真正进入模型的 token 序列 | 第一步已实现：还原器自检 + 工具集判定 |
@@ -62,7 +63,8 @@ s1 已给出结论且不会再变：全语料 `inputCacheRead` / `inputCacheCrea
 ```bash
 cd experiments/e01-p4a-trajectory
 make setup         # 委派给仓库根：建共享 .venv 并装 git 过滤器
-make all           # s0 -> s1 -> s2
+make all           # s0 -> s0b -> s1 -> s2
+make s0b           # systemPrompt 分块与类标签（约 10 秒）
 make smoke         # 只扫前 50 份，改完代码后的快速自检
 make verify        # 带来源 md5 核算（约 350MB，数秒）
 make verify-stdlib # 在无第三方依赖的隔离环境里跑主线，不动共享 .venv 也不动产物
@@ -75,6 +77,30 @@ make dump SID=2d549e55   # 导出某份 session 的逐步上下文，供肉眼�
 产物落在仓库根的 `data/processed/e01/`（已被根 `.gitignore` 忽略）。每个产物
 文件的第一行/顶层是 `_provenance`，记录脚本名、git rev、生成时间、Python 版本、
 来源指纹与调用参数。
+
+## Notebook
+
+脚本产出产物，notebook 读产物 —— 这条分工见 `AGENTS.md` →
+Notebooks are the exploration surface。notebook 里**不允许**出现某个被引用数字的
+唯一来源；口径要改就改 `src/e01/` 下的脚本。
+
+```bash
+make -C ../.. lab      # 起 JupyterLab（共享 .venv，仓库根统一环境）
+```
+
+| | 读什么 | 回答什么 |
+|---|---|---|
+| `notebooks/00_corpus.ipynb` | s0 | 语料形状：纳入/排除、流产率、时间结构 |
+| `notebooks/01_session_classes.ipynb` | s0b + s3 | 六条划分依据，逐轴的定义与分布 |
+
+`notebooks/nbio.py` 是共用的读入层：`load(stage)` 给逐 session 的 DataFrame，
+`summary(stage)` 给脚本已算好的聚合量，`wide()` 把 s0×s2×s3×s4 按 `sid` join 成
+一张 4083 行的宽表。每本 notebook 的第一个 cell 都调 `nbio.banner()`，把在场产物的
+git rev、生成时间、来源指纹摊开 —— 并在检出 `--limit` 产物时明确报警（`make smoke`
+和 `verify-stdlib` 写的是与全量同名的文件，被覆盖过的产物只有前 50 份）。
+
+`00_corpus.ipynb` 末尾会逐条复算 `docs/experiments/e01-p4a-trajectory.md` 第 1 节
+引用的 10 个数，对不上就 assert 失败。
 
 ## 环境与依赖
 
