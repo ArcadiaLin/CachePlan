@@ -30,6 +30,8 @@ const BOOTSTRAP_PROMPT = [
 
 type Arm = "a0" | "a1" | "a2";
 
+type A2Resume = { sessionRef: string; bootstrapLeafId: string };
+
 type RunPlan = {
 	runId: string;
 	arm: Arm;
@@ -37,6 +39,7 @@ type RunPlan = {
 	runRoot: string;
 	skillPath: string;
 	caseIds: readonly string[];
+	a2Resume?: A2Resume;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -52,6 +55,24 @@ function requireString(record: JsonRecord, key: string): string {
 	const value = record[key];
 	if (typeof value !== "string" || value.trim() === "") throw new Error(`run plan requires ${key}`);
 	return value;
+}
+
+function requireOptionalString(record: JsonRecord, key: string): string | undefined {
+	const value = record[key];
+	if (value === undefined) return undefined;
+	if (typeof value !== "string" || value.trim() === "") throw new Error(`run plan ${key} must be a non-empty string`);
+	return value;
+}
+
+function requireA2Resume(record: JsonRecord, arm: Arm): A2Resume | undefined {
+	const sessionRef = requireOptionalString(record, "resume_session_ref");
+	const bootstrapLeafId = requireOptionalString(record, "bootstrap_leaf_id");
+	if (sessionRef === undefined && bootstrapLeafId === undefined) return undefined;
+	if (sessionRef === undefined || bootstrapLeafId === undefined) {
+		throw new Error("run plan must provide resume_session_ref and bootstrap_leaf_id together");
+	}
+	if (arm !== "a2") throw new Error("only A2 run plans may resume a shared root");
+	return { sessionRef, bootstrapLeafId };
 }
 
 function requireAbsolutePath(record: JsonRecord, key: string): string {
@@ -93,6 +114,7 @@ async function loadPlan(payload: unknown, arm: Arm): Promise<RunPlan> {
 		runRoot: requireAbsolutePath(plan, "run_root"),
 		skillPath: requireAbsolutePath(plan, "skill_path"),
 		caseIds: requireCaseIds(plan),
+		a2Resume: requireA2Resume(plan, arm),
 	};
 }
 
@@ -162,19 +184,36 @@ async function runFreshCase(plan: RunPlan, caseId: string, context: ExtensionCon
 	}
 }
 
-async function runA2(plan: RunPlan, context: ExtensionContext): Promise<void> {
+async function establishA2Bootstrap(plan: RunPlan, context: ExtensionContext): Promise<string> {
+	if (plan.a2Resume !== undefined) {
+		const snapshot = await context.session.getSnapshot();
+		if (snapshot.leafId !== plan.a2Resume.bootstrapLeafId) {
+			throw new Error("resumed A2 session is not at run plan bootstrap_leaf_id");
+		}
+		await record(plan, "bootstrap_resumed", {
+			agent_id: context.agentId,
+			resume_session_ref: plan.a2Resume.sessionRef,
+			leaf_id: snapshot.leafId,
+		});
+		return snapshot.leafId;
+	}
+
 	await prepareBootstrap(plan);
 	const bootstrap = await context.actions.prompt(BOOTSTRAP_PROMPT, promptOptions());
-	const bootstrapLeafId = await context.session.getLeafId();
-	if (bootstrap.kind !== "completed" || bootstrapLeafId === null) {
-		throw new Error("A2 bootstrap did not complete with a reusable leaf");
+	const snapshot = await context.session.getSnapshot();
+	if (bootstrap.kind !== "completed" || snapshot.leafId === null) {
+		throw new Error("A2 bootstrap did not complete with a persisted reusable leaf");
 	}
 	await record(plan, "bootstrap_completed", {
 		agent_id: context.agentId,
-		leaf_id: bootstrapLeafId,
+		leaf_id: snapshot.leafId,
 		outcome: bootstrap,
 	});
+	return snapshot.leafId;
+}
 
+async function runA2(plan: RunPlan, context: ExtensionContext): Promise<void> {
+	const bootstrapLeafId = await establishA2Bootstrap(plan, context);
 	for (const caseId of plan.caseIds) {
 		await prepareCase(plan, caseId);
 		try {

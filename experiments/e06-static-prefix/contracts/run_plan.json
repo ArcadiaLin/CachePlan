@@ -16,6 +16,26 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": { "type": "string", "pattern": "^[a-z]+(?:-[a-z]+)*-[0-9]+$" }
+    },
+    "resume_session_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A2 only. Persisted WIDI root session reference to resume from bootstrap_leaf_id."
+    },
+    "bootstrap_leaf_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A2 only. Immutable bootstrap leaf in resume_session_ref."
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["resume_session_ref"] },
+      "then": {
+        "properties": { "arm": { "const": "a2" } },
+        "required": ["bootstrap_leaf_id"]
+      },
+      "else": { "not": { "required": ["bootstrap_leaf_id"] } }
+    }
+  ]
 }

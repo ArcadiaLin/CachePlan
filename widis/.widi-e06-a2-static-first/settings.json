@@ -4,6 +4,7 @@
   "defaultProfile": "p4a-e06",
   "enabledProfiles": ["p4a-e06"],
   "enabledExtensions": ["e06-fixture-tools", "e06-execution-prefix"],
+  "sessionDir": "runs",
   "compaction": {
     "enabled": false
   }

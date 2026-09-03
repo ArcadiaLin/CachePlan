@@ -34,9 +34,10 @@ coverage/
 .env.*
 !.env.example
 
-# WIDI 变体的凭据。settings/profiles/extensions 要跟踪（它们是实验配置的一部分），
-# auth.json 是本机登录态，任何变体的都不进版本管理。
+# WIDI 变体的凭据与持久运行记录。settings/profiles/extensions 要跟踪（它们是实验配置的一部分），
+# auth.json 是本机登录态，runs/ 是可复现但不应入库的本地 session/log 产物。
 widis/*/auth.json
+widis/*/runs/
 
 # Python environments, bytecode, test, type-checker, and build caches.
 .venv/

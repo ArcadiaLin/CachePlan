@@ -23,6 +23,8 @@ esac
 
 plan_arm="$(jq -er '.arm' "$plan")"
 run_root="$(jq -er '.run_root' "$plan")"
+has_resume="$(jq -er 'has("resume_session_ref")' "$plan")"
+has_bootstrap_leaf="$(jq -er 'has("bootstrap_leaf_id")' "$plan")"
 if [[ "$plan_arm" != "$variant" ]]; then
 	echo "run plan arm $plan_arm does not match requested arm $variant" >&2
 	exit 2
@@ -30,6 +32,20 @@ fi
 if [[ "$run_root" != /* ]]; then
 	echo "run plan run_root must be absolute" >&2
 	exit 2
+fi
+if [[ "$has_resume" != "$has_bootstrap_leaf" ]]; then
+	echo "run plan must provide resume_session_ref and bootstrap_leaf_id together" >&2
+	exit 2
+fi
+if [[ "$has_resume" == "true" && "$variant" != "a2" ]]; then
+	echo "only A2 run plans may resume a shared root" >&2
+	exit 2
+fi
+
+run_mode=(--profile p4a-e06)
+if [[ "$has_resume" == "true" ]]; then
+	resume_session_ref="$(jq -er '.resume_session_ref | strings | select(length > 0)' "$plan")"
+	run_mode=(--resume "$resume_session_ref")
 fi
 
 mkdir -p "$run_root/active"
@@ -46,7 +62,7 @@ env \
 	"$root/packages/widi/apps/widi/src/cli.ts" \
 	--cwd "$run_root/active" \
 	--agent-dir "$agent_dir" \
-	--profile p4a-e06 \
+	"${run_mode[@]}" \
 	--extension "$root/experiments/e06-static-prefix/extensions/e06-fixture-tools" \
 	--extension "$root/experiments/e06-static-prefix/extensions/e06-execution-prefix" \
 	--mode print \
