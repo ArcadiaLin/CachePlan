@@ -23,8 +23,8 @@ esac
 
 plan_arm="$(jq -er '.arm' "$plan")"
 run_root="$(jq -er '.run_root' "$plan")"
-has_resume="$(jq -er 'has("resume_session_ref")' "$plan")"
-has_bootstrap_leaf="$(jq -er 'has("bootstrap_leaf_id")' "$plan")"
+has_resume="$(jq -r 'has("resume_session_ref")' "$plan")"
+has_bootstrap_leaf="$(jq -r 'has("bootstrap_leaf_id")' "$plan")"
 if [[ "$plan_arm" != "$variant" ]]; then
 	echo "run plan arm $plan_arm does not match requested arm $variant" >&2
 	exit 2
