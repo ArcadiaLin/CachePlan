@@ -28,3 +28,65 @@
                   的 agentic 形态不是 P4A 的偶然工程选择。配套已编译 artifact 仓库
                   github.com/AmberLJC/ara-paperbench；代码 github.com/AmberLJC/Agent-Native-Research-Artifact。}
 }
+
+@article{2026-Helium,
+  title     = {Efficient LLM Serving for Agentic Workflows: A Data Systems Perspective},
+  author    = {Wadlom, Noppanat and Shen, Junyi and Lu, Yao},
+  journal   = {Proceedings of the ACM on Management of Data},
+  volume    = {4},
+  number    = {3},
+  articleno = {169},
+  year      = {2026},
+  url       = {https://doi.org/10.1145/3802046},
+  note      = {支撑 open-questions/Placement-of-reusable-context：在线前缀感知调度几乎无收益
+               （Table 4，LSPF 仅比随机 +1.5pp），编译期结构先验把命中率拉到 56.5%；其静态模板
+               + KV pinning 假设正是本项目动态轨迹场景的边界。笔记 docs/literature/2026-Helium.md}
+}
+
+@article{2026-CoDec,
+  title     = {CoDec: Prefix-Shared Decoding Kernel for LLMs},
+  author    = {Wang, Zhibin and Ning, Rui and Fang, Chao and Zhang, Zhonghui and Lin, Xi and
+               Ma, Shaobo and Zhou, Mo and Li, Xue and Wang, Zhongfeng and Huan, Chengying and
+               Gu, Rong and Yang, Kun and Chen, Guihai and Zhong, Sheng and Tian, Chen},
+  journal   = {Proceedings of the ACM on Management of Data},
+  volume    = {4},
+  number    = {3},
+  articleno = {151},
+  year      = {2026},
+  url       = {https://doi.org/10.1145/3802028},
+  note      = {支撑 open-questions/Placement-of-reusable-context 的代价模型：decode 侧成本是
+               kernel 相关的——共享前缀 KV 在 decode 的重复读取可被 kernel 合并，收益≈平均共享度，
+               与 prefix caching（prefill 侧）乘性叠加。笔记 docs/literature/2026-CoDec.md}
+}
+
+@article{2026-AgenticScholar,
+  title     = {AgenticScholar: Agentic Data Management with Pipeline Orchestration for Scholarly Corpora},
+  author    = {Lan, Hai and Wang, Tingting and Bao, Zhifeng and Li, Guoliang and Ji, Daomin and
+               Lee, Ge and Luo, Feng and Huang, Zi and Qiu, Hailang and Hua, Gang},
+  journal   = {Proceedings of the ACM on Management of Data},
+  volume    = {4},
+  number    = {3},
+  articleno = {131},
+  year      = {2026},
+  url       = {https://doi.org/10.1145/3802008},
+  note      = {支撑 open-questions/Necessity-of-agentic-execution：同 workload 类第三个实例，
+               预定义计划库 + 动态兜底把规划开销降 >90%（Table 8），骨干消融显示智能载体从模型
+               转移到计划与数据结构（Table 11）。缓存在计划/结果层，非 prompt/KV 层。
+               笔记 docs/literature/2026-AgenticScholar.md}
+}
+
+@article{2026-AlignedServe,
+  title     = {AlignedServe: Orchestrating Prefix-aware Batching to Build a High-throughput and
+               Computing-efficient LLM Serving System},
+  author    = {Bai, Fengyao and Zhang, Hongbin and Chen, Zhitao and Du, Jiangsu and
+               Chen, Zhiguang and Lu, Yutong},
+  journal   = {Proceedings of the ACM on Management of Data},
+  volume    = {4},
+  number    = {3},
+  articleno = {132},
+  year      = {2026},
+  url       = {https://doi.org/10.1145/3802009},
+  note      = {支撑 open-questions/Placement-of-reusable-context 的相邻工作区分：利用 KV 长度对齐
+               消除 iteration 级气泡，与前缀内容共享正交可串联；文献叙事与实验中需与前缀共享
+               一脉（Helium/KVFlow）分开陈述。笔记 docs/literature/2026-AlignedServe.md}
+}

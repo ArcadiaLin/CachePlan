@@ -10,7 +10,10 @@
 
 | citekey | Title | Relates to | Status |
 |---|---|---|---|
-| — | 尚无笔记 | — | — |
+| 2026-Helium | Efficient LLM Serving for Agentic Workflows: A Data Systems Perspective | OQ2 | read |
+| 2026-CoDec | CoDec: Prefix-Shared Decoding Kernel for LLMs | OQ2 | read |
+| 2026-AgenticScholar | AgenticScholar: Agentic Data Management with Pipeline Orchestration for Scholarly Corpora | OQ1 | read |
+| 2026-AlignedServe | AlignedServe: Orchestrating Prefix-aware Batching to Build a High-throughput and Computing-efficient LLM Serving System | OQ2 | read |
 
 `Status`：`queued`（已入库待读）/ `skimmed`（略读，够用即可）/ `read`（精读，结论可依赖）。
 
