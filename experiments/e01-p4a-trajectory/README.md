@@ -92,6 +92,7 @@ make -C ../.. lab      # 起 JupyterLab（共享 .venv，仓库根统一环境�
 |---|---|---|
 | `notebooks/00_corpus.ipynb` | s0 | 语料形状：纳入/排除、流产率、时间结构 |
 | `notebooks/01_session_classes.ipynb` | s0b + s3 | 六条划分依据，逐轴的定义与分布 |
+| `notebooks/02_trajectory.ipynb` | 宽表 | 961 份观测集上的执行轨迹 |
 
 `notebooks/nbio.py` 是共用的读入层：`load(stage)` 给逐 session 的 DataFrame，
 `summary(stage)` 给脚本已算好的聚合量，`wide()` 把 s0×s2×s3×s4 按 `sid` join 成
