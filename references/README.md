@@ -18,12 +18,12 @@ PDF、clone、数据集不入库的原因是体积与版权；元数据入库是
 一篇论文在仓库里的三个位置用同一个 **citekey** 机械绑定，不需要额外的映射表：
 
 ```
-refs.bib 中的条目名      →  chen2024promptcache
-references/papers/       →  chen2024promptcache.pdf
-docs/literature/         →  chen2024promptcache.md   （只有需要写笔记时才有）
+refs.bib 中的条目名      →  2024-ExpeL
+references/papers/       →  2024-ExpeL.pdf
+docs/literature/         →  2024-ExpeL.md   （只有需要写笔记时才有）
 ```
 
-citekey 格式：**第一作者姓氏（小写）+ 发表年份 + 一个关键词**，如 `chen2024promptcache`、`zheng2024sglang`。重复时在年份后加 `a`/`b`。
+citekey 格式：**`<年份>-<主题>`**，如 `2024-ExpeL`、`2026-CoDec`。年份取发表年份（未正式发表时取 arXiv 版本年份）；主题取论文的系统名 / 方法名，没有系统名时用一两个关键词。**不带作者姓氏**。重复时在主题后加短后缀区分。
 
 ## 精读稿的暂存位置
 
@@ -46,7 +46,7 @@ references/papers/<citekey>/evidence_map.md    # 证据地图
 除标准字段外，每个条目补一条 `note` 字段，写明它在本项目中的用途（对应哪个问题），一句话即可：
 
 ```bibtex
-@inproceedings{chen2024promptcache,
+@inproceedings{2024-PromptCache,
   title     = {...},
   author    = {...},
   booktitle = {...},

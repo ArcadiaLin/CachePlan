@@ -45,7 +45,7 @@
 
 - E02（四级 autonomy 对比）保留、设计不变，排在 E06 之后；已非阻塞项。E03 的干预 (a) 是 E06 在 micro-benchmark 上的缩小版，其"收益方向正确但绝对量可忽略"的预期需按 OQ2 重估——若 skill 确实落在跨 run 分叉点之后，重排的绝对量未必可忽略。
 
-- 待办：`refs.bib` 在 prompt/KV cache 系统方向上**仍然完全为空**。三篇现有文献（含 `liu2026ara`）无一是 cache 方向——它们在 cache 上的共同沉默是 C07 的证据，但不能替代主线文献工作。这是 related work 层最大的缺口，优先级高于两篇 staged 精读稿的评审。
+- 待办：`refs.bib` 在 prompt/KV cache 系统方向上**仍然完全为空**。三篇现有文献（含 `2026-ARA`）无一是 cache 方向——它们在 cache 上的共同沉默是 C07 的证据，但不能替代主线文献工作。这是 related work 层最大的缺口，优先级高于两篇 staged 精读稿的评审。
 - 待办：`experiments/p4a/src/extract/layer4_v2/` 的处置（见下方 Experiments 节）。随 E02 降级，此项也不再紧急。
 
 ## Open Questions
@@ -53,7 +53,7 @@
 | Question | Status | Doc | Refs | Resolution |
 |---|---|---|---|---|
 | OQ2：可复用上下文（Skill）应该放在哪？"全部写进 system prompt" 是不是已经够用？ | **OPEN** | [open-questions/Placement-of-reusable-context.md](open-questions/Placement-of-reusable-context.md) | — | 2026-09-02 提出。本项目**必须先打败的第一个 baseline**：若每个 run 都必用同一份 Skill，静态注入天然形成稳定可缓存前缀，还省掉读 skill 的 step 与轨迹不稳定。已核实 P4A 现状是两跳动态加载、且第一个 assistant 动作即含论文 id，故 skill 落在跨 run 分叉点之后。**2026-09-02 更新**：E01 s4 已给出三分解中的静态前缀一段——最大区块内跨 run 共享前缀 20,652 tok（占首步 93.3%），把时间戳与工作目录树归一后可达 21,944 tok（99.1%），即 A2 布局的天花板已经很接近现状，静态前缀本身没剩多少空间。**但另两段（每输入私有内容 / 生成轨迹）尚未拆**，仍无法定价。s4 另有一个与本问题直接相关的发现：真正的大头不在首步前缀（约 0.11% prefill），而在会话内注入导致的回溯改写（3.65%），后者与 skill 放在哪里无关，A2 布局解决不了。贡献须报告为 $A3-A2$（对静态布局强 baseline）而非 $A3-A0$。 |
-| OQ1：Is agentic execution necessary for data-intensive workloads (P4A)? | **DEFERRED** | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | `liu2026ara` | 2026-09-01：**未被回答，被降级。** 该问题原本挡路的理由是"可能在优化一种没人真在用的执行方式"。`liu2026ara` 的 ARA Compiler（§4）是本 workload 类别的第二个独立实例，由第三方以 **agent skill** 形态部署——~482 行自然语言规格载入 coding agent 上下文，Seal Level 1 在环校验迭代 2–3 轮，23+7 篇输入上首轮通过率 0/30。研究对象的真实性因此不再依赖本问题的答案，strawman 风险排除。**"需要多少 agency"仍完全开放**：RW03 未做 autonomy-level 消融。E02 保留、设计不变，但从阻塞项降为设计余量的探究。见 `ara/logic/claims.md` C12。 |
+| OQ1：Is agentic execution necessary for data-intensive workloads (P4A)? | **DEFERRED** | [open-questions/Necessity-of-agentic-execution.md](open-questions/Necessity-of-agentic-execution.md) | `2026-ARA` | 2026-09-01：**未被回答，被降级。** 该问题原本挡路的理由是"可能在优化一种没人真在用的执行方式"。`2026-ARA` 的 ARA Compiler（§4）是本 workload 类别的第二个独立实例，由第三方以 **agent skill** 形态部署——~482 行自然语言规格载入 coding agent 上下文，Seal Level 1 在环校验迭代 2–3 轮，23+7 篇输入上首轮通过率 0/30。研究对象的真实性因此不再依赖本问题的答案，strawman 风险排除。**"需要多少 agency"仍完全开放**：RW03 未做 autonomy-level 消融。E02 保留、设计不变，但从阻塞项降为设计余量的探究。见 `ara/logic/claims.md` C12。 |
 
 `Refs` 列填支撑该问题的文献 citekey（见 [Literature](#literature)）；一个问题在有文献支撑之前被 RESOLVED，应当在 Resolution 里说明结论是纯实验得出的。
 
@@ -69,7 +69,7 @@
 |---|---|---|---|
 | workload 定名为 data-intensive / data-processing agent workflows | 2026-08-31 | [`AGENTS.md` → Workload Under Study](../AGENTS.md#workload-under-study)；ara 节点 `n8-workload-naming` | 跨 run 的固定过程 + 大量重复才是 cache 复用空间的来源；按任务语义命名指向错误的属性 |
 | P4A 定位为起点而非实验；确认本项目零实验 | 2026-09-01 | 上方 Current direction；ara 节点 `n17-repositioning` | 把 P4A 的工程记录编号进 E-series 并标「已完成」会让研究记录看起来已有实验产出，是失真的。继承观测与本项目实验的证据地位不同，必须分开 |
-| OQ「agentic execution 是否必要」降级为 DEFERRED，不再阻塞主线 | 2026-09-01 | 上方 Open Questions 表；`ara/logic/claims.md` C12；ara 节点 `n19-oq1-deferred` | 该 OQ 的阻塞力来自 strawman 风险（优化一种没人真在用的执行方式）。`liu2026ara` 提供了同类 workload 的第二个独立实例且部署形态就是 agent，风险排除。必要性问题本身仍未回答，故记 DEFERRED 而非 RESOLVED |
+| OQ「agentic execution 是否必要」降级为 DEFERRED，不再阻塞主线 | 2026-09-01 | 上方 Open Questions 表；`ara/logic/claims.md` C12；ara 节点 `n19-oq1-deferred` | 该 OQ 的阻塞力来自 strawman 风险（优化一种没人真在用的执行方式）。`2026-ARA` 提供了同类 workload 的第二个独立实例且部署形态就是 agent，风险排除。必要性问题本身仍未回答，故记 DEFERRED 而非 RESOLVED |
 
 ## Experiments
 
@@ -90,4 +90,4 @@
 - 文献元数据（唯一来源）：[`../references/refs.bib`](../references/refs.bib)
 - PDF 等外部材料：`references/papers/`（gitignored，靠 `refs.bib` 里的 url 取回）
 
-**已入库**：`liu2026ara`（The Last Human-Written Paper: Agent-Native Research Artifacts, arXiv:2604.24658v3）。支撑 OQ1 的降级与 C12。判断记在 [`ara/logic/related_work.md`](../ara/logic/related_work.md) 的 RW03；尚未在 `docs/literature/` 下单独立笔记——按该目录的规范，笔记只在需要展开判断时才写，当前 RW03 已足够。
+**已入库**：`2026-ARA`（The Last Human-Written Paper: Agent-Native Research Artifacts, arXiv:2604.24658v3）。支撑 OQ1 的降级与 C12。判断记在 [`ara/logic/related_work.md`](../ara/logic/related_work.md) 的 RW03；尚未在 `docs/literature/` 下单独立笔记——按该目录的规范，笔记只在需要展开判断时才写，当前 RW03 已足够。
