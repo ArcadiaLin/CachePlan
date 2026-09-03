@@ -1,0 +1,13 @@
+[project]
+name = "cacheplan-e06"
+version = "0.1.0"
+description = "E06: execution-level prompt-prefix reuse on frozen P4A fixtures"
+requires-python = ">=3.12,<3.14"
+
+# E06 的 fixture 准备脚本只依赖标准库。WIDI runtime 与 TypeScript extension
+# 保持在 packages/widi，不作为 Python 实验依赖；这条边界由 make verify-stdlib
+# 在隔离 uv 环境中执行真实准备流水线来证明。
+dependencies = []
+
+[tool.uv]
+package = false

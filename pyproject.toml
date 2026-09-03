@@ -21,10 +21,12 @@ package = false                  # 根只是锚点，不构建、不安装
 default-groups = ["notebook"]    # 一次 `uv sync` 就得到完整开发环境
 
 [tool.uv.workspace]
-members = ["experiments/e01-p4a-trajectory"]
+members = [
+    "experiments/e01-p4a-trajectory",
+    "experiments/e06-static-prefix",
+]
 exclude = [
     "experiments/p4a",             # 历史项目，vllm/mineru 版本与主线冲突，冻结
-    "experiments/e06-static-prefix",  # 待其自身落定后补 pyproject 再并入
     "packages/*",                  # TypeScript
     "widis/*",                     # WIDI 变体配置，非 Python
 ]

@@ -52,7 +52,12 @@ def validate_jsonl(path: Path) -> None:
 
 
 def relative(path: Path) -> str:
-    return path.relative_to(REPO_ROOT).as_posix()
+    # 产物目录允许落在仓库之外 —— `make verify-stdlib` 就把全部派生产物导向临时
+    # 目录，以免自检改写 data/processed/e06/。此时记绝对路径，不崩。
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def fixture_bundle(paper_id: str) -> dict[str, str]:

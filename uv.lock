@@ -6,6 +6,7 @@ requires-python = ">=3.12, <3.14"
 members = [
     "cacheplan",
     "cacheplan-e01",
+    "cacheplan-e06",
 ]
 
 [[package]]
@@ -185,6 +186,11 @@ requires-dist = [
     { name = "tokenizers", marker = "extra == 'render'", specifier = ">=0.20,<0.23" },
 ]
 provides-extras = ["render"]
+
+[[package]]
+name = "cacheplan-e06"
+version = "0.1.0"
+source = { virtual = "experiments/e06-static-prefix" }
 
 [[package]]
 name = "certifi"
