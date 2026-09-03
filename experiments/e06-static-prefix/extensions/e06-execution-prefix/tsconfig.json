@@ -1,0 +1,12 @@
+{
+	"extends": "../../../../packages/widi/tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"paths": {
+			"@arcadialin/agent-core": ["../../../../packages/widi/packages/agent/src/index.ts"],
+			"@arcadialin/agent-core/node": ["../../../../packages/widi/packages/agent/src/node.ts"],
+			"@arcadialin/agent-core/*": ["../../../../packages/widi/packages/agent/src/*.ts"]
+		}
+	},
+	"include": ["**/*.ts"]
+}

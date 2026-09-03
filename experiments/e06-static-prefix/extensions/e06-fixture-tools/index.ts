@@ -28,6 +28,12 @@ async function assertExistingPath(cwd: string, rawPath: string, allowedRoot: str
 	if (!isInside(root, target)) throw new Error(`E06 fixture policy forbids access outside ${allowedRoot}: ${rawPath}`);
 }
 
+async function assertReadablePath(cwd: string, rawPath: string): Promise<void> {
+	const target = resolve(cwd, rawPath);
+	if (target === resolve(cwd, "procedure/SKILL.md")) return;
+	await assertExistingPath(cwd, rawPath, "input");
+}
+
 async function assertJudgmentPath(cwd: string, rawPath: string): Promise<void> {
 	const expected = resolve(cwd, JUDGMENT_PATH);
 	const target = resolve(cwd, rawPath);
@@ -219,7 +225,7 @@ const extension: ExtensionDefinition = {
 		api.patchTool("read", {
 			aroundExecute: async (next, toolCallId, params, context) => {
 				const path = pathArgument(params, "read");
-				await assertExistingPath(context.workspace.cwd, path, "input");
+				await assertReadablePath(context.workspace.cwd, path);
 				return await next(toolCallId, params, context);
 			},
 		});

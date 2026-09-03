@@ -30,7 +30,7 @@ P4A 的用途受以下边界约束：
 
 `packages/widi/` 是本项目唯一的 WIDI runtime submodule。它是可演化的个人项目：需要新的 runtime 行为时，在 WIDI 仓库中提交该变更，再由父仓库更新 `packages/widi` 的 gitlink。每次实验运行都必须记录该 gitlink revision；同一 E06 对比中的所有 arm 必须使用完全相同的 revision。
 
-目标配置变体为：
+目标配置变体由 `launch.sh` 选择：
 
 ```text
 packages/
@@ -38,23 +38,22 @@ packages/
 
 widis/
 ├── .widi-e06-a0-dynamic/
-├── .widi-e06-a1-static-knowledge/
-└── .widi-e06-a2-execution-prefix/
+├── .widi-e06-a1-naive/                     # A1 static-knowledge arm
+└── .widi-e06-a2-static-first/              # A2 execution-prefix arm
 ```
 
-这些目录分别拥有 settings、profile、skill、extension 配置和显式启动命令，但共享同一份 `packages/widi/` runtime。当前历史命名 `.widi-e06-a1-naive` 与 `.widi-e06-a2-static-first` 对应已废弃设计；在本设计落地时必须干净重命名，不能保留为别名。
-
+后两个目录保留历史文件名，但不再表达实验语义；`launch.sh` 将显式 arm 参数传给 controller，并要求它与 run plan 的 `arm` 一致。它们不是可互换别名，也不会通过 profile、工具或默认 agent-dir 隐式选择。
 任何 WIDI runtime 修改都是另一条消融轴；比较两个 revision 时，对每个 revision 分别完整运行 A0/A1/A2，并以 gitlink revision 区分结果。不得在单次 A0/A1/A2 对比中混用 WIDI revision。
 
 ## 3. 处理臂
 
-三臂共享 provider、模型、WIDI revision、tokenizer/chat template、工具 schema、fixture、case 顺序和单 agent protocol。A0 与 A2 使用字节完全相同的 generic system prompt；A1 唯一额外内容是冻结的 skill knowledge。
+三臂共享 provider、模型、WIDI revision、tokenizer/chat template、工具 schema、fixture、case 顺序和单 agent protocol。A0 与 A2 使用字节完全相同的 generic system prompt；A1 仅在其后追加对 canonical Skill 的冻结摘要。
 
 | Arm | Agent dir | 可复用 context strategy | 首次 case 前的协议 |
 | --- | --- | --- | --- |
-| A0 | `.widi-e06-a0-dynamic` | 无 execution reuse；每 case 动态读 skill | 直接发送 case task，agent 自行 read/understand skill |
-| A1 | `.widi-e06-a1-static-knowledge` | static knowledge reuse | generic system prompt 加 frozen distilled skill knowledge，再发送 case task |
-| A2 | `.widi-e06-a2-execution-prefix` | execution-level prefix reuse | 一次稳定 bootstrap：agent read/understand skill；每 case 从该 prefix 追加 task |
+| A0 | `.widi-e06-a0-dynamic` | 无 execution reuse；每 case 动态读 skill | controller 创建 fresh agent；agent 读取 skill 后执行 case |
+| A1 | `.widi-e06-a1-naive` | static knowledge reuse | controller 创建 fresh agent；generic system prompt 追加 skill 摘要后执行 case |
+| A2 | `.widi-e06-a2-static-first` | execution-level prefix reuse | 一个 agent 完成稳定 bootstrap；每 case 从该 prefix 追加相同 task |
 
 ### A0 — Dynamic loading
 
@@ -65,17 +64,17 @@ tools
 → agent: read skill and execute case
 ```
 
-每个 run 都重新读取并理解 skill。case identity、fixture 路径和任务要求从首个 user message 起就不同；除了更早的通用 tools/system 前缀，不复用此前 run 的 execution context。
+每个 case 都由 fresh agent 重新读取并理解 canonical Skill。controller 对每 case 切换独立的 fixture 副本；除更早的通用 tools/system 前缀外，不复用此前 case 的 execution context。
 
 ### A1 — Static knowledge reuse
 
 ```text
 tools
-→ generic system prompt + frozen distilled skill knowledge
+→ generic system prompt + frozen Skill summary
 → user: case task
 ```
 
-A1 不执行 bootstrap trajectory。skill 中可复用知识以单一、版本化的 distilled body 融入 system prompt，成为跨 case 的静态 prefix。它回答“仅静态注入 reusable knowledge 是否已足够”，不是与 A0/A2 system prompt 相同的臂。
+A1 不执行 bootstrap trajectory。`static-knowledge.md` 是 canonical Skill 的冻结操作摘要，作为静态 section 追加到 system prompt。它表示常见数据处理工作流中“将 procedure 总结为 system prompt”的处理臂，不与 A0/A2 的 generic system prompt 混淆。
 
 ### A2 — Execution-level prefix reuse
 
@@ -95,41 +94,40 @@ tools
 
 ## 4. Agent-dir 与配置不变量
 
-每个 arm 的 agent dir 采用相同骨架：
+每个 arm 的 agent dir 保持相同骨架：
 
 ```text
 widis/.widi-e06-a*/
 ├── settings.json
-├── profiles/
-│   └── p4a-e06.md
-├── extensions/                     # 或启动封装显式引用共同源码
-└── e06-arm.json                    # arm id、knowledge/prefix 策略与 digest
+└── profiles/
+    └── p4a-e06.md
 ```
 
 共同不变量：
 
-- canonical skill、A1 distilled skill knowledge、A2 bootstrap request 和 `procedure/SKILL.md` 都是版本化输入，并记录 SHA-256。
-- 三臂 profile body 必须字节相同。A0/A2 generic system prompt 必须字节相同；A1 仅由共同 controller 追加已记录、单独 hash 的 static-knowledge section。
-- 每个 run manifest 记录 runtime gitlink、profile、skill、bootstrap template、extension、tool schema、fixture manifest 的 digest。
+- canonical Skill、A1 `static-knowledge.md`、A2 bootstrap request、run plan 和 fixture manifest 都是实验输入；run manifest 记录实际路径、运行时 gitlink、profile、extension、tool schema 与 case 顺序。
+- 三臂 profile body 必须字节相同。A0/A2 generic system prompt 必须字节相同；仅 A1 的 controller Core half 追加 static-knowledge section。
 - profile 默认设置 `projectContext: false`、`includeCwd: false`、`skillsListing: false`。任何例外必须成为显式实验变量；工作目录、项目 context 或自动 skill listing 不得暗中进入 system prompt。
-- 单 agent、禁止 delegation。A2 在一个 live agent session 中保存 bootstrap leaf；每个 case prompt 完成后使用公开 `navigateTree(bootstrapLeafId)` 回到该 leaf。不存在 child agent 或并行模型执行。
-- 所有启动命令必须显式传入对应 `--agent-dir`；不得回退到 WIDI runtime submodule 内的 `.widi/`。
+- A0/A1 的 fresh case agent 与 A2 的 bootstrap agent 均不允许 delegation；controller 本身不向模型暴露工具。A2 每个 case prompt 完成后使用公开 `navigateTree(bootstrapLeafId)` 回到同一 leaf。
+- 所有正式启动都经 `launch.sh <arm> <run-plan.json>`，显式传入 `--agent-dir`、`--cwd`、两份共同 extension、`--mode print` 和 `--emit`；不得回退到 WIDI runtime submodule 内的 `.widi/` 或 TUI。
 
 ## 5. 共同 extension 与执行控制器
 
-所有臂加载相同 extension 集与相同版本；任何 arm-specific controller 行为都必须由显式 `e06-arm.json` 驱动，不能通过增减 model-visible tool 实现。
+所有臂加载相同 extension 集与相同版本；arm-specific 行为仅由 `launch.sh` 传入的 `E06_ARM` 与 run plan 的同名字段选择，不能通过增减 model-visible tool 实现。
 
 ### `e06-execution-prefix`
 
-负责 E06 的运行协议，不注册业务工具、不修改 case 内容，也不把状态写入 agent session：
+这是纯 Core extension；它由 WIDI print mode 在 root agent 创建后接收 `e06-execution-prefix:run` 事件。`contracts/run_plan.json` 指定 arm、case 顺序、fixture root、canonical Skill 和本次 run root。`launch.sh` 为该 run 提前创建固定的 `run_root/active` cwd。
 
-- A0：创建 fresh agent，发送该 case 的 dynamic-loading user prompt。
-- A1：创建 fresh agent；共同 controller 按 `e06-arm.json` 在 generic system prompt 后追加 frozen static knowledge，再发送该 case prompt。
-- A2：创建一个 fresh agent，完成一次 bootstrap 后记录其 leaf entry id；逐 case 在同一 agent 上 prompt，记录结果，再导航回 bootstrap leaf。
+- 每次 case 前，controller 将对应 fixture 的只读 `input/` 复制到 `active/input/`，创建空的 `active/output/`，并将 canonical Skill 复制为 `active/procedure/SKILL.md`。case 完成后，它将 `active/output/` 归档到 `run_root/cases/<case-id>/output/`；原 fixture 永不写入。
+- A0：controller 创建 fresh agent，发送要求先读取 `procedure/SKILL.md` 的 task。
+- A1：controller 创建 fresh agent；该 agent 的 Core half 已将 `static-knowledge.md` 追加到 generic system prompt，再发送 case task。
+- A2：root agent 先收到固定 bootstrap task，并自行 `read("procedure/SKILL.md")`；controller 记录 bootstrap leaf id。它在每次相同的 case task 前切换 active fixture，case 结束后归档 output 并 `navigateTree(bootstrapLeafId)`。
 
-控制器必须将 bootstrap transcript 的消息顺序、assistant tool call、tool result、assistant completion 和每段 token digest 写入 session 外的 manifest。不得用 `context.session.appendEntry()` 保存控制信息；那会污染随后发送给模型的 prefix。
+controller 不注册业务工具，不写 `context.session.appendEntry()`，不把 cursor、leaf id 或 case result 放进模型上下文。它将 lifecycle、prompt outcome、A2 leaf 回退和失败写入 session 外的 `run-manifest.jsonl`，并以 extension event 让 print-mode stdout 输出可消费的完成或失败事件。A2 的实际 cache hit 仍须在 smoke 验收中由 telemetry 与 vLLM 证明；controller 存在本身不是该证明。
 
-最小复现已验证公开 `getLeafId()`、`prompt()` 与 `navigateTree()` 可在 `persist: false` 的单 agent session 中复用 bootstrap prefix，并获得 vLLM `cacheRead`。E06 只要求这一 batch 内、进程存活期间的复用；每次 cache reset 或进程重启都重新构造 bootstrap。跨进程外部 template hydration 不是当前 E06 的前提，不能依赖 runtime internals。
+`launch.sh` 同时将 print-mode JSONL 镜像到 `run_root/print.jsonl`；若 controller 发出 `e06-execution-prefix:failed`，wrapper 即以非零状态退出，即使 WIDI host 仅将 extension handler 异常报告为 diagnostic。
+
 
 ### `e06-fixture-tools`
 
@@ -150,7 +148,7 @@ widis/.widi-e06-a*/
 run_id, batch_id, arm, case_id, request_index, phase,
 prompt_tokens, cached_tokens, uncached_tokens, output_tokens,
 ttft_ms, request_duration_ms, finish_reason,
-tool_name, tool_result_size, prefix_template_digest
+tool_name, tool_result_size, prefix_template_version
 ```
 
 WIDI profile 的 `tools` frontmatter 在启动时声明可用工具；运行中不得调用 `context.actions.setTools()` 或 `setActiveTools()`，否则后续请求的 tool schema 会漂移。
@@ -210,24 +208,29 @@ repair 不与 extract 混入本轮：两者输入形态、工具行为与 qualit
 3. 长轨迹；
 4. 高资源歧义或高 validation/repair 压力。
 
-每个 case 采用固定目录：
+源 fixture 是只读输入：
 
 ```text
-fixtures/<case-id>/
-├── case.json                         # paper_id、来源 session 与轨迹摘要
-├── procedure/
-│   └── SKILL.md                       # A2 bootstrap 读取的 canonical skill 副本
-├── input/
-│   ├── paper.md
-│   ├── input_bundle.json
-│   ├── judgment_contract.json
-│   ├── references.jsonl
-│   ├── citation_contexts.jsonl
-│   └── evidence/
-├── expected/
-│   └── agent_judgment.json            # 历史恢复的比较基线，不对 agent 可读
-└── output/                            # 每次 run 使用独立副本
+data/processed/e06/
+├── fixtures/<case-id>/
+│   ├── case.json                       # paper_id、来源 session 与轨迹摘要
+│   └── input/                          # paper、contract、references、contexts、evidence
+└── expected/<case-id>.json             # 历史恢复比较基线；不对 agent 可读
 ```
+
+每次 run 的 controller 物化自己的 active workspace：
+
+```text
+<run-root>/
+├── active/
+│   ├── procedure/SKILL.md              # canonical Skill 的本次副本
+│   ├── input/                          # 当前 case 的独立副本
+│   └── output/                         # 当前 case 的空输出目录
+├── cases/<case-id>/output/             # case 完成后归档
+└── run-manifest.jsonl
+```
+
+controller 在 case 间清除并重建 `active/input/` 与 `active/output/`；A2 只保留 session 的 bootstrap leaf，绝不保留上一 case 的文件内容、模型 context 或输出。
 
 旧 agent 的输出不能未经审查直接作为 gold。质量至少包括既有 P4A validator 的 schema/consistency pass，以及对 resource precision、recall 和关键字段的盲审或独立 adjudication。任何无法恢复输入或质量目标的典型 session 都应剔除。
 
@@ -285,14 +288,14 @@ $$
 
 ## 10. 实施与验收顺序
 
-1. 冻结本设计；不实现旧的 skill-placement-only `e06-layout` experiment。
-2. 将 agent-dir 命名、A1 static knowledge 输入、A2 bootstrap request 和 canonical `procedure/SKILL.md` 固定并 hash。
-3. 以最小复现验证 WIDI 的公开 `getLeafId()` / `prompt()` / `navigateTree()` 路径能让 A2 case request 精确重用 bootstrap token prefix；每次 cache reset 后重新 bootstrap。
-4. 实现共同的 execution-prefix controller、fixture-tools、telemetry extension，并使三臂 model-visible tool schema 相同。
+1. 固定 canonical Skill、`static-knowledge.md`、A2 bootstrap request、run plan 与 active-workspace layout；不实现旧的 skill-placement-only `e06-layout` experiment。
+2. 经 `launch.sh <arm> <run-plan.json>` 启动 print mode。controller 必须只接受 arm 一致的 plan，创建 `run_root/active`，将每个 case 的 input/output 与归档彼此隔离，并写入 session 外的 run manifest。
+3. 以一个 smoke case 最小复现公开 `getLeafId()` / `prompt()` / `navigateTree()` 路径：A2 必须完成 bootstrap，记录 leaf，并在 case 后成功回退；每次 cache reset 后重新 bootstrap。
+4. 实现 telemetry extension，使三臂 model-visible tool schema 相同，并将 provider 的 cache/token/latency 事实关联到 controller 的 run manifest。
 5. 在 4 个 development case 上验收：
-   - 三臂 tool schema hash 相同；
-   - A0/A2 generic system prompt hash 相同；A1 仅多出已记录的 static-knowledge section；
-   - 每个 A2 case prompt 前都导航回同一 bootstrap leaf，且 bootstrap transcript 与 prefix token digest 相同；
+   - 三臂有效 tool schema 与顺序相同；
+   - A0/A2 generic system prompt 相同；A1 仅多出 `static-knowledge.md`；
+   - 每个 A2 case prompt 前都导航回同一 bootstrap leaf，且 bootstrap transcript 与共享 prefix token 序列相同；
    - vLLM `cached_tokens` 与 server metrics 一致，且 A2 case 请求实际命中 bootstrap prefix；
    - 每个 run 可生成并验证输出，且 historical expected 不进入 agent 可读路径。
-6. 冻结 fixture 与 manifest，执行三 batch、20-case evaluation；报告 bootstrap-inclusive 成本。
+6. 冻结 fixture、run plan 与 controller version，执行三 batch、20-case evaluation；报告 bootstrap-inclusive 成本。
