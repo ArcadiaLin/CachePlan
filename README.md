@@ -16,6 +16,10 @@ make verify    # 仓库级自检：主线阶段在无第三方依赖的隔离环
 本机的 `.git/config`（不进版本管理），哪些文件走过滤器写在跟踪的 `.gitattributes`。
 两边缺一不可，忘了装会导致带 cell 输出的 notebook 被提交；补救入口是 `make hooks`。
 
+`make hooks` 还会设 `filter.nbstripout.extrakeys`，额外剥掉 `metadata.language_info.version`
+——JupyterLab 会把本机的 Python 补丁版号写进 notebook，换机器就产生一行无意义的 diff。
+这一项必须写进 git config，命令行的 `--extra-keys` 只对当次调用生效。
+
 仓库根是一个 uv workspace，主线实验都是它的成员，共用一份 `uv.lock` 和一个 `.venv`。
 `experiments/p4a`（历史项目，依赖冲突）与所有 TypeScript 目录不在其中。约定与理由见
 [`AGENTS.md`](AGENTS.md) 的 *Environment and Notebooks* 一节。
