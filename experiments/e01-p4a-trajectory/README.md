@@ -49,7 +49,12 @@ data/raw/kimi-p4a-sessions/.kimi-code/sessions/
 | s2 | `s2_session_stats.py` | 放大倍数的全量分布与分层归因 | 已实现 |
 | s3 | `s3_render.py` | 复现每步真正进入模型的 token 序列 | 第一步已实现：还原器自检 + 工具集判定 |
 | s4 | `s4_divergence.py` | 前缀在哪儿断、断掉多少 token（会话内注入 / 跨 run 首步） | 已实现 |
-| s5 | `s5_behavior.py` | 行为统计：被赋予的 agency 有多少真的被行使 | 未实现 |
+| n0 | `n0_fix_timestamp.py` | 归一化 961 份观测集：固定时间戳 | 已实现 |
+
+s5（行为统计）已从推进路线里去掉，见 `docs/experiments/e01-p4a-trajectory.md`。
+n0 不带 s 前缀是因为它不产统计量，产的是一份**归一化语料**：与原始逐字节相同，
+只把 systemPrompt 里那个每 run 必变的时间戳换成常量，让 961 份的前缀逐字相同。
+它接在 s0 / s0b / s3 之后（要用它们的类标签选观测集），故不在 `make all` 里。
 
 s1 已给出结论且不会再变：全语料 `inputCacheRead` / `inputCacheCreation` 恒为 0，
 成因是 vLLM 0.21.0 的上报缺陷而非缓存未命中（服务端实测命中率 86.5%）。
@@ -65,6 +70,7 @@ cd experiments/e01-p4a-trajectory
 make setup         # 委派给仓库根：建共享 .venv 并装 git 过滤器
 make all           # s0 -> s0b -> s1 -> s2
 make s0b           # systemPrompt 分块与类标签（约 10 秒）
+make n0            # 归一化观测集：固定时间戳（约 2 秒，写 330MB）
 make smoke         # 只扫前 50 份，改完代码后的快速自检
 make verify        # 带来源 md5 核算（约 350MB，数秒）
 make verify-stdlib # 在无第三方依赖的隔离环境里跑主线，不动共享 .venv 也不动产物
@@ -92,7 +98,7 @@ make -C ../.. lab      # 起 JupyterLab（共享 .venv，仓库根统一环境�
 |---|---|---|
 | `notebooks/00_corpus.ipynb` | s0 | 语料形状：纳入/排除、流产率、时间结构 |
 | `notebooks/01_session_classes.ipynb` | s0b + s3 | 六条划分依据，逐轴的定义与分布 |
-| `notebooks/02_trajectory.ipynb` | 宽表 | 961 份观测集上的执行轨迹 |
+| `notebooks/02_trajectory.ipynb` | 宽表 + n0 | 961 份观测集上的执行轨迹 |
 
 `notebooks/nbio.py` 是共用的读入层：`load(stage)` 给逐 session 的 DataFrame，
 `summary(stage)` 给脚本已算好的聚合量，`wide()` 把 s0×s2×s3×s4 按 `sid` join 成
@@ -117,7 +123,7 @@ Notebooks）。环境只有一个：根目录的 `.venv`，由根的 `make setup
 `vllm<0.22.0` 和整套 mineru，与本项目给后续实验定的 vLLM 0.22.1 装不进同一个
 环境，而且它对我们是只读的历史项目。
 
-**主线阶段（s0–s2、s4–s5）依然只用标准库**，`pyproject.toml` 里 `dependencies = []`。
+**主线阶段（s0–s2、s4、n0）依然只用标准库**，`pyproject.toml` 里 `dependencies = []`。
 这是刻意的：整条流水线必须能在没有网络、没有模型下载的机器上原样复现。统计量
 宁可自己写十几行（见 `stats.py`），也不为分位数引入 numpy/pandas。
 

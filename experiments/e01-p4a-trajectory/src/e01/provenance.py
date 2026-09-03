@@ -93,13 +93,16 @@ def header(script: str, params: dict | None = None, verify_source: bool = False)
     }
 
 
-def open_out(name: str) -> Path:
-    OUT_ROOT.mkdir(parents=True, exist_ok=True)
-    return OUT_ROOT / name
+def open_out(name: str, root: Path | None = None) -> Path:
+    """产物路径。`root` 只在自检时用到：把局部结果写去临时目录，
+    避免 `--limit` 跑出来的东西覆盖全量产物。"""
+    root = root or OUT_ROOT
+    root.mkdir(parents=True, exist_ok=True)
+    return root / name
 
 
-def write_jsonl(name: str, header_obj: dict, rows) -> Path:
-    path = open_out(name)
+def write_jsonl(name: str, header_obj: dict, rows, root: Path | None = None) -> Path:
+    path = open_out(name, root)
     with open(path, "w", encoding="utf-8") as f:
         f.write(json.dumps(header_obj, ensure_ascii=False) + "\n")
         for r in rows:
@@ -107,8 +110,8 @@ def write_jsonl(name: str, header_obj: dict, rows) -> Path:
     return path
 
 
-def write_json(name: str, header_obj: dict, payload: dict) -> Path:
-    path = open_out(name)
+def write_json(name: str, header_obj: dict, payload: dict, root: Path | None = None) -> Path:
+    path = open_out(name, root)
     obj = dict(header_obj)
     obj.update(payload)
     with open(path, "w", encoding="utf-8") as f:

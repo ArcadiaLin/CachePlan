@@ -18,6 +18,7 @@ DataFrame，并把该产物的 `_provenance` 摆到明面上 —— 让每本 no
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +26,12 @@ import pandas as pd
 # notebooks/ -> e01-p4a-trajectory -> experiments -> 仓库根
 REPO_ROOT = Path(__file__).resolve().parents[3]
 OUT = REPO_ROOT / "data" / "processed" / "e01"
+
+# 让 notebook 能 `from e01 import ...`。notebook 不用 e01 做计算，只用它读那些
+# 本该只定义一次的常量（判据、口径），免得 notebook 里再抄一份。
+SRC = Path(__file__).resolve().parents[1] / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 # 阶段 -> (逐 session 的 jsonl, 聚合 json)。s1 只有结论，没有逐 session 表。
 STAGES: dict[str, tuple[str | None, str]] = {
@@ -34,6 +41,7 @@ STAGES: dict[str, tuple[str | None, str]] = {
     "s2": ("s2_session_stats.jsonl", "s2_summary.json"),
     "s3": ("s3_render.jsonl", "s3_render_summary.json"),
     "s4": ("s4_divergence.jsonl", "s4_summary.json"),
+    "n0": ("n0_fixed_time.jsonl", "n0_fixed_time_summary.json"),
 }
 
 

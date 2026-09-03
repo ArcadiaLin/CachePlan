@@ -2,6 +2,7 @@
 #
 #   make setup     创建 .venv 并装依赖（主线阶段无第三方依赖，仅建环境）
 #   make s0 s0b s1 s2  逐阶段
+#   make n0        归一化 961 份观测集：固定时间戳
 #   make all       s0 -> s0b -> s1 -> s2
 #   make verify    带来源 md5 核算重扫一遍全语料（慢，约 350MB）
 #   make smoke     只扫前 50 份，用于改完代码后的快速自检
@@ -10,7 +11,7 @@
 UV ?= uv
 RUN = $(UV) run
 
-.PHONY: setup setup-render s0 s0b s1 s2 s3 s4 dump all verify verify-stdlib smoke clean
+.PHONY: setup setup-render s0 s0b s1 s2 s3 s4 n0 dump all verify verify-stdlib smoke clean
 
 OUT := ../../data/processed/e01
 
@@ -49,6 +50,11 @@ dump:
 s4:
 	$(UV) run --extra render python -m e01.s4_divergence --check
 
+# 归一化：把 961 份观测集拷成一份只差时间戳的副本（约 2 秒，写 330MB）。
+# 依赖 s0 / s0b / s3 的全量产物，故不在 all 里 —— s3 需要 render extra。
+n0:
+	$(RUN) python -m e01.n0_fix_timestamp
+
 all: s0 s0b s1 s2
 
 verify:
@@ -61,12 +67,15 @@ verify:
 # 故这里用 uv 的临时隔离环境：只装 e01 自身（其 dependencies 为空），不碰共享 .venv。
 #
 # s0/s1/s2 的 --limit 写的是与全量同名的文件，直接跑会用 50 份的结果覆盖全语料产物，
-# 所以先备份后还原；trap 保证中途失败也能还原。
+# 所以先备份后还原；trap 保证中途失败也能还原。n0 走另一条路：它接 --out-root，
+# 局部结果写进第二个临时目录（不能写进 $$tmp —— 那里的东西会被还原进 OUT），
+# 且必须在 s0 被 --limit 覆盖之前跑，否则选不出观测集。
 verify-stdlib:
 	@set -e; \
-	tmp=$$(mktemp -d); \
+	tmp=$$(mktemp -d); tmp2=$$(mktemp -d); \
+	trap 'cp -a "$$tmp/." "$(OUT)/" 2>/dev/null || true; rm -rf "$$tmp" "$$tmp2"' EXIT; \
 	if [ -d "$(OUT)" ]; then cp -a "$(OUT)/." "$$tmp/" 2>/dev/null || true; fi; \
-	trap 'cp -a "$$tmp/." "$(OUT)/" 2>/dev/null || true; rm -rf "$$tmp"' EXIT; \
+	$(UV) run --isolated --no-project --with-editable . python -m e01.n0_fix_timestamp --limit 5 --out-root "$$tmp2"; \
 	$(UV) run --isolated --no-project --with-editable . python -m e01.s0_manifest --limit 50; \
 	$(UV) run --isolated --no-project --with-editable . python -m e01.s0b_prompt_blocks --limit 50; \
 	$(UV) run --isolated --no-project --with-editable . python -m e01.s1_cache_fields --limit 50; \
