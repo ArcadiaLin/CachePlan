@@ -61,12 +61,12 @@ s1 已给出结论且不会再变：全语料 `inputCacheRead` / `inputCacheCrea
 
 ```bash
 cd experiments/e01-p4a-trajectory
-make setup         # 建 .venv（s0-s2 无第三方依赖）
+make setup         # 委派给仓库根：建共享 .venv 并装 git 过滤器
 make all           # s0 -> s1 -> s2
 make smoke         # 只扫前 50 份，改完代码后的快速自检
 make verify        # 带来源 md5 核算（约 350MB，数秒）
+make verify-stdlib # 在无第三方依赖的隔离环境里跑主线，不动共享 .venv 也不动产物
 
-make setup-render  # s3 起需要的 jinja2 + tokenizers
 make s3            # 还原器自检 + 全语料工具集判定（约 3 分钟）
 make s4            # 前缀失效的两个来源各自量化（约 6 分钟）
 make dump SID=2d549e55   # 导出某份 session 的逐步上下文，供肉眼看原文
@@ -78,23 +78,34 @@ make dump SID=2d549e55   # 导出某份 session 的逐步上下文，供肉眼�
 
 ## 环境与依赖
 
-沿用 `experiments/p4a/` 的做法：**每个实验是一个自包含的 uv 项目**，有自己的
-`pyproject.toml` / `uv.lock` / `.python-version`。不共用仓库级环境，因为各实验
-的依赖差别很大（p4a 拖着 vllm 和 mineru，本实验一个都不需要），共用会让
-「复现这个实验」变成「装上另一个实验的全部依赖」。
+本实验是**仓库根 uv workspace 的成员**（见 `AGENTS.md` → Environment and
+Notebooks）。环境只有一个：根目录的 `.venv`，由根的 `make setup` 建立，锁文件
+是根的 `uv.lock`。本目录不再有自己的 `.venv` / `uv.lock`。
 
-**主线阶段（s0–s2、s4–s5）只用标准库**，`dependencies = []`。这是刻意的：
-整条流水线必须能在没有网络、没有模型下载的机器上原样复现。统计量宁可自己
-写十几行（见 `stats.py`），也不为分位数引入 numpy/pandas。
+> **不要在本目录直接跑 `uv sync`。** 那会把 e01 当作活动项目，顺手把根
+> `[dependency-groups]` 里的 jupyter / pandas 从共享环境里剪掉。用 `make setup`，
+> 它委派给根。
+
+`experiments/p4a/` 仍是独立的自包含项目，被排除在 workspace 外——它钉了
+`vllm<0.22.0` 和整套 mineru，与本项目给后续实验定的 vLLM 0.22.1 装不进同一个
+环境，而且它对我们是只读的历史项目。
+
+**主线阶段（s0–s2、s4–s5）依然只用标准库**，`pyproject.toml` 里 `dependencies = []`。
+这是刻意的：整条流水线必须能在没有网络、没有模型下载的机器上原样复现。统计量
+宁可自己写十几行（见 `stats.py`），也不为分位数引入 numpy/pandas。
+
+共享 .venv 里现在装着 tokenizers 和 pandas，所以 **`make smoke` 通过已不能证明
+这条性质**。证明它的是 `make verify-stdlib`：在 uv 的临时隔离环境里只装 e01
+自身（其依赖为空）跑 s0–s2，既不碰共享 .venv，也不覆盖已有产物（`--limit` 写的
+是与全量同名的文件，故该目标会先备份后还原）。
 
 ### 分词器（仅 s3 需要）
 
 s3 要逐字复现进入模型的 token 序列，必须用与服务端相同的 chat template 和
 分词器。**没有字符级的退化路径** —— 缺依赖时 s3 直接退出，不产出估计值：
 
-```bash
-make setup-render        # 等价于 uv sync --extra render
-```
+根的 `make setup` 已经 `--all-extras`，所以装好环境就有；`make setup-render`
+保留为 `setup` 的别名，仅为兼容既有习惯。
 
 两者都在 `references/repos/qwen3.6-35b-a3b-tokenizer/`（未纳入版本管理）。
 换模型必须换这个目录，并重跑 `make s3` 的自检。

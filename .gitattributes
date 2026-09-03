@@ -1,0 +1,13 @@
+# 提交的 notebook 不带 cell 输出。过滤器命令由每个 clone 执行一次 `make setup`
+# （内部 nbstripout --install）写进 .git/config；这里声明哪些文件走该过滤器，
+# 属于仓库约定，故进版本管理。下面三行是 nbstripout 的规范写法，改动会导致
+# `make hooks` 重复追加。
+#
+# 注意：剥输出是为了 **diff 可读**，不是实验日志的载体。日志见 AGENTS.md 的
+# Notebooks 一节。
+*.ipynb filter=nbstripout
+*.zpln filter=nbstripout
+*.ipynb diff=ipynb
+
+# 冻结快照是「某次运行的成品」，不参与 diff，按二进制对待避免噪音。
+**/notebooks/runs/*.html -diff

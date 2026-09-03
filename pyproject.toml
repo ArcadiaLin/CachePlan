@@ -1,0 +1,43 @@
+# 仓库根 = uv workspace 锚点。它本身不是一个可分发的包，只承担两件事：
+#   1. 用一份 lockfile 和一个 .venv 统一所有**主线**实验的环境；
+#   2. 声明开发者工具链（notebook 相关），且不让它进入任何实验的 dependencies。
+#
+# 为什么不是"整个项目一个环境"：`experiments/p4a` 钉了 vllm<0.22.0 和
+# mineru[core,vllm]，而 E01 给 E02/E06 定的硬约束是 vLLM 0.22.1（0.21.0 的
+# cached_tokens 上报是坏的，见 docs/experiments/e01-p4a-trajectory.md s1）。
+# 两者装不进同一个环境，且 p4a 是**被观测的历史项目**而非我们要跑的东西，
+# 故排除在 workspace 外、锁文件原样冻结。
+
+[project]
+name = "cacheplan"
+version = "0.1.0"
+description = "Cache-aware planning and execution in LLM agents — workspace root"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = []
+
+[tool.uv]
+package = false                  # 根只是锚点，不构建、不安装
+default-groups = ["notebook"]    # 一次 `uv sync` 就得到完整开发环境
+
+[tool.uv.workspace]
+members = ["experiments/e01-p4a-trajectory"]
+exclude = [
+    "experiments/p4a",             # 历史项目，vllm/mineru 版本与主线冲突，冻结
+    "experiments/e06-static-prefix",  # 待其自身落定后补 pyproject 再并入
+    "packages/*",                  # TypeScript
+    "widis/*",                     # WIDI 变体配置，非 Python
+]
+
+# PEP 735 依赖组：只对开发者生效，**不进入任何实验的 dependencies**。
+# 这条边界是刻意的 —— E01 的主线阶段声明 `dependencies = []`，必须能在没有
+# 网络、没有第三方包的机器上原样复现。验收见 experiments/e01-p4a-trajectory
+# 的 `make verify-stdlib`。
+[dependency-groups]
+notebook = [
+    "jupyterlab>=4.2,<5",
+    "nbstripout>=0.7,<0.9",
+    "pandas>=2.2,<3",
+    "pyarrow>=17,<22",
+    "plotly>=5.24,<7",
+]

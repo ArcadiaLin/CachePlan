@@ -54,6 +54,14 @@ build/
 dist/
 *.egg-info/
 
+# Jupyter. 提交的 notebook 由 nbstripout 剥掉 cell 输出（见 .gitattributes），
+# 所以 .ipynb 本身是跟踪的 —— 剥输出是为了 diff 可读，**不是**实验日志的载体。
+# 日志载体是 data/processed/ 下带 _provenance 的产物加 docs/experiments/ 的记录。
+# 某次运行本身值得被引用时，显式导出到 <experiment>/notebooks/runs/ 并提交；
+# 该目录不在根 /runs/ 的忽略范围内（那条带前导斜杠，只匹配仓库根）。
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
 # Editors and operating-system noise.
 .idea/
 .vscode/

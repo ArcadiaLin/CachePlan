@@ -93,6 +93,62 @@ default instinct to finish a request end-to-end.
 3. **One thing per turn.** Prefer finishing one step and coming back over chaining
    several. Doing more per turn is not doing better here.
 
+## Environment and Notebooks
+
+### One workspace, one lockfile
+
+The repository root is a uv workspace: one lockfile, one `.venv`, both built by
+`make setup` at the root, which also installs the repository's git filters. Run
+setup from the root, or through an experiment's own `setup` target, which
+delegates there. **Never `uv sync` from inside a member directory** — that treats
+the member as the active project and prunes the root's developer tooling out of
+the shared environment.
+
+Not every directory belongs in the workspace. Kept outside are experiments whose
+dependency stack conflicts with the mainline, projects we only read rather than
+run (their lockfiles stay frozen), and anything that is not Python. The reason
+for each exclusion is recorded next to it in the root `pyproject.toml`, not here.
+
+Two boundaries hold regardless of which experiment is being worked on:
+
+- Developer tooling lives in the root `[dependency-groups]`, never in a member's
+  `dependencies`. A member declares only what its own pipeline imports, and keeps
+  that list as narrow as the experiment truly needs.
+- An experiment declaring `dependencies = []` is asserting that its pipeline
+  reproduces on a machine with no network and no third-party packages. A shared
+  `.venv` cannot demonstrate that, so the assertion must be backed by a target
+  that runs the pipeline in a throwaway isolated environment. `make verify` at
+  the root runs those gates.
+
+When adding a Python experiment, give it a `pyproject.toml` and add it to
+`members`.
+
+### Notebooks are the exploration surface, not the pipeline
+
+The division of labour:
+
+- **Scripts + Makefile** own anything that must reproduce: corpus scans,
+  renderers, the artifacts under `data/processed/`. They run headless, and each
+  is guarded by an invariant that can fail.
+- **Notebooks** own slicing, cross-tabulation, and plotting on top of those
+  artifacts. A notebook reads `data/processed/`; it must never be the only way to
+  produce a number that a document cites.
+
+Rules:
+
+1. A notebook must run top to bottom on a fresh kernel. Cells that depend on
+   out-of-order state are a defect, not a style choice.
+2. `nbstripout` is installed as a git filter, so committed notebooks carry no
+   cell outputs. This is for **readable diffs** — it is *not* the experiment log.
+3. The experiment log is what it is everywhere else in this repository: the
+   provenance-stamped artifact under `data/processed/` plus the record under
+   `docs/experiments/`. When one particular run is itself worth citing, export a
+   frozen snapshot to `<experiment>/notebooks/runs/<name>__<date>__<git-sha>.html`
+   and commit that explicitly. Do this on request, not by habit.
+4. If an exploration in a notebook becomes load-bearing for a documented claim,
+   it graduates into a script under the owning experiment. Discuss before landing
+   it (see Working Rhythm).
+
 ## Documentation Conventions
 
 Research questions, discussions, and experiment records accumulate under `docs/`, organized by kind rather than dropped flat into `docs/`:
