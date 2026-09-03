@@ -131,6 +131,15 @@ async function record(plan: RunPlan, type: string, data: JsonRecord): Promise<vo
 	);
 }
 
+async function currentThinkingLevel(context: ExtensionContext): Promise<string> {
+	const snapshot = await context.session.getSnapshot();
+	let level: string | undefined;
+	for (const entry of snapshot.pathToRoot) {
+		if (entry.type === "thinking_level_change") level = entry.thinkingLevel;
+	}
+	return level ?? "unrecorded";
+}
+
 async function prepareBootstrap(plan: RunPlan): Promise<void> {
 	const active = activeRoot(plan);
 	await rm(resolve(active, "input"), { recursive: true, force: true });
@@ -194,6 +203,7 @@ async function establishA2Bootstrap(plan: RunPlan, context: ExtensionContext): P
 			agent_id: context.agentId,
 			resume_session_ref: plan.a2Resume.sessionRef,
 			leaf_id: snapshot.leafId,
+			thinking_level: await currentThinkingLevel(context),
 		});
 		return snapshot.leafId;
 	}
@@ -207,6 +217,7 @@ async function establishA2Bootstrap(plan: RunPlan, context: ExtensionContext): P
 	await record(plan, "bootstrap_completed", {
 		agent_id: context.agentId,
 		leaf_id: snapshot.leafId,
+		thinking_level: await currentThinkingLevel(context),
 		outcome: bootstrap,
 	});
 	return snapshot.leafId;
@@ -232,7 +243,10 @@ async function runA2(plan: RunPlan, context: ExtensionContext): Promise<void> {
 }
 
 async function runPlan(plan: RunPlan, context: ExtensionContext): Promise<void> {
-	await record(plan, "run_started", { case_ids: plan.caseIds });
+	await record(plan, "run_started", {
+		case_ids: plan.caseIds,
+		thinking_level: await currentThinkingLevel(context),
+	});
 	try {
 		if (plan.arm === "a2") {
 			await runA2(plan, context);
