@@ -29,6 +29,8 @@ P4A v1 让我们看到了一个真实的 data-intensive agent workload：固定 
 | **plan reuse** | stage template、算子图、provider routing policy | task intent 匹配、输入/输出 schema 兼容 | 降低规划开销，并使后续 KV reuse 的结构可见 |
 
 例如，一篇论文的 `resource_records` 被后续“跨论文比较”调用读取，通常是 artifact reuse；两个 `VerifyGitHubResource` 调用共享同一 provider contract 和 schema prompt，才可能是 prompt/KV reuse。两者可以叠加，但必须分别测量。
+provider routing 在运行中才被选择，至多证明**调用选择**是动态的；它不自动证明共享上下文必须动态构造。每个候选动态 root 都必须给出反事实强对照：若编排器选择预写的、同信息内容的 provider/stage 模板即可产生相同 prompt、质量和复用，那么模板选择就是应先打败的静态策略，而非 CachePlan 的增量。只有选择之后才由可审计中间工件决定、且不能预先列成等价静态模板的共享内容，才构成这里所说的动态构造。
+
 
 同样地，一个 LLM 调用只能沿一条因果 prefix path 复用 KV；“多 root”不是将任意 KV state 拼接，而是一个 batch 中的不同 ready calls 落在 prefix forest 的不同路径，调度器选择哪些路径物化、pin 和相邻执行。
 
@@ -123,13 +125,13 @@ $$
 
 OQ3 不是要预先承诺一个方法，而是要求 workload 设计能回答下列问题：
 
-1. **A2 是否已足够？** 在固定 `tools → skill → 易变块` 的 static-first layout 上，是否仍存在大量、可重复且不由 artifact cache 解释的动态 prefix reuse？
+1. **强静态策略是否已足够？** 在完整 canonical procedure、stage/provider contract 与易变块均以 static-first 顺序注入的同信息内容对照上，是否仍存在大量、可重复且不由 artifact cache 解释的动态 prefix reuse？
 2. **结构何时显露？** 在哪些 stage 后，cohort、provider、实体或 repair diagnostic 才足以使后续调用形成可调度的 root cluster？提前等待形成 micro-batch 的排队代价是什么？
 3. **什么被复用？** 观察到的成本下降中，prompt/KV、artifact/result、plan 三层各占多少？若只剩 artifact reuse，则问题应转交给数据/查询缓存，而不是宣称 CachePlan 有效。
 4. **batch shape 是否抵消收益？** root-aware batching 相对默认/FCFS 是否造成 decode length skew、KV pressure 或公平性恶化？length-aware batching 是否损害内容 locality？
 5. **能力边界在哪里？** 主干 workflow、有限 repair 与 dynamic fallback 的质量、fallback rate 和成本如何随策略变化？
 
-任何一个否定结果都同样有价值：若 A2 吃掉了动态空间、cohort 重复不足，或 KV reuse 的收益被排队/length bubble 抵消，则该 workload 不应被包装为 CachePlan 的正面证据。
+任何一个否定结果都同样有价值：若强静态策略吃掉了动态空间、cohort 重复不足，或 KV reuse 的收益被排队/length bubble 抵消，则该 workload 不应被包装为 CachePlan 的正面证据。
 
 ## 6. 最小证据协议：先刻画，再干预
 
@@ -137,7 +139,7 @@ OQ3 不是要预先承诺一个方法，而是要求 workload 设计能回答下
 
 1. **业务与质量设计**：确定有限 task family、下游使用者、artifact schema、质量 contract 与 fixture 边界；
 2. **workload characterization**：只运行/重放基线，测 root/cohort 分布、实例 DAG、依赖、length shape、arrival、artifact reuse 和 fallback；
-3. **受控干预**：在同一模型、fixture、工具 schema、batch budget 和质量协议下比较 A2 与后续策略；
+3. **受控干预**：在同一模型、fixture、工具 schema、batch budget 和质量协议下，比较强静态策略与后续动态策略；策略名称必须描述注入内容与构造方式，不能跨实验复用漂移的臂编号；
 4. **分层报告**：分别报告命中/未命中 prefill、decode、KV 占用、队列等待、wall time、吞吐/尾延迟和任务质量。
 
 第 2 步的通过条件不是“看起来有很多调用”，而是能明确给出：哪些 root 在何时有多少 ready calls、其 private-length 分布如何、理论可节省的 prefill 有多少、以及为何该重复来自业务依赖而不是人为复制。
@@ -145,7 +147,7 @@ OQ3 不是要预先承诺一个方法，而是要求 workload 设计能回答下
 ## 7. 与现有记录的关系
 
 - [E01](../experiments/e01-p4a-trajectory.md) 与其 [`02_trajectory.ipynb`](../../experiments/e01-p4a-trajectory/notebooks/02_trajectory.ipynb) 第 5 节提供 P4A v1 的继承性轨迹观测：稳定主干、provider 分叉、validator 后 repair 和异常委派。它们是 workload mining 的输入，不是方法比较实验。
-- [OQ2：可复用上下文放置](Placement-of-reusable-context.md) 是前置强 baseline：任何 OQ3 workload 都必须先报告 $A3-A2$，而不是将静态布局的收益算入方法。
+- [OQ2：可复用上下文放置](Placement-of-reusable-context.md) 给出强静态策略的必要条件：完整、同信息内容的 procedure 必须以 static-first 布局注入。后续策略只能报告相对该策略的增量，不能沿用其他实验的 `A2` / `A3` 编号。
 - OQ1 已 DEFERRED：OQ3 不重新询问“agent 是否必要”，而是讨论在存在动态 agent 尾部时，什么 workload 能让 agency、复用与质量的 trade-off 可测。
 - [AgenticScholar](../literature/2026-AgenticScholar.md) 是“固定计划骨架 + 动态生成兜底 + 验证”的业务形态先例，但其缓存层次是计划/结果而不是 prompt/KV。
 - Helium 代表完全可编译、全局结构可见的端点；OQ3 更关心结构逐阶段显露但主干仍可观察和编排的中间区域。
@@ -157,7 +159,7 @@ OQ3 不是要预先承诺一个方法，而是要求 workload 设计能回答下
 - Paper-for-Agents 的最终用户、query interface、taxonomy / graph 或 artifact schema；
 - 论文数、任务数、cohort 数、并发度、KV 预算或具体模型；
 - 是否采用 Helium 风格全局编译、AlignedServe 风格 length-aware batching，或任何 joint policy；
-- OQ3 是否是 E06 之后的下一个实验；
+- 具体受控实验的名称、臂编号、规模、并发度或 KV 预算；
 - P4A v1 历史数据或代码的修改、重跑或作为方法效果基线。
 
 在业务 contract、质量评测和 workload characterization 尚未讨论完成前，OQ3 只是开放问题，不是新 benchmark 的实现任务。

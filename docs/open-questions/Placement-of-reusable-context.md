@@ -109,38 +109,25 @@ S2 输入短，但每个 skill 组合是一条独立前缀，共享前缀被切�
 关键推论：**任何方法的跨 run 复用上限都被"论文正文"这一段封死**。
 所以 s3 必须给出三分解——静态前缀 / 每输入私有内容 / 生成轨迹——这三个数出来之前，无法判断 S4 相对 S1 还剩多少空间。这是本 OQ 对 E01 提出的具体要求。
 
-## 6. 实验设计
+## 6. 对未来 workload 的强静态对照
 
-四个臂，同一 infra、同一模型、同一批输入：
+P4A v1 的一条长 session、早期论文私有输入和缺少独立质量评测，使其不再适合作为本问题的直接受控评估对象；原定 E06 已关闭。这里保留的是可迁移的对照原则，而不是一个待执行的 P4A 实验设计。
 
-| 臂 | 内容 |
+任何未来 workload 都必须至少比较：
+
+| 策略名称 | 内容 |
 |---|---|
-| A0 | P4A 现状（S3：两跳动态加载） |
-| A1 | Skill 直接拼进 system prompt，**其余布局不动**（天真 S1，用于验证 §4.1 的陷阱确实存在） |
-| A2 | Static-first layout：工具集固化 + `tools → skill → 易变块`（S1 的强形式，**这才是要打败的 baseline**） |
-| A3 | 本项目方法叠加在 A2 之上 |
+| dynamic loading | 运行中读取或构造 procedure / contract；只作诊断性弱对照 |
+| naive static injection | 将共享内容放在易变块后；仅用于揭示错误布局的假阴性 |
+| **full static-first injection** | 固化工具 schema，将**完整 canonical procedure 与适用的 stage/provider contract**置于易变块之前；这是强静态对照 |
+| dynamic strategy | 在强静态对照上，仅引入待验证的动态构造、物化或调度机制 |
 
-**判据：本项目的贡献必须报告为 $A3 - A2$，不是 $A3 - A0$。** 拿 A0 当对照会把静态布局的收益算进方法的账上。
+强静态对照与动态策略必须携带相同的信息内容；Skill 摘要不能替代完整 Skill。报告以描述性策略名称为准，不跨实验复用 `A0`–`A3` 编号。动态策略的收益只能相对 full static-first injection 归因，不能把静态布局的收益计入其中。
 
-指标（每臂都要全量，缺一不可）：
+指标仍须分开记录逐请求 `cached_tokens`、命中/未命中 prefill、decode、KV 占用、端到端时间和独立任务质量。schema/consistency validation 是必要条件，不能替代 precision、recall、grounding 或其他独立质量 contract。
 
-- 逐请求 `cached_tokens`（vLLM 0.22.1 + `--enable-prompt-tokens-details`，E01 §2 s1 已验证可用）；
-- 未命中 prefill / 命中 prefill / decode token，三者分开计价；
-- 峰值上下文与 KV 占用；
-- 端到端延迟与 wall time；
-- **任务质量**：抽取 precision/recall、validation 通过率、repair 触发率。A1/A2 改变了 skill 在上下文中的位置和角色（tool result → system message），这本身可能改变指令遵循程度，质量不测则整个对比不可解释。
+## 7. 结论边界
 
-多 skill 场景（$N \gg 2$）P4A 给不出来，需要单独构造：在同一套 workload 上人为扩充 skill 库，扫 $N$，观察 S1 与 S2 的交叉点在哪。这是把结论从"P4A 这一个实例"推广到"这类 workload"的必要条件，也呼应 [`p4a.md`](../experiments/p4a.md) 第 4 节第 6 条的泛化边界。
-
-## 7. 可能的结局
-
-- **S1/A2 吃掉绝大部分收益**：那就如实报告——对单 skill、固定流程的 workload，正确答案是静态布局，不是 planning。研究要么转向 $N$ 大的多 skill 场景（那里 S1 的 context pollution 代价才显现），要么承认这类 workload 不需要本方法。
-- **A2 明显不够**：说明收益的大头在轨迹段而非前缀段，motivation 成立，且此时已经有一个诚实的强 baseline 垫底，$A3 - A2$ 就是干净的贡献。
-
-无论哪种，先测 A2 都是正确的下一步。**如果一个简单的 system-prompt baseline 就能解决 90% 的问题，就不该硬造复杂方法。**
-
-## 8. 关系
-
-- 依赖 [E01](../experiments/e01-p4a-trajectory.md) s3 的三分解（§5）与 s4 的分歧归因；s3 未验收前无法给这个问题定价。
-- 与 [OQ1（agentic execution 的必要性）](Necessity-of-agentic-execution.md) 正交但同源：OQ1 问"要多少 agency"，本问题问"可复用上下文该放在哪"。两者都是在检查一个更简单的方案是否已经够用——OQ1 的更简单方案是 workflow，本问题的是静态前缀。
-- 对 E02 的约束继承 E01 §6，并追加：工具集必须固化（否则 §4.1 的从 token 0 断裂会淹没所有布局差异）。
+- 若 full static-first injection 已吃掉绝大部分收益，正确结论是该 workload 不需要所提动态机制。
+- 若动态策略仍有增量，必须先排除信息内容不等、artifact/result reuse、排队和长度形态等替代解释。
+- 这项原则现由 [OQ3](Multi-run-workloads.md) 的 workload 设计承接；在其业务 contract、fixture、独立质量评测和结构刻画确定前，不应创建新的方法效果实验。

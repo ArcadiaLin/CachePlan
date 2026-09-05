@@ -32,7 +32,7 @@ verdict: "在线被动 prefix caching 几乎无收益、编译期结构先验才
 
 ## 对我们的启示
 
-- **抬高了 baseline 水位**：它的 proactive KV pinning 就是 OQ2 里 A2 静态布局的系统化版本。E06 除了 A2，值得加一个很便宜的 A2+ 臂（静态前缀预热/pinning），预先回答 "why not Helium-style pinning" 这个审稿问题。
-- **实验协议**：E06 必须固定 greedy sampling 并写明，否则缓存命中率结论不可解释。
-- **研究问题划界**：CachePlan 的增量场景应明确表述为"计划无法编译期化的动态轨迹"，与 Helium 的 workflow-compiled scheduling 区分开。
-- 它的"嵌套序列调度"（内层按 query 复用私有前缀、外层按算子复用静态前缀）可直接借作 E06 的调度臂设计。
+- **抬高 baseline 水位**：主动 KV pinning 说明未来 workload 的强静态策略不能只比较 prompt 位置；若 serving 栈支持，应把预热/pinning 的收益和成本单独作为静态对照的一部分记账。
+- **实验协议**：任何后续方法比较都必须固定 greedy sampling 等生成条件，否则缓存命中率结论不可解释。
+- **研究问题划界**：CachePlan 的增量场景应明确表述为“共享结构在运行中逐阶段显露，且不能由等价静态模板选择解决”，与 Helium 的 workflow-compiled scheduling 区分开。
+- 它的“嵌套序列调度”（内层按 query 复用私有前缀、外层按算子复用静态前缀）是 OQ3 characterization 后才可考虑的策略空间，不是预设实验臂。

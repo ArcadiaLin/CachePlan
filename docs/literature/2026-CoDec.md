@@ -27,6 +27,6 @@ verdict: "prefix caching 只省 prefill；decode 阶段对共享前缀 KV 的重
 
 ## 对我们的启示
 
-- **OQ2 代价模型修正**：§4.2 的"decode 侧成本不受 prefix cache 影响"应标注为 kernel-dependent——若 CoDec 类 kernel 进入 serving 栈，A2/S1 的 decode 侧代价和共享前缀的收益都会重估。写代价模型时引用本文防审稿人反驳。
+- **OQ2 代价模型修正**：§4.2 的“decode 侧成本不受 prefix cache 影响”应标注为 kernel-dependent——若 CoDec 类 kernel 进入 serving 栈，full static-first injection 的 decode 侧代价和共享前缀的收益都会重估。写代价模型时引用本文防审稿人反驳。
 - 它的适用场景清单明确包括"agent 批量跑同一 Skill 流程（固定长前缀 × 输入并行）"，即 P4A 型负载——我们是它声称的目标负载之一。
-- E06 用 vLLM 测得的 decode 成本数字，其外部效度受 kernel 层演进制约，讨论部分应承认这一点。
+- 任何未来以 vLLM 测得的 decode 成本数字，其外部效度受 kernel 层演进制约；讨论必须说明这一实现边界。

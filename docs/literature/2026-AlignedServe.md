@@ -28,4 +28,4 @@ continuous batching 下，同一 decode iteration 内不同请求依赖的 KVCac
 
 - **文献叙事的区分点**："前缀共享变现"（Helium/KVFlow 线）与"KV 形态感知调度"（AlignedServe 线）是两条平行路线，相关工作中必须分开陈述，否则会被审稿人指出混淆。
 - 若未来做端到端系统评估，它的 KV pool + NVLink 预取架构可作为承载共享前缀的底层设施（作者自己提出可串联，未做实验）。
-- 反向印证：我们的负载前缀长度同质，意味着 serving 层的 bubble 问题不严重——收益空间确实集中在前缀内容复用上，而不是调度对齐。
+- 不能预设未来 workload 的长度形态同质或异质；OQ3 必须实测 private-length 与 ready-call 分布，再判断 iteration bubble 是否值得纳入策略比较。

@@ -6,7 +6,7 @@
 
 ## 1. 讨论起点：P4A v1 的视野过窄
 
-而且 P4A V1 目前没有评测体系，无法客观衡量 Agent 执行效果，如果以此为 benchmark 导向，天然就压低了 cache-aware planning 的收益上限
+P4A v1 缺少独立的任务质量评测：已有 schema validation 只能证明结构与一致性，不能客观裁定论文理解、资源判断和证据归因的正确性。这削弱任何效果结论的可信度，但不决定 cache-aware planning 的收益上限；复用空间取决于私有输入何时进入上下文、单条长 session 是否阻断后续共享，以及共享内容的规模、到达时间和驻留时间。
 
 现有 P4A 历史项目的 v1 执行形态是：一个 agent session 处理一篇论文，从读 Skill、读论文、查 arXiv / GitHub / HuggingFace、写 `agent_judgment.json` 到运行校验脚本。它是本项目观察到长 ReAct 上下文重复计费问题的起点，但不应被误当作 *Paper for Agents* 的完整业务模型。
 
@@ -212,6 +212,6 @@ $$
 
 - 不宣布 P4A 已被新业务模型替代；
 - 不宣布 Paper-for-Agents 的最终 artifact schema、用户、query interface 或 corpus representation；
-- 不宣布多 root / joint batching 一定优于 A2 static-first baseline；
+- 不宣布多 root / joint batching 一定优于同信息内容的 full static-first injection；
 - 不将 Helium、AgenticScholar 或 AlignedServe 作为本项目方法有效性的直接证据；
 - 不创建新的实验、数据产物或实现计划。
