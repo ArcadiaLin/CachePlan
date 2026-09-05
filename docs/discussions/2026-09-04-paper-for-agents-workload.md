@@ -6,6 +6,8 @@
 
 ## 1. 讨论起点：P4A v1 的视野过窄
 
+而且 P4A V1 目前没有评测体系，无法客观衡量 Agent 执行效果，如果以此为 benchmark 导向，天然就压低了 cache-aware planning 的收益上限
+
 现有 P4A 历史项目的 v1 执行形态是：一个 agent session 处理一篇论文，从读 Skill、读论文、查 arXiv / GitHub / HuggingFace、写 `agent_judgment.json` 到运行校验脚本。它是本项目观察到长 ReAct 上下文重复计费问题的起点，但不应被误当作 *Paper for Agents* 的完整业务模型。
 
 P4A 的完整目标可以重新表述为：
@@ -69,6 +71,52 @@ Helium 所谓 *agentic workflow* 不是“数据分析”或“学术论文”�
 - 79/952 使用 `Agent` 或 `AgentSwarm`，应视为执行/环境异常信号，而非业务主路径的证据。
 
 该 notebook 的统计仅表示工具调用被尝试，**不**裁定外部查询是否成功，也**不**构成 CachePlan 方法有效性的实验结果。
+
+### 3.1 候选 Paper-for-Agents ingestion workflow
+
+下图只是讨论用的候选业务/执行结构，不是已决定的系统设计。它将 P4A v1 中混在一条长 ReAct session 内的解析、核验、编译、校验与异常处理显式分开；主路径可归约为 DAG，候选数量、实体匹配和 repair 分支则在运行中展开。
+
+```mermaid
+flowchart TD
+    A[论文包<br/>PDF / HTML / 源码 / 附件 / 元数据] --> B[规范化与解析<br/>可定位正文、section、table、figure、caption]
+
+    B --> C[paper-local 候选与证据抽取]
+    B --> D[文献身份定位<br/>arXiv / DOI / anthology]
+
+    C --> E[资源候选展开]
+    C --> F[主张、实验与证据抽取]
+    D --> G[源工件获取<br/>HTML / TeX / 补充材料]
+
+    E --> H{按 provider 核验}
+    H -->|GitHub| I[Repo / README / code 核验]
+    H -->|HuggingFace| J[Model / dataset 核验]
+    H -->|其他 URL| K[固定 fixture / URL 证据核验]
+    H -->|无可访问来源| L[记录 pending / paper-only evidence]
+
+    F --> M[typed artifact assembly<br/>facts、resources、evidence edges]
+    G --> M
+    I --> M
+    J --> M
+    K --> M
+    L --> M
+
+    M --> N[编译结构化记录<br/>paper record / resource records]
+    N --> O[确定性 validation]
+
+    O -->|通过| P[发布 paper-local artifacts]
+    O -->|结构错误| Q[有界 schema repair]
+    O -->|证据 / provider 错误| R[定点 re-verification]
+    Q --> N
+    R --> M
+
+    O -->|未解决例外| S[动态 agent / 人工 fallback]
+    S --> T[审计后的补充 artifact]
+    T --> P
+
+    P --> U[cohort / corpus linking<br/>实体归一、索引、跨论文关系]
+```
+
+从 cache-aware execution 的视角，批处理单位不再是“整篇论文的一条 session”，而是图中 ready 的 operator instance，例如 `ResolveBibliography(paper_i)`、`VerifyGitHubResource(resource_ij)`、`ExtractExperimentEvidence(section_ik)` 与 `RepairJudgment(diagnostic_il)`。这使得同一 workflow 同时暴露 stage、content root、KV 长度与依赖/到达状态，而不是只暴露一个长而私有的 session。
 
 ## 4. 多 root 的正确含义
 
