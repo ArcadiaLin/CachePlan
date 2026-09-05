@@ -4,50 +4,102 @@
 
 This repository is a research codebase created to support an ongoing research project.
 
-The current research direction is tentatively focused on:
+The tentative publication target is **SIGMOD**. The current research direction
+(updated 2026-09-05) is:
 
-> **Cache-aware planning and execution in LLM agents (tentative)**
+> **Cache-aware execution of agentic data-maintenance workflows (tentative)**
 
-At the current stage, the project explores how agent behavior, planning trajectories, prompt construction, and tool execution interact with LLM inference mechanisms such as **prompt caching / KV cache reuse**.
+The motivating application is a literature data-management system maintained by
+agents: incoming papers trigger extraction, resource verification, entity linking,
+validation, repair, and publication of structured records. P4A v1 is the starting
+point for this workload, not the final system or benchmark.
 
-One initial observation motivating this research is that semantically equivalent agent behaviors may produce different prompt prefixes or execution trajectories. For example:
+The candidate role of **CachePlan** is the execution optimizer within that system.
+An agent run can be a physical execution instance of a logical data-processing
+operator; an end-to-end paper-ingestion job can contain several such operators.
+CachePlan explores how to schedule ready work and manage reusable inference state
+across these executions. Literature management supplies the real data-management
+requirements; building a feature-complete application is not itself the research
+contribution.
 
-- `I will first read the skill.`
-- `Let me read the skill first.`
-- `I'll start by checking the skill instructions.`
+The tentative research question is:
 
-Although these actions are functionally equivalent, their different token sequences may reduce prompt-cache reuse across repeated agent runs.
+> Can progressively revealed workflow dependencies and context-reuse information
+> guide operator scheduling and KV-cache retention/eviction to improve the cost,
+> throughput, and latency of data maintenance under limited cache capacity,
+> without compromising task quality or data correctness?
 
-A tentative research question is:
+**SGLang is the planned inference backend.** LRU is an important baseline;
+application-informed retention/eviction and its interaction with scheduling are
+candidate mechanisms, not settled algorithms. Scheduling can change when reuse
+occurs, while cache residency changes the benefit of that schedule. Backend
+capabilities must be checked against a pinned version; do not assume that priority
+hints provide hard GPU pinning or arbitrary prefix deletion.
 
-> Can agent planning and execution be designed to improve cache reuse without significantly reducing agent capability or task performance?
+The initial observation about semantically equivalent agent utterances producing
+different token prefixes remains historical motivation. The current scope is
+broader: execution organization, prompt construction, access order, and cache
+lifetime jointly determine whether reuse is possible and realized.
 
-Both the research question and the technical approach are subject to change as the project develops.
+This is a tentative research framing, not an established novelty or effectiveness
+claim. The operator interface, optimization policy, and mini-benchmark remain to
+be agreed and validated. Targeting SIGMOD requires a substantive data-management
+contribution, not merely renaming agent runs as database operators.
 
 ## Workload Under Study
 
 The workload class this project studies is **data-intensive / data-processing agent workflows**, not "data analysis agents".
 
-The distinction is load-bearing. What characterizes P4A (see `docs/experiments/p4a.md`) is not that the agent *analyzes data*; it is that the agent repeatedly executes **one long-horizon, tool-augmented, end-to-end workflow over many different inputs, driven by a fixed body of procedural knowledge (a Skill)**. Concretely, an instance of this workload class has:
+P4A v1 (see `docs/experiments/p4a.md`) repeatedly applies a fixed Skill to many
+papers using long, tool-augmented sessions. The proposed workload evolves this
+into **incremental ingestion and maintenance of structured literature data**.
+Its defining properties are:
 
-- **fixed procedural knowledge** — a long, stable Skill / agent prompt that encodes the same procedure for every input;
-- **input-parallel repetition** — the same procedure is run over a corpus of homogeneous but non-identical inputs (in P4A: every ACL 2025 main-conference paper), one independent run per input;
-- **long-horizon tool-augmented execution** — many turns of read / extract / search / merge, over local scripts and external sources;
-- **validation and repair** — the run does not end at first output; results are validated against a schema or checker, and failures trigger re-investigation or targeted fixes;
-- **structured end-to-end output** — the deliverable is a structured record, not a conversational answer.
+- **repeated procedural knowledge** — stable, versioned Skills and operator contracts applied across many non-identical inputs;
+- **persistent data products** — paper records, resource entities, and evidence links with provenance and versions, rather than conversational answers;
+- **multi-input execution** — repeated work across papers and cohorts, potentially interacting with shared corpus state; runs need not be independent;
+- **long-horizon, tool-augmented operators** — an operator may involve multiple model calls and tool waits, not just one LLM request;
+- **progressively revealed dependencies** — extracted candidates, provider choices, and validation diagnostics can reveal subsequent work at runtime;
+- **validation and repair** — explicit completion conditions and bounded repair, with independent task-quality evaluation beyond schema checks.
 
-This framing is what makes the workload interesting for cache research: because the procedural knowledge is fixed and the runs are many, there is a large *a priori* shared prefix across runs, and any divergence in how the agent phrases or orders its steps is what erodes reuse of that prefix. Terms like "data analysis agent" put the emphasis on the wrong property (the semantics of the task) rather than on the repetition of a fixed procedure, which is the property the research actually depends on.
+The optimizer needs visible scheduling boundaries and dependencies, not advance
+knowledge of every internal agent action. A whole-paper black-box session remains
+a useful boundary case, but is not the required execution unit. Operator
+abstraction does **not** imply that operations are deterministic, freely
+reorderable, or side-effect-free: scheduling must respect data dependencies,
+input versions, and conflicts over shared state.
+
+Repeated procedural knowledge creates *potential* reuse, not a guaranteed shared
+KV prefix. Under prefix caching, reuse requires the same ordered token prefix and
+compatible inference configuration, plus resident or recoverable KV state.
+Semantic similarity, a shared operator name, or a common document alone is not
+enough. Both the available prefix structure and its temporal reuse must be measured.
+
+P4A v1 is an inherited trajectory source and workload-mining input, **not a
+CachePlan method-effectiveness benchmark**. Its early private inputs, long-session
+layout, and lack of independent quality evaluation limit what it can establish.
+See `docs/PROGRESS.md` for evidence status and `docs/open-questions/Multi-run-workloads.md`
+for the current workload-design questions; the proposed mini-benchmark is not yet
+a validated evaluation protocol.
 
 The open question of *how much agency* this workload class actually requires is tracked separately in `docs/PROGRESS.md`; nothing here presumes that a full ReAct agent is the right execution abstraction for it.
+
+## Research and Evaluation Boundaries
+
+- **Separate reuse layers.** Prompt/KV reuse, artifact/result reuse, and plan reuse have different validity conditions and must be accounted for separately. KV eviction is not deletion or invalidation of a published data record.
+- **Use strong baselines.** Keep complete, same-information canonical procedures and applicable contracts in the static-prefix baseline. If static template selection or simple locality scheduling explains the benefit, do not attribute it to dynamic planning.
+- **Separate interventions.** Distinguish operator scheduling, backend request scheduling, cache retention/eviction, and prompt restructuring. Use controlled comparisons to identify individual and joint effects.
+- **Optimize useful work, not hit ratio alone.** Evaluate end-to-end cost, throughput, latency, queueing, and cache pressure under independent quality and data-correctness checks. A higher hit ratio is not by itself an improvement.
+- **Keep the first benchmark bounded.** Agree on the task family, operator contracts, versioned external fixtures, and quality evaluation before implementing a mini-benchmark. Do not manufacture repeated work solely to create cache hits or expand into a full literature-management product without agreement.
 
 ## Repository Purpose
 
 This repository is primarily intended for research experimentation, including:
 
-- building experimental agent runtimes and workloads;
+- building experimental agent data-maintenance workloads and observable operator runtimes;
 - collecting and analyzing agent execution trajectories;
 - measuring prompt-cache behavior and inference cost;
-- experimenting with cache-aware planning or execution strategies;
+- experimenting with cache-aware operator scheduling and inference-state retention/eviction;
 - evaluating trade-offs among cache efficiency, latency, inference cost, and task quality.
 
 This is a **research repository rather than a production application**.
