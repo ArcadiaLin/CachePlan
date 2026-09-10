@@ -1,0 +1,16 @@
+# LaTeX 编译中间产物。main.pdf 也不入库：它由 main.tex + references/refs.bib
+# 确定性地重建，投出去的那一版另行归档，不靠 git 保存。
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.xcp
+main.pdf
+
+# 由 ../references/refs.bib 生成，见 Makefile 的 refs.bib 规则。
+refs.bib

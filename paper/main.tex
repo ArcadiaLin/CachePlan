@@ -1,0 +1,77 @@
+% SIGMOD 2027 研究论文投稿。格式依据官方 CFP：
+%   https://2027.sigmod.org/calls_papers_sigmod_research.shtml
+%   - 正文 ≤ 12 页，参考文献不计入且页数不限（录用后 camera-ready 为 13 页且不得有附录）
+%   - 双盲：正文任何位置不得出现作者、单位、致谢、资助来源
+%   - 2 栏 ACM 格式，字号/页边距/栏间距/行距一律不得改动
+%   - 提交 PDF ≤ 10 MB，Letter 纸
+%
+% 类选项：sigconf = ACM 会议 2 栏格式；review = 给正文加行号方便审稿人引用；
+% anonymous = 隐去作者与单位。定稿时把 review,anonymous 两项删掉即可。
+\documentclass[sigconf,review,anonymous]{acmart}
+
+% —— 投稿期去掉版权块 ——
+% acmart 默认会在首页脚印 ACM 版权声明和 DOI，那些数字要等录用后从 ACM eRights
+% 系统拿。投稿阶段用下面三行清掉；这只影响首页脚注区，不改动任何版面度量，
+% 不违反 CFP 的"格式不得改动"。录用后连同 \acmConference 一起换成 eRights 给的内容。
+\setcopyright{none}
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+
+% —— camera-ready 时启用，内容以 ACM eRights 邮件为准 ——
+% \copyrightyear{2027}
+% \acmYear{2027}
+% \setcopyright{acmlicensed}
+% \acmConference[SIGMOD '27]{International Conference on Management of Data}{May 31--June 4, 2027}{Huntington Beach, CA, USA}
+% \acmDOI{10.1145/nnnnnnn.nnnnnnn}
+% \acmISBN{978-x-xxxx-xxxx-x/YY/MM}
+
+\begin{document}
+
+\title{Title Goes Here}
+
+% anonymous 选项会自动把下面这些替换成 "Anonymous Author(s)"，所以真名可以先写着，
+% 不必等到定稿再填。但正文、致谢、图表、URL、自引措辞里的身份线索必须自己管。
+\author{Author One}
+\affiliation{%
+  \institution{Institution}
+  \city{City}
+  \country{Country}}
+\email{one@example.com}
+
+\renewcommand{\shortauthors}{Anonymous et al.}
+
+\begin{abstract}
+Abstract goes here.
+\end{abstract}
+
+% CCS 概念与关键词：投稿时非必需，camera-ready 必填。
+% CCS 代码到 https://dl.acm.org/ccs 用 CCS 工具生成后粘贴回来。
+% \begin{CCSXML} ... \end{CCSXML}
+% \ccsdesc[500]{Information systems~Information extraction}
+% \keywords{keyword one, keyword two}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+
+% 这条引用是活的：它让 `make` 从第一天起就把 references/refs.bib →
+% strip-notes.py → bibtex → 参考文献表这条链路整个验一遍。写正文时替换掉即可。
+Body text~\cite{2026-ARA}.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+% 页数闸门的锚点：Makefile 的 `make check` 从 .aux 里读这个 label 所在页码，
+% 判断正文是否超过 12 页。它必须紧挨在参考文献之前。
+\label{endofbody}
+
+% 双盲期不得出现致谢。录用后再取消注释。
+% \begin{acks}
+% Acknowledgements go here.
+% \end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{refs}
+
+\end{document}
