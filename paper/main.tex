@@ -55,9 +55,93 @@ Abstract goes here.
 \section{Introduction}
 \label{sec:intro}
 
-% 这条引用是活的：它让 `make` 从第一天起就把 references/refs.bib →
-% strip-notes.py → bibtex → 参考文献表这条链路整个验一遍。写正文时替换掉即可。
-Body text~\cite{2026-ARA}.
+% Working draft: community formation, retrieval mechanisms, and evaluation
+% remain under discussion. Add verified related-work comparisons and empirical
+% findings before making novelty or effectiveness claims.
+Research agents need access to a range of scholarly resources, including papers,
+datasets, benchmarks, and code repositories. Consider an agent seeking an
+evaluation setup for long-context instruction following. It must understand what
+a benchmark measures, identify suitable data, and locate the corresponding
+evaluation tools. These resources describe different aspects of the same research
+activity. Supporting such tasks therefore requires helping agents discover
+relevant resources and understand what each can contribute to their work. This
+perspective complements efforts to reconsider how research artifacts are
+delivered to agents~\cite{2026-ARA}; here, we focus on organizing resources from
+already published research.
+
+Resource discovery in this setting requires connecting individual descriptions
+with the broader context in which resources are useful. A paper may explain an
+evaluation's motivation, a dataset page may describe its contents, and a
+repository may document how to run the evaluation. Their descriptions can differ
+substantially in vocabulary and emphasis. A query may retrieve the benchmark
+paper while leaving the agent to locate the data and tools and determine their
+roles. This raises a question: can a representation of a collection provide
+useful retrieval context beyond the descriptions of its individual resources?
+
+We explore \emph{resource communities} as units of organization, with
+agent-generated summaries serving as retrieval entry points. A community groups
+resources around a shared research topic or use case. Its summary synthesizes
+member materials to describe the collection's scope, resources, and intended
+uses, with references to the supporting sources. In the evaluation example, a
+community summary could explain the evaluation problem and identify which
+members provide task definitions, data, and evaluation tools. Retrieval can then
+use this collective context to locate relevant resources, while individual
+records retain the information needed for further inspection and use.
+
+Making this approach useful presents three challenges. First, \emph{community
+formation must reflect what makes resources useful together}. Textual similarity
+alone may not capture this relationship: a method paper and its implementation
+can have very different descriptions, while resources with similar terminology
+may address different tasks or experimental settings. A central design question
+is whether, and how, complementarity in a research task should inform community
+formation. Community boundaries also matter. Broad communities may obscure
+specific needs, whereas narrow communities may offer little context beyond an
+individual resource.
+
+Second, \emph{summaries must preserve distinctions among community members}.
+A summary that emphasizes only the dominant theme may omit a resource that is
+important for a particular query. It may also incorrectly attribute one member's
+capabilities to the entire collection. For example, the presence of evaluation
+code does not establish that every method in a community has an executable
+implementation. Specific statements must remain attributable to the resources
+and materials that support them, with uncertainty preserved where evidence is
+insufficient. Summary quality thus depends both on factual support and on
+retaining the information needed to distinguish and select individual resources.
+
+Third, \emph{community retrieval must lead to relevant individual resources}.
+Matching a query to a topical summary does not establish that the retrieved
+collection contains the data or tools the task requires. Retrieval must use
+community context to help identify suitable members without hiding resources
+whose distinctive features are absent from the summary. This requires examining
+how summary-based retrieval should interact with direct resource retrieval.
+Success must ultimately be measured by the resources discovered and their fit
+to the task, rather than by the fluency or topical relevance of the summary.
+
+We investigate these questions through the design of \emph{P4A}, a system for
+organizing and retrieving research resources for agents. Given resource records
+and source materials for papers, datasets, benchmarks, and repositories, P4A
+aims to connect community formation, grounded summarization, and resource
+retrieval. Agents interpret materials to organize resources and construct
+summaries; downstream research agents inspect and use the retrieved resources.
+Our central question is how to form useful resource communities and summarize
+them faithfully while preserving member distinctions, so that knowledge about a
+collection improves the discovery of its constituent resources.
+
+Our planned evaluation examines community and summary quality, resource
+retrieval effectiveness, and the costs of construction and use. Comparisons with
+direct resource retrieval, simple clustering followed by summarization, and
+related community-based retrieval methods will control access to source
+materials and model budgets. Component analyses will distinguish the effects of
+resource organization from those of summarization. Together, these evaluations
+are intended to establish whether community representations help agents find
+resources that better satisfy their needs, which design choices account for any
+gains, and whether those gains justify the cost of constructing the collection
+knowledge.
+
+% TODO: Specify the community detection and retrieval mechanisms; substantiate
+% comparisons with GraphRAG and other relevant work. Replace the planned
+% evaluation paragraph with validated findings and a concrete contribution
+% statement once the methods and experiments are established.
 
 \section{Conclusion}
 \label{sec:conclusion}
