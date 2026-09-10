@@ -55,93 +55,107 @@ Abstract goes here.
 \section{Introduction}
 \label{sec:intro}
 
-% Working draft: community formation, retrieval mechanisms, and evaluation
-% remain under discussion. Add verified related-work comparisons and empirical
-% findings before making novelty or effectiveness claims.
-Research agents need access to a range of scholarly resources, including papers,
-datasets, benchmarks, and code repositories. Consider an agent seeking an
-evaluation setup for long-context instruction following. It must understand what
-a benchmark measures, identify suitable data, and locate the corresponding
-evaluation tools. These resources describe different aspects of the same research
-activity. Supporting such tasks therefore requires helping agents discover
-relevant resources and understand what each can contribute to their work. This
-perspective complements efforts to reconsider how research artifacts are
-delivered to agents~\cite{2026-ARA}; here, we focus on organizing resources from
-already published research.
+% Working draft: the scenario is illustrative. Methods and evaluation remain
+% under discussion; the research agenda below is not a completed contribution list.
+Research agents must turn research questions into decisions about which prior
+work to read, which resources to adopt, and how to use them. These decisions draw
+on papers, datasets, benchmarks, and code repositories, each of which provides
+part of the information needed to pursue a research idea. Supporting agents in
+this process motivates us to reconsider how published research is prepared for
+subsequent discovery and use. Alongside efforts to improve the delivery of
+research artifacts to agents~\cite{2026-ARA}, we investigate how information
+already available in papers and associated materials can be organized into
+reusable research knowledge.
 
-Resource discovery in this setting requires connecting individual descriptions
-with the broader context in which resources are useful. A paper may explain an
-evaluation's motivation, a dataset page may describe its contents, and a
-repository may document how to run the evaluation. Their descriptions can differ
-substantially in vocabulary and emphasis. A query may retrieve the benchmark
-paper while leaving the agent to locate the data and tools and determine their
-roles. This raises a question: can a representation of a collection provide
-useful retrieval context beyond the descriptions of its individual resources?
+Consider a researcher developing a method to improve long-context instruction
+following and asking an agent to investigate prior work and prepare an
+experimental evaluation. The request unfolds into several questions:
+\begin{quote}
+\small
+\textbf{Q1---Discover.} Which studies are relevant to this idea, and which should
+I read first?\\[2pt]
+\textbf{Q2---Assess.} How do their research problems and experimental settings
+compare with those of my proposed study?\\[2pt]
+\textbf{Q3---Select.} Which benchmarks and datasets are suitable for evaluating
+my method, and how have prior studies used them?\\[2pt]
+\textbf{Q4---Prepare to use.} Which implementations and evaluation tools can I
+adopt, and what must I check before using them?
+\end{quote}
+The desired outcome is a justified selection of prior work and resources,
+together with the information needed to proceed. The questions can also prompt
+revisions: a mismatch in experimental conditions may redirect the literature
+search, while inspecting an implementation may change the choice of benchmark.
 
-We explore \emph{resource communities} as units of organization, with
-agent-generated summaries serving as retrieval entry points. A community groups
-resources around a shared research topic or use case. Its summary synthesizes
-member materials to describe the collection's scope, resources, and intended
-uses, with references to the supporting sources. In the evaluation example, a
-community summary could explain the evaluation problem and identify which
-members provide task definitions, data, and evaluation tools. Retrieval can then
-use this collective context to locate relevant resources, while individual
-records retain the information needed for further inspection and use.
+This scenario highlights three requirements. First, relevance depends on the
+researcher's intended use. A study with similar terminology is a candidate for
+inspection; selecting it requires understanding its problem, assumptions, and
+experimental context. Second, the evidence for a decision spans different
+materials. Answering Q3 and Q4 may require combining an account of a benchmark
+in a paper with dataset documentation and repository instructions. Third, some
+of the resulting understanding can serve subsequent questions and tasks. A
+resource's purpose, documented uses, and experimental settings may remain useful
+beyond the interaction in which they were first examined.
 
-Making this approach useful presents three challenges. First, \emph{community
-formation must reflect what makes resources useful together}. Textual similarity
-alone may not capture this relationship: a method paper and its implementation
-can have very different descriptions, while resources with similar terminology
-may address different tasks or experimental settings. A central design question
-is whether, and how, complementarity in a research task should inform community
-formation. Community boundaries also matter. Broad communities may obscure
-specific needs, whereas narrow communities may offer little context beyond an
-individual resource.
+These requirements expose a gap between access to research materials and access
+to knowledge prepared for research decisions. An agent can search for and read
+original materials, but must still identify relevant details, interpret their
+roles, and assemble evidence for its choices. When this understanding remains
+confined to an individual interaction, later tasks may repeat parts of the same
+work. A persistent resource library offers an opportunity to retain and reuse
+that understanding. The central question is how to construct and organize such
+knowledge so that it supports an agent's evolving research needs while retaining
+the evidence and conditions needed to judge its applicability.
 
-Second, \emph{summaries must preserve distinctions among community members}.
-A summary that emphasizes only the dominant theme may omit a resource that is
-important for a particular query. It may also incorrectly attribute one member's
-capabilities to the entire collection. For example, the presence of evaluation
-code does not establish that every method in a community has an executable
-implementation. Specific statements must remain attributable to the resources
-and materials that support them, with uncertainty preserved where evidence is
-insufficient. Summary quality thus depends both on factual support and on
-retaining the information needed to distinguish and select individual resources.
+Addressing this question presents three challenges. First, \emph{construction
+must capture information that supports research decisions}. Identifying a
+benchmark or repository provides an entry point, but Q3 requires understanding
+what it evaluates and how it has been used. The library must distinguish a
+resource's stated purpose from uses documented in subsequent studies. Whether
+it suits a new research idea remains a judgment to be made using that evidence.
 
-Third, \emph{community retrieval must lead to relevant individual resources}.
-Matching a query to a topical summary does not establish that the retrieved
-collection contains the data or tools the task requires. Retrieval must use
-community context to help identify suitable members without hiding resources
-whose distinctive features are absent from the summary. This requires examining
-how summary-based retrieval should interact with direct resource retrieval.
-Success must ultimately be measured by the resources discovered and their fit
-to the task, rather than by the fluency or topical relevance of the summary.
+Second, \emph{organization and access must accommodate different research
+needs}. The same resource can be relevant to one task for its evaluation design
+and to another for its implementation. The system must expose useful context
+across materials while preserving the distinctions that determine whether a
+particular paper, dataset, or tool fits the current question. A useful account
+of a research area must still allow the agent to locate and inspect individual
+resources.
 
-We investigate these questions through the design of \emph{P4A}, a system for
-organizing and retrieving research resources for agents. Given resource records
-and source materials for papers, datasets, benchmarks, and repositories, P4A
-aims to connect community formation, grounded summarization, and resource
-retrieval. Agents interpret materials to organize resources and construct
-summaries; downstream research agents inspect and use the retrieved resources.
-Our central question is how to form useful resource communities and summarize
-them faithfully while preserving member distinctions, so that knowledge about a
-collection improves the discovery of its constituent resources.
+Third, \emph{reuse must preserve the basis for further inspection}. Condensed
+accounts can omit qualifications, and external materials can change after they
+are examined. The library therefore needs to retain source references,
+applicability conditions, and the scope of any checks. A paper's claim that code
+is released, observation of a repository, and successful execution provide
+different kinds of evidence. An agent preparing to use a resource must be able
+to tell which evidence is available and which questions remain unresolved.
 
-Our planned evaluation examines community and summary quality, resource
-retrieval effectiveness, and the costs of construction and use. Comparisons with
-direct resource retrieval, simple clustering followed by summarization, and
-related community-based retrieval methods will control access to source
-materials and model budgets. Component analyses will distinguish the effects of
-resource organization from those of summarization. Together, these evaluations
-are intended to establish whether community representations help agents find
-resources that better satisfy their needs, which design choices account for any
-gains, and whether those gains justify the cost of constructing the collection
-knowledge.
+We propose \emph{Papers for Agents (P4A)} as a system for constructing and
+accessing reusable research knowledge from published papers and their associated
+resources. Its goal is to help agents discover relevant work, assess its fit to
+a research need, select supporting resources, and prepare to use them. P4A is
+designed around a persistent library that brings together resource descriptions,
+research context, documented uses, and supporting sources. Agents perform the
+material interpretation needed to construct this knowledge, while downstream
+research agents access it and return to original materials when further
+inspection is required. The system focuses on information available in published
+materials; recovering unreported research history is outside this scope.
 
-% TODO: Specify the community detection and retrieval mechanisms; substantiate
-% comparisons with GraphRAG and other relevant work. Replace the planned
-% evaluation paragraph with validated findings and a concrete contribution
-% statement once the methods and experiments are established.
+Our research agenda has three parts. The first is a resource representation
+that captures the knowledge needed for discovery, assessment, and use while
+preserving its evidential basis. The second is a construction and access
+framework that makes this knowledge reusable across research tasks. The third
+is a system evaluation connecting the quality of the constructed library to
+resource discovery, justified selection, and preparation for use. We plan to
+compare against agents with equivalent access to source materials and existing
+resource services, measure construction and downstream costs, and examine which
+design choices account for any improvements. This evaluation will test whether
+preparing reusable research knowledge improves research decisions and reduces
+repeated reading and interpretation enough to justify its construction cost.
+
+% TODO: Ground Q1--Q4 in verified resources and independent user needs; add
+% related-work evidence for specific gaps. Specify methods in the system section.
+% Replace the research agenda with concrete contributions and measured findings
+% after the design and evaluation are established.
 
 \section{Conclusion}
 \label{sec:conclusion}

@@ -1,3 +1,15 @@
+## 当前讨论结论（2026-09-10，Introduction 修订）
+
+**当前主线：方便 Agent 发现和使用研究资源。** 以 Agent 面对研究问题时的发现、判断、选择和使用准备为叙事中心，将已发表论文及关联材料加工为可复用的研究知识。
+
+- Introduction 先用渐进式研究案例呈现行动和需求，再引出分散材料与可复用理解之间的 gap，总论式介绍 P4A。
+- Community 保留为系统内部的候选组织方式，不在当前 Introduction 中引入。其检测设计及与 GraphRAG 的具体比较仍待研究。
+- 第 1–9 节保留早期定位，第 10–11 节记录 community 讨论；其中以 community 为 Introduction 中心的安排已由本次讨论调整。
+- “意见跟进”保留用户原始意见与所附 storytelling 骨架；第 12 节整理当前叙事、案例、贡献位置及证据边界。
+- 已授权修改讨论稿和 Introduction 草稿，尚未确定方法、benchmark 或实施计划。
+
+---
+
 ## 主题
 
 对原本 papers for agents 的 idea 的 callback 与延申；
@@ -248,3 +260,136 @@ Agent 可承担材料理解、community 组织、摘要生成与检查；下游 
 评测讨论包括组织与摘要质量、具体资源检索效果，以及构建和使用成本；应区分组织机制、摘要、信息访问和模型投入的作用。查询与质量标准需要独立于系统输出制定。具体任务、指标、基线和实验规模仍待讨论。
 
 本次先产出 `paper/introduction.zh.md` 作为中文讨论初稿。尚未确定的方法与结果明确留待补充，不启动系统实现或实验。
+
+## 意见跟进
+
+当前的 introduction 不太满足一个合适的 introduction 该有的形式，我们应该着重思考这些问题
+
+现状与我们设定的某种理想情况存在什么 gap
+
+单篇论文，零散的数据和信息，并不能很好的支持 Agent 进行学术研究和阅读，（ARA）提出了论文 PDF 压缩了大量论文相关信息。
+
+论文越来越多，什么论文更加值得读（被引量高，与我论文相关），什么论文更加值得跟进（后续工作推进，比如代码库维护），哪些资源可以服务于我的idea验证（benchmark、datasets），论文间的关系（例如 DSPY 与后期的 textgrad 论文有很密切的关系）等问题。
+
+从上下文角度来说， Agent 如果需要了解一篇论文的工作，需要从 pdf 或者其他格式获取原文，提取其中文本，大量重复工作被进行。论文、benchmark 等资源需要检索和阅读，如果我们将这些工作汇总在一个资源库中，将极大加速这一流程，节省时间和上下文。还能提升准确性
+
+datasets benchmark 等资源越来越被频繁提出，如果能够让其与论文关联起来，系统还能够为“我的论文适合在哪些benchmark上评测”提供支撑，此外，一些benchmark的使用方法也值得摘要，例如 SWE 这一 bench 经过并发式的使用，就能为 cache 优化、负载提供支撑
+
+例如本仓库以前加入了两篇论文来支撑question，但其实那两篇论文与我当时的兴趣方向并不相关:
+
+````
+Challenge: Research Intent Is Not Fully Captured by Conventional Paper Metadata
+
+A fundamental challenge in scholarly retrieval is that the conceptual intent of a research work is often not explicitly represented in its conventional metadata. Paper titles, abstracts, and author-provided keywords typically describe the high-level contribution from the perspective of the authors, but may omit the broader system context, practical implications, and reusable artifacts that define the actual scope and impact of the work.
+
+For example, when searching for research on agent execution traces, many retrieved papers focus on trace visualization, debugging, or context compression. Although these works share similar terminology, they do not necessarily address the intended research question: how execution histories can be represented, organized, and reused as system-level knowledge. The mismatch occurs because the underlying intent of a research contribution may be reflected not only in its textual description, but also in associated resources, such as datasets, benchmarks, code repositories, experimental pipelines, and the relationships among them.
+
+Existing scholarly search systems primarily index and rank papers based on document-level signals. However, research contributions increasingly extend beyond papers themselves into a broader ecosystem of artifacts. A dataset may reveal the actual task formulation, a code repository may expose the implemented system abstraction, and experimental resources may clarify the intended application scenarios. Without modeling these artifacts and their relationships, retrieval systems may identify papers with similar terminology while missing works that share the same underlying research intent.
+````
+
+````
+结合原文（54 页版 §1、§2、§7、§8）看，AgenticScholar 的叙事是一条非常典型的、而且执行得很工
+   整的 SIGMOD 系统论文故事线，可以拆成七幕：                                                 
+                                                                                              
+   1. 开篇升华：把领域问题改写成"数据管理问题"                                                
+   引言第一句就定调："The exponential growth of scholarly corpora represents one of today's   
+   most complex data management challenges"（p. 2）。注意它不说"检索难"或"LLM 应用"，而是强调 
+   语料是多模态、半结构化的"ecosystem"，并挂上"democratizing knowledge and promoting          
+   evidence-based research"的价值。这一步的作用是把论文的身份从 NLP/应用论文锚定成数据库论文。
+                                                                                              
+   2. 用一个具体例子当叙事主线                                                                
+   Fig. 1 的"vector search 渐进式会话"是全文的叙事脊柱：一个研究者从开放问题 "How has research
+   on vector search been evolving…" 出发，沿 Q1（趋势）→Q2（检索）→Q3（里程碑）→Q4（性能比较与
+   局限）→Q5（研究想法）逐步深入，并分叉出 Intent 1/2/3 三条路径。这个例子不是装饰——后面所有东
+   西都从它推导出来。                                                                         
+                                                                                              
+   3. 从例子归纳"查询特征"，再推出"现有系统做不到"                                            
+   引言从 Fig. 1 直接观察到学术查询的四条性质：start open-ended and evolve diverse intents /  
+   require multi-step semantic reasoning / depend on multi-modal evidence / require           
+   context-aware knowledge generation。然后一句话完成转折："they cannot autonomously          
+   orchestrate a complete analytical pipeline – from trend analysis (Q1) through … research   
+   idea exploration (Q5)"（p. 2）。§2.2 的 Table 1（8 个系统 × 三层查询的能力矩阵）把这个 gap 
+   物化成一张表——它是全文动机的"反派"。                                                       
+                                                                                              
+   4. 四个 Challenge，与架构一一对应                                                          
+   这是全文最工整的叙事装置：Challenge 1（语义表示）→ 知识表示层（§3）；Challenge 2（复杂流水 
+   线规划）→ LLM 混合规划层（§4）；Challenge 3（通用性与可扩展性）→ 统一执行层                
+   （§5）；Challenge 4（可解释可追溯）→ 由执行层物化计划和 lineage 顺带解决。贡献列表里每一条 
+   都写着 "To address Challenge X"——读者几乎不需要自己建立问题和方案的映射。                  
+                                                                                              
+   5. DBMS 类比作为解释框架                                                                   
+   全文反复把系统部件对应到数据库概念：传统优化器"built for fixed relational schemas"不够用   
+   （Challenge 2）；可解释性要 "materialized and inspectable, akin to query execution plans in
+   DBMSs"（Challenge 4）；算子集 + DAG 执行 + result cache 就是执行引擎。这个类比让 SIGMOD 读 
+   者用熟悉的心智模型接收一个 LLM 系统。                                                      
+                                                                                              
+   6. 三层查询分类法做设计与评测的共同骨架                                                    
+   Fig. 3 的 Tier-1 检索 / Tier-2 抽取与综合（单篇/多篇）/ Tier-3 发现与生成，在 §2.1 定义后  
+   ，§5 的算子设计从它出发，§6 的实验也按它分三套评测，最后 case study 再重演一遍 Fig. 1 的渐 
+   进会话。故事的结构和评测的结构是同一个结构。                                               
+                                                                                              
+   7. 收尾：Lessons 示人以诚 + "first system" 优先权声明                                      
+   §7 罕见地承认构建质量是软肋（"prone to occasional errors in entity extraction, relation    
+   detection… that can propagate through downstream components"，p. 23）、多模态数值抽取不可靠
+   、成本权衡；§8 结论则以 "To the best of our knowledge and evaluation, AgenticScholar is the
+   first system to execute agentic reasoning over multi-modal scholarly data through DAG-based
+   plans"（p. 24）收束，并自限评测只覆盖 CS 部分领域。                                        
+                                                                                              
+   一句话概括它的 storytelling：用一个研究者的渐进式探索会话作为叙事脊柱，把"学术查询"重述为" 
+   查询处理问题"，用四 Challenge ↔ 三层架构的一一映射制造工整感，再用三层查询分类法把动机、设 
+   计和评测缝成同一副骨架——叙事完成度很高。需要留意的是（重读笔记也指出），这个故事的说服力大 
+   量依赖 Table 1 这类作者自标的能力矩阵和"first system"这类自我声明，叙事上的闭环不等于证据上
+   的闭环。
+````
+
+
+### 12. 以研究行动为主线的叙事修订（2026-09-10）
+
+#### 调整原因与当前立意
+
+上一版过早以 community 和摘要检索为中心，将 P4A 收窄成一种集合检索方案。用户希望继续强调方便 Agent 发现和使用研究资源，以研究过程中的行动组织故事，并在 Introduction 中总论式介绍贡献。
+
+当前候选主旨：将已发表论文及其关联材料中的分散信息，加工和组织为可复用的研究知识，支持 Agent 从研究需求出发发现材料、判断适用性、选择资源并准备后续使用。
+
+Gap 不应仅表述为 PDF 解析或文本获取的重复。需要研究的是理解资源背景、用途、设置和使用条件等加工结果如何保存并跨任务复用。节省时间、上下文及提高准确性是待验证收益；已公开材料的加工不能恢复未公开的研究过程。
+
+#### 借鉴 storytelling 的方式
+
+借鉴所附 AgenticScholar 骨架中“渐进案例 → 需求特征 → 问题 → 系统回应 → 评测”的对应关系。案例负责展示需求，相关工作比较与实际观察负责证明缺口，实验负责验证设计。不能通过案例直接推断现有系统普遍失败，也不复制能力矩阵中的自我声明、first-system 主张或固定架构。
+
+数据管理定位来自对资源知识的构建、持久化、组织、访问与复用，不依靠额外引入规划器或执行引擎来建立。
+
+#### 贯穿案例（说明性，待真实材料核查）
+
+研究者开发一种提升长上下文指令遵循能力的方法，请 Agent 调研相关工作并准备实验。
+
+| 请求 | Agent 行动 | 希望得到的结果 |
+| --- | --- | --- |
+| Q1：哪些工作相关，哪些值得优先读？ | 发现、筛选 | 有相关性依据的阅读候选 |
+| Q2：这些工作的研究问题和实验条件与我的设想有何区别？ | 理解、判断 | 支持选择的差异说明 |
+| Q3：哪些 benchmark 和数据适合检验我的方法，已有研究如何使用它们？ | 寻找资源、判断用途 | 有适用性依据的评测候选 |
+| Q4：有哪些实现与评测工具可以采用，使用前需要检查什么？ | 选择、准备使用 | 入口、使用说明与待核查事项 |
+
+案例终点是有依据的选择与使用准备，不承诺自动实验或完整复现。行动可反复发生：Q2 可改变检索方向，Q4 的检查可促使重新选择 Q3 的资源。这些行动不是强制流水线，也不是预设难度递增的 benchmark 层级。
+
+#### 从案例到挑战与系统责任
+
+案例提出三个需求特征：相关性依赖使用者的研究需求；判断依据跨越论文与外部材料；部分理解具有跨问题、跨任务复用的机会。应区分作者原始用途、后续研究实际用法和针对新需求的适用性判断；后者不能作为无条件事实提前写入资源记录。
+
+| 挑战 | 系统责任 |
+| --- | --- |
+| 获得支撑研究选择的信息 | 从论文及关联材料构建有来源的资源知识 |
+| 支持不同研究需求 | 组织、检索和呈现背景、用途及差异 |
+| 支持已有理解的后续使用 | 保留来源、适用条件与材料状态，支持返回原材料检查 |
+
+这些责任可以跨模块实现。Community 在设计章节中作为组织方式讨论，不在 Introduction 中先行定义。具体检测、摘要及访问机制仍待设计。
+
+#### Introduction 与贡献的安排
+
+当前顺序：研究 Agent 的需求 → Q1–Q4 案例 → 需求特征及 gap → 三项系统责任 → P4A 总体定位 → 贡献方向与评测。
+
+贡献暂以三个位置组织：面向研究行动的资源知识组织、资源库构建与访问机制、面向发现与使用的系统评价。初稿采用研究议程和拟开展工作的表述；后续必须用具体设计及实证结果补实，不能当作已成立的新颖性或已完成的贡献。
+
+评测可覆盖发现筛选、适用性判断与资源选择、使用准备及整体成本。任务与质量标准应独立于系统输出，并比较同等材料访问条件下的合理工具组合。贯穿案例展示能力如何连接，不能代替独立评测。Community 检测及摘要等机制的分析可在这一总体框架下开展。
+
+本次同步修订 `paper/introduction.zh.md` 与 `paper/main.tex`，编译预览；不启动实现或实验。下一步需要选定并核查真实案例，明确相邻方法留下的具体缺口，再完善机制与贡献。
