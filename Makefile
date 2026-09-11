@@ -2,7 +2,7 @@
 #
 #   make setup     建统一 uv 环境 + 装 nbstripout 的 git 过滤器（每个 clone 跑一次）
 #   make lab       启动 JupyterLab
-#   make verify    仓库级自检（E01、E06 的 stdlib-only 复现闸门）
+#   make verify    仓库级自检（E01、E06、E07 的 stdlib-only 复现闸门）
 
 UV ?= uv
 
@@ -30,3 +30,4 @@ lab:
 verify:
 	$(MAKE) -C experiments/e01-p4a-trajectory verify-stdlib
 	$(MAKE) -C experiments/e06-static-prefix verify-stdlib
+	$(MAKE) -C experiments/e07-p4a-case-pool verify-stdlib

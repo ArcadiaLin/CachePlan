@@ -7,6 +7,7 @@ members = [
     "cacheplan",
     "cacheplan-e01",
     "cacheplan-e06",
+    "cacheplan-e07",
 ]
 
 [[package]]
@@ -191,6 +192,11 @@ provides-extras = ["render"]
 name = "cacheplan-e06"
 version = "0.1.0"
 source = { virtual = "experiments/e06-static-prefix" }
+
+[[package]]
+name = "cacheplan-e07"
+version = "0.1.0"
+source = { editable = "experiments/e07-p4a-case-pool" }
 
 [[package]]
 name = "certifi"

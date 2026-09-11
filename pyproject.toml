@@ -24,6 +24,7 @@ default-groups = ["notebook"]    # 一次 `uv sync` 就得到完整开发环境
 members = [
     "experiments/e01-p4a-trajectory",
     "experiments/e06-static-prefix",
+    "experiments/e07-p4a-case-pool",
 ]
 exclude = [
     "experiments/p4a",             # 历史项目，vllm/mineru 版本与主线冲突，冻结

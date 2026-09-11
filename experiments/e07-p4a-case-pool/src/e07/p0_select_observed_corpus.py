@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import shutil
@@ -98,9 +99,32 @@ def md5_of(path: Path) -> str:
     return h.hexdigest()
 
 
-def main() -> int:
+def rel_to_repo(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO))
+    except ValueError:  # --out-root 指到仓库外（verify-stdlib 的临时目录）
+        return str(path)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out-root", type=Path, default=OUT,
+                        help="输出根目录（默认 data/processed/e07）")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="只处理观测集前 N 篇（verify-stdlib 小样用）；"
+                             "不设则要求观测集恰为 952 篇")
+    args = parser.parse_args(argv)
+
+    out_root = args.out_root
+    corpus = out_root / "corpus"
+
     papers = load_observed_papers()
-    if len(papers) != EXPECTED_PAPERS:
+    if args.limit is not None:
+        papers = papers[: args.limit]
+        if not papers:
+            print("FAIL: --limit 后观测集为空", file=sys.stderr)
+            return 1
+    elif len(papers) != EXPECTED_PAPERS:
         print(f"FAIL: 观测集论文数 {len(papers)} != {EXPECTED_PAPERS}", file=sys.stderr)
         return 1
 
@@ -120,14 +144,14 @@ def main() -> int:
             print(f"  {m}", file=sys.stderr)
         return 1
 
-    if CORPUS.exists():
-        shutil.rmtree(CORPUS)
-    CORPUS.mkdir(parents=True)
+    if corpus.exists():
+        shutil.rmtree(corpus)
+    corpus.mkdir(parents=True)
 
     layer_totals: dict[str, dict[str, int]] = {}
     for pid in papers:
         for layer, src_dir in source_dirs(pid).items():
-            dst_dir = CORPUS / pid / layer
+            dst_dir = corpus / pid / layer
             shutil.copytree(src_dir, dst_dir)
             s_n, s_b = dir_stats(src_dir)
             d_n, d_b = dir_stats(dst_dir)
@@ -139,11 +163,12 @@ def main() -> int:
             t["files"] += s_n
             t["bytes"] += s_b
 
-    # 抽样 md5 比对：等距取 MD5_SAMPLE 篇，每篇比对 layer4/paper_record.yml。
-    sampled = [papers[i * len(papers) // MD5_SAMPLE] for i in range(MD5_SAMPLE)]
+    # 抽样 md5 比对：等距取样，每篇比对 layer4/paper_record.yml。
+    n_sample = min(MD5_SAMPLE, len(papers))
+    sampled = [papers[i * len(papers) // n_sample] for i in range(n_sample)]
     for pid in sampled:
         src_f = source_dirs(pid)["layer4"] / "paper_record.yml"
-        dst_f = CORPUS / pid / "layer4/paper_record.yml"
+        dst_f = corpus / pid / "layer4/paper_record.yml"
         if md5_of(src_f) != md5_of(dst_f):
             print(f"FAIL: md5 不一致 {pid}/layer4/paper_record.yml", file=sys.stderr)
             return 1
@@ -159,24 +184,25 @@ def main() -> int:
                 "p4a_v1_copy": str(SRC.relative_to(REPO)),
                 "observed_set": str(N0.relative_to(REPO)),
             },
-            "params": {"expected_papers": EXPECTED_PAPERS, "md5_sample": MD5_SAMPLE,
+            "params": {"expected_papers": EXPECTED_PAPERS, "limit": args.limit,
+                       "md5_sample": n_sample,
                        "known_missing": sorted(f"{p}: {r}" for p, r in KNOWN_MISSING)},
         },
         "n_papers": len(papers),
-        "corpus": str(CORPUS.relative_to(REPO)),
+        "corpus": rel_to_repo(corpus),
         "layers": layer_totals,
         "checks": {
             "required_files": "ok",
             "copy_parity_per_paper_per_layer": "ok",
-            "md5_sampled": MD5_SAMPLE,
+            "md5_sampled": n_sample,
         },
     }
-    OUT.mkdir(parents=True, exist_ok=True)
-    with open(OUT / "p0_corpus_summary.json", "w") as f:
+    out_root.mkdir(parents=True, exist_ok=True)
+    with open(out_root / "p0_corpus_summary.json", "w") as f:
         json.dump(summary, f, ensure_ascii=False, indent=1)
 
     total_mb = sum(t["bytes"] for t in layer_totals.values()) / 1e6
-    print(f"ok: {len(papers)} papers -> {CORPUS.relative_to(REPO)} ({total_mb:.0f} MB)")
+    print(f"ok: {len(papers)} papers -> {rel_to_repo(corpus)} ({total_mb:.0f} MB)")
     for layer, t in sorted(layer_totals.items()):
         print(f"  {layer}: {t['files']} files, {t['bytes'] / 1e6:.0f} MB")
     return 0
