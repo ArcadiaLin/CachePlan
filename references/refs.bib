@@ -69,10 +69,9 @@
   articleno = {131},
   year      = {2026},
   url       = {https://doi.org/10.1145/3802008},
-  note      = {支撑 open-questions/Necessity-of-agentic-execution：同 workload 类第三个实例，
-               预定义计划库 + 动态兜底把规划开销降 >90%（Table 8），骨干消融显示智能载体从模型
-               转移到计划与数据结构（Table 11）。缓存在计划/结果层，非 prompt/KV 层。
-               笔记 docs/literature/2026-AgenticScholar.md}
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               P4A 的直接相关工作，比较论文知识组织、可组合算子和研究查询；
+               同时作为叙事结构参照。本次本地材料采用 arXiv:2603.13774v1，54 页。}
 }
 
 @article{2026-AlignedServe,
@@ -89,4 +88,174 @@
   note      = {支撑 open-questions/Placement-of-reusable-context 的相邻工作区分：利用 KV 长度对齐
                消除 iteration 级气泡，与前缀内容共享正交可串联；文献叙事与实验中需与前缀共享
                一脉（Helium/KVFlow）分开陈述。笔记 docs/literature/2026-AlignedServe.md}
+}
+
+% 2026-09-11 P4A 相近工作核查；PDF 暂存于用户指定的
+% tmps/p4a-related-work-2026-09-11/，文件名与下列 citekey 一致。
+
+@article{2026-KATS,
+  title     = {Revisiting Task-Oriented Dataset Search in the Era of Large Language Models:
+               Challenges, Benchmark, and Solution},
+  author    = {Wei, Zixin and Guo, Yucan and Li, Jinyang and Han, Xiaolin and Jin, Xiaolong and Ma, Chenhao},
+  journal   = {Proceedings of the VLDB Endowment},
+  volume    = {19},
+  number    = {5},
+  pages     = {973--986},
+  year      = {2026},
+  doi       = {10.14778/3796195.3796209},
+  url       = {https://www.vldb.org/pvldb/vol19/p973-wei.pdf},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               直接比较从论文构建任务与数据集知识、按研究需求检索、增量更新及成本。}
+}
+
+@inproceedings{2023-LPWC,
+  title     = {Linked Papers With Code: The Latest in Machine Learning as an RDF Knowledge Graph},
+  author    = {Färber, Michael and Lamprecht, David},
+  booktitle = {ISWC 2023 Posters and Demos},
+  year      = {2023},
+  eprint    = {2310.20475},
+  version   = {v1},
+  url       = {https://arxiv.org/abs/2310.20475v1},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               比较论文、任务、方法、数据集、评测和仓库的关联组织；本地采用 arXiv v1。}
+}
+
+@inproceedings{2024-MLSea,
+  title     = {{MLSea}: A Semantic Layer for Discoverable Machine Learning},
+  author    = {Dasoulas, Ioannis and Yang, Duo and Dimou, Anastasia},
+  booktitle = {The Semantic Web: ESWC 2024, Proceedings, Part II},
+  pages     = {178--198},
+  year      = {2024},
+  doi       = {10.1007/978-3-031-60635-9_11},
+  url       = {https://2024.eswc-conferences.org/wp-content/uploads/2024/04/146640512.pdf},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               比较跨平台整合数据集、实验配置、实现和论文的资源语义组织。}
+}
+
+@article{2026-SemRepo,
+  title     = {{SemRepo}: A Knowledge Graph for Research Software and Its Scholarly Ecosystem},
+  author    = {Rafay, Abdul and Susanti, Yuni and Lamprecht, David and Färber, Michael},
+  journal   = {arXiv preprint arXiv:2605.13310},
+  year      = {2026},
+  eprint    = {2605.13310},
+  version   = {v1},
+  url       = {https://arxiv.org/abs/2605.13310v1},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               比较论文与仓库依赖、开发信息及其他研究资源的关联和溯源；按预印本登记。}
+}
+
+@inproceedings{2023-RAA,
+  title     = {Empowering Knowledge Discovery from Scientific Literature: A novel approach to Research Artifact Analysis},
+  author    = {Stavropoulos, Petros and Lyris, Ioannis and Manola, Natalia and Grypari, Ioanna and Papageorgiou, Haris},
+  booktitle = {Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software},
+  year      = {2023},
+  pages     = {37--53},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/2023.nlposs-1.5},
+  url       = {https://aclanthology.org/2023.nlposs-1.5/},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               SciNoBo / RAA 资源抽取对照，涵盖数据与软件的版本、许可、使用和来源信息。}
+}
+
+@inproceedings{2024-SciER,
+  title     = {{SciER}: An Entity and Relation Extraction Dataset for Datasets, Methods, and Tasks in Scientific Documents},
+  author    = {Zhang, Qi and Chen, Zhijia and Pan, Huitong and Caragea, Cornelia and Latecki, Longin Jan and Dragut, Eduard},
+  booktitle = {Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing},
+  year      = {2024},
+  pages     = {13083--13100},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/2024.emnlp-main.726},
+  url       = {https://aclanthology.org/2024.emnlp-main.726/},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               全文数据集、方法、任务及细粒度关系的抽取与独立评价参照。}
+}
+
+@inproceedings{2025-PaSa,
+  title     = {{PaSa}: An LLM Agent for Comprehensive Academic Paper Search},
+  author    = {He, Yichen and Huang, Guanhua and Feng, Peiyuan and Lin, Yuan and Zhang, Yuchen and Li, Hang and E, Weinan},
+  booktitle = {Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)},
+  year      = {2025},
+  pages     = {11663--11679},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/2025.acl-long.572},
+  url       = {https://aclanthology.org/2025.acl-long.572/},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               多轮搜索、论文读取和引文扩展的 Agent 检索对照。}
+}
+
+@inproceedings{2026-SciNet,
+  title     = {{SciNet}: Evaluating AI Agents in Relation-Aware Scientific Literature Retrieval},
+  author    = {Shao, Chenyang and Xu, Fengli and Li, Yong},
+  booktitle = {International Conference on Machine Learning},
+  year      = {2026},
+  eprint    = {2601.03260},
+  version   = {v2},
+  url       = {https://arxiv.org/abs/2601.03260v2},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               论文关系与路径检索的任务设计参照；会议归属见 ICML 2026 官方论文列表，
+               本地采用 arXiv v2，未登记未核实的正式卷页信息。}
+}
+
+@article{2026-MAPLE,
+  title     = {Can Retrievers Find the Same Paper from Different Aspects? A Multi-Aspect Full-Paper Scientific Retrieval Benchmark},
+  author    = {Wei, Yiyang and Guo, Fang and Zhou, Qiji and Fu, Zhizhang and Ding, Mengru and Yang, Kai and Zhang, Yue},
+  journal   = {arXiv preprint arXiv:2608.15624},
+  year      = {2026},
+  eprint    = {2608.15624},
+  version   = {v1},
+  url       = {https://arxiv.org/abs/2608.15624v1},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               从动机、方法和实验等不同方面检索全文论文的任务与评价参照。}
+}
+
+@article{2025-LOTUS,
+  title     = {Semantic Operators and Their Optimization: Enabling LLM-Based Data Processing with Accuracy Guarantees in {LOTUS}},
+  author    = {Patel, Liana and Jha, Siddharth and Pan, Melissa and Gupta, Harshit and Asawa, Parth and Guestrin, Carlos and Zaharia, Matei},
+  journal   = {Proceedings of the VLDB Endowment},
+  volume    = {18},
+  number    = {11},
+  pages     = {4171--4184},
+  year      = {2025},
+  doi       = {10.14778/3749646.3749685},
+  url       = {https://www.vldb.org/pvldb/vol18/p4171-patel.pdf},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               可组合语义算子、执行优化与相对参考算法的质量保证参照；题名按下载的正式 PDF 首页。}
+}
+
+@article{2025-DocETL,
+  title     = {{DocETL}: Agentic Query Rewriting and Evaluation for Complex Document Processing},
+  author    = {Shankar, Shreya and Chambers, Tristan and Shah, Tarak and Parameswaran, Aditya G. and Wu, Eugene},
+  journal   = {Proceedings of the VLDB Endowment},
+  volume    = {18},
+  number    = {9},
+  pages     = {3035--3048},
+  year      = {2025},
+  doi       = {10.14778/3746405.3746426},
+  url       = {https://www.vldb.org/pvldb/vol18/p3035-shankar.pdf},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               Agent 引导的文档处理计划分解、改写与评价参照；下载采用 PVLDB 正式版。}
+}
+
+@inproceedings{2025-TCR-QF,
+  title     = {How to Mitigate Information Loss in Knowledge Graphs for {GraphRAG}: Leveraging Triple Context Restoration and Query-Driven Feedback},
+  author    = {Huang, Manzong and Bu, Chenyang and He, Yi and Wu, Xindong},
+  booktitle = {Proceedings of the Thirty-Fourth International Joint Conference on Artificial Intelligence},
+  year      = {2025},
+  pages     = {8104--8112},
+  doi       = {10.24963/ijcai.2025/901},
+  url       = {https://www.ijcai.org/proceedings/2025/0901.pdf},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               查询反馈补全知识与恢复证据上下文的直接相关方法；下载采用 IJCAI 正式版。}
+}
+
+@article{2025-Zep,
+  title     = {Zep: A Temporal Knowledge Graph Architecture for Agent Memory},
+  author    = {Rasmussen, Preston and Paliychuk, Pavlo and Beauvais, Travis and Ryan, Jack and Chalef, Daniel},
+  journal   = {arXiv preprint arXiv:2501.13956},
+  year      = {2025},
+  eprint    = {2501.13956},
+  version   = {v1},
+  url       = {https://arxiv.org/abs/2501.13956v1},
+  note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
+               Graphiti 的时序事实、关系失效与历史保留机制，作为资源知识维护的相邻方法。}
 }
