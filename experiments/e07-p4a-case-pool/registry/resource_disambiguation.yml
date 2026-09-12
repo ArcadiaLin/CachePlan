@@ -1,0 +1,622 @@
+# E07 资源消歧注册表：dataset / benchmark 名字的规范身份
+#
+# 用途：p1 构建 paper–resource 边时，把 layer4/resource_records.yml 里的原始
+# 名字映射到规范资源身份，避免同名不同物合并、同物不同名分裂。
+#
+# 口径声明：
+# - 输入是 p4a v1 的抽取结果，属于线索；本表消歧的是"名字 → 资源身份"，
+#   不担保任何具体论文与该资源的关系描述正确（那是 usage 级核查，见 README）。
+# - corpus_keys 是归一化 key（小写、去非字母数字）；未列入 merge_map 的 key
+#   默认自成身份，不并入任何规范资源。
+# - verification: web-verified = 2026-09-12 经一手来源（论文/官方仓库）核查；
+#   known = 整理者熟知、未逐一回源；uncertain = 身份存疑，使用前必须核查。
+#
+# _provenance:
+#   curated_by: kimi (Kimi Code CLI)
+#   curated_at: 2026-09-12
+#   source_stats: 952 篇 E07 语料，dataset/benchmark 类共 1837 个归一化名字，
+#     其中 >=3 篇提到的 144 个为本表主体；<3 篇的只在与主体有合并/混淆
+#     关系时收录。
+#   method: 归一化聚类 -> 本地 evidence 上下文判读（PRISM/CDR/Minerva 等）
+#     -> 26 项 web 核查（一手来源优先）
+
+#####################################################################
+# 1. 规范资源条目
+#    kind 取其主要角色；papers 列为语料内提及篇数（>=3 的口径）。
+#####################################################################
+canonical_resources:
+
+  # ---- 数学推理 ----
+- {id: gsm8k, name: GSM8K, kind: benchmark, papers: 69, year: 2021, org: OpenAI,
+   paper: "https://arxiv.org/abs/2110.14168", url: "https://github.com/openai/grade-school-math",
+   corpus_keys: [gsm8k], verification: known}
+- {id: math-500, name: MATH-500, kind: benchmark, papers: 51, year: 2023, org: OpenAI,
+   paper: "https://arxiv.org/abs/2305.20050", url: "https://huggingface.co/datasets/HuggingFaceH4/MATH-500",
+   corpus_keys: [math500],
+   relations: "subset_of math（PRM800K 论文从 MATH 测试集划出的 500 题）；原始 split 在 openai/prm800k",
+   notes: "语料常引为 Lightman et al. 2024（ICLR 版）；distinct_from Omni-MATH-500",
+   verification: web-verified}
+- {id: math, name: MATH, kind: benchmark, papers: 29, year: 2021, org: "Hendrycks et al.",
+   paper: "https://arxiv.org/abs/2103.03874", url: "https://github.com/hendrycks/math",
+   corpus_keys: [math], verification: known,
+   notes: "名字极短，注意语料中 math10k/mathvista/mathverse/mathqa/mathbench 等均为不同资源"}
+- {id: aime-2024, name: AIME 2024, kind: benchmark, papers: 36, year: 2024, org: MAA,
+   corpus_keys: [aime24, aime2024],
+   notes: "竞赛题本身非论文资源；LLM 评测界事实标准分发见 MathArena/各 math-eval 仓库",
+   verification: known}
+- {id: aime-2025, name: AIME 2025, kind: benchmark, papers: 28, year: 2025, org: MAA,
+   corpus_keys: [aime25, aime2025], verification: known}
+- {id: aime-unspecified, name: AIME (year-unspecified), kind: benchmark, papers: 6, org: MAA,
+   corpus_keys: [aime, aime2425, aime2024andaime2025, aime120],
+   notes: "裸称 AIME 的用法在本地证据中多同时指 2024+2025 两年；usage 级归属需逐篇确认",
+   verification: uncertain}
+- {id: amc-2023, name: AMC 2023, kind: benchmark, papers: 18, year: 2023, org: MAA,
+   corpus_keys: [amc23, amc2023],
+   notes: "LLM 评测中常见为 NuminaMath（Li et al. 2024）/AoPS 来源的 AMC12 2023 题集",
+   verification: known}
+- {id: amc-unspecified, name: AMC (year-unspecified), kind: benchmark, papers: 12, org: MAA,
+   corpus_keys: [amc],
+   notes: "本地证据多为 AMC 2023，也有 AMC-22/23 混用；usage 级归属需逐篇确认",
+   verification: uncertain}
+- {id: minerva-math, name: "Minerva Math (OCWCourses)", kind: benchmark, papers: 16, year: 2022, org: Google,
+   paper: "https://arxiv.org/abs/2206.14858",
+   url: "https://github.com/QwenLM/Qwen2.5-Math/tree/main/evaluation/data/minerva_math",
+   corpus_keys: [minerva, minervamath],
+   notes: "RL 文献惯称 Minerva Math 的 272 题即 Minerva 论文的 OCWCourses 子集；lm-eval-harness 的 minerva_math 任务是另一套（Hendrycks MATH 配 Minerva 式 prompt），勿混",
+   verification: web-verified}
+- {id: olympiadbench, name: OlympiadBench, kind: benchmark, papers: 16, year: 2024, org: OpenBMB,
+   paper: "https://arxiv.org/abs/2402.14008", url: "https://github.com/OpenBMB/OlympiadBench",
+   corpus_keys: [olympiadbench], verification: known}
+- {id: svamp, name: SVAMP, kind: benchmark, papers: 3, year: 2021,
+   paper: "https://arxiv.org/abs/2103.07191", corpus_keys: [svamp], verification: known}
+- {id: mathqa, name: MathQA, kind: dataset, papers: 3, year: 2019,
+   paper: "https://arxiv.org/abs/1905.13319", corpus_keys: [mathqa], verification: known,
+   notes: "AQuA 论文提出；与 MATH 无关"}
+- {id: mathverse, name: MathVerse, kind: benchmark, papers: 3, year: 2024,
+   paper: "https://arxiv.org/abs/2403.14624", corpus_keys: [mathverse], verification: known}
+- {id: metamathqa, name: MetaMathQA, kind: dataset, papers: 5, year: 2023,
+   paper: "https://arxiv.org/abs/2309.12284", url: "https://github.com/meta-math/MetaMath",
+   corpus_keys: [metamathqa], verification: known}
+- {id: gsm8k-zh, name: GSM8K_zh, kind: dataset, papers: 1, year: 2023, org: MetaMath,
+   paper: "https://arxiv.org/abs/2309.12284", url: "https://huggingface.co/datasets/meta-math/GSM8K_zh",
+   corpus_keys: [gsm8kzh], relations: "version_of gsm8k（中文翻译版）", verification: web-verified}
+- {id: gsm8k-v, name: GSM8K-V, kind: benchmark, papers: 1, year: 2025, org: ZJU,
+   paper: "https://arxiv.org/abs/2509.25160", url: "https://github.com/ZJU-REAL/GSM8K-V",
+   corpus_keys: [gsm8kv], relations: "version_of gsm8k（视觉化映射）", verification: web-verified}
+- {id: mgsm, name: MGSM, kind: benchmark, papers: 3, year: 2022, org: Google,
+   paper: "https://arxiv.org/abs/2210.03057", corpus_keys: [mgsm], verification: known,
+   notes: "GSM8K 测试集的多语言人工翻译版"}
+- {id: omni-math, name: Omni-MATH, kind: benchmark, papers: 4, year: 2024,
+   paper: "https://arxiv.org/abs/2410.07985", corpus_keys: [omnimath], verification: known}
+- {id: hmmt-feb-2025, name: "HMMT February 2025 (MathArena)", kind: benchmark, papers: 3, year: 2025,
+   paper: "https://arxiv.org/abs/2505.23281", url: "https://huggingface.co/datasets/MathArena/hmmt_feb_2025",
+   corpus_keys: [hmmt25], relations: "subset_of MathArena 平台", verification: web-verified}
+- {id: dapo-math-17k, name: DAPO-Math-17k, kind: dataset, papers: 3, year: 2025, org: "ByteDance Seed / Tsinghua AIR",
+   paper: "https://arxiv.org/abs/2503.14476", url: "https://huggingface.co/datasets/BytedTsinghua-SIA/DAPO-Math-17k",
+   corpus_keys: [dapomath17k, dapomath], verification: web-verified}
+- {id: deepmath-103k, name: DeepMath-103K, kind: dataset, papers: 3, year: 2025, org: "Tencent AI Lab / SJTU",
+   paper: "https://arxiv.org/abs/2504.11456", url: "https://huggingface.co/datasets/zwhe99/DeepMath-103K",
+   corpus_keys: [deepmath103k, deepmath], verification: web-verified}
+- {id: processbench, name: ProcessBench, kind: benchmark, papers: 3, year: 2024, org: Qwen,
+   paper: "https://arxiv.org/abs/2412.06559", corpus_keys: [processbench], verification: known}
+- {id: math10k, name: Math10K, kind: dataset, papers: 2, year: 2023,
+   paper: "https://arxiv.org/abs/2304.01933", corpus_keys: [math10k], verification: web-verified,
+   notes: "LLM-Adapters 论文，与 commonsense170k 同源的数学微调集"}
+
+  # ---- 代码生成 ----
+- {id: humaneval, name: HumanEval, kind: benchmark, papers: 28, year: 2021, org: OpenAI,
+   paper: "https://arxiv.org/abs/2107.03374", url: "https://github.com/openai/human-eval",
+   corpus_keys: [humaneval], verification: known,
+   notes: "语料中 'HumanEval+' 拼写与 HumanEval 同 key，建边时须按原始拼写拆开"}
+- {id: humaneval-plus, name: HumanEval+, kind: benchmark, papers: null, year: 2023, org: EvalPlus,
+   paper: "https://arxiv.org/abs/2305.01210", url: "https://github.com/evalplus/humanevalplus",
+   corpus_keys: [humanevalplus],
+   relations: "version_of humaneval（扩充测试用例）", verification: known,
+   notes: "papers 数与 humaneval 合并统计（同归一化 key），实际约 29 篇中的一部分"}
+- {id: humanevalfix, name: HumanEvalFix, kind: dataset, papers: 1, year: 2023, org: BigCode,
+   corpus_keys: [humanevalfix], relations: "derived_from humaneval（debugging 任务）",
+   verification: known}
+- {id: mbpp, name: MBPP, kind: benchmark, papers: 19, year: 2021, org: Google,
+   paper: "https://arxiv.org/abs/2108.07732", corpus_keys: [mbpp], verification: known,
+   notes: "同上加号拆分问题：'MBPP+' 属 mbpp-plus；另有 mbppsanitized 子集"}
+- {id: mbpp-plus, name: MBPP+, kind: benchmark, papers: null, year: 2023, org: EvalPlus,
+   paper: "https://arxiv.org/abs/2305.01210", url: "https://github.com/evalplus/mbppplus",
+   corpus_keys: [], relations: "version_of mbpp", verification: known,
+   notes: "与 mbpp 同归一化 key，按原始拼写拆分"}
+- {id: mbpp-sanitized, name: MBPP-sanitized, kind: benchmark, papers: 1, year: 2021, org: Google,
+   corpus_keys: [mbppsanitized], relations: "subset_of mbpp", verification: known}
+- {id: livecodebench, name: LiveCodeBench, kind: benchmark, papers: 21, year: 2024,
+   paper: "https://arxiv.org/abs/2403.07974", url: "https://github.com/LiveCodeBench/LiveCodeBench",
+   corpus_keys: [livecodebench, livecodebenchv5, livecodebenchv6, livecodebenchexec],
+   notes: "v1-v6 为时间窗版本；LiveCodeBench-Exec 为执行版变体；版本号应保留在 usage 记录中",
+   verification: known}
+- {id: codecontests, name: CodeContests, kind: dataset, papers: 4, year: 2022, org: DeepMind,
+   paper: "https://arxiv.org/abs/2203.07814", url: "https://github.com/deepmind/code_contests",
+   corpus_keys: [codecontests], verification: known,
+   notes: "'CodeContests+' 拼写与本 key 相同，须按原始拼写拆到 codecontests-plus"}
+- {id: codecontests-plus, name: CodeContests+, kind: dataset, papers: 1, year: 2025, org: "ByteDance Seed",
+   paper: "https://arxiv.org/abs/2506.05817", url: "https://huggingface.co/datasets/ByteDance-Seed/Code-Contests-Plus",
+   corpus_keys: [],
+   relations: "version_of codecontests（LLM 重生成测试用例）；distinct_from CodeContests++（CodeHacker 对抗测试变体）与 CodeContests-O",
+   verification: web-verified}
+
+  # ---- 通用知识与推理 QA ----
+- {id: mmlu, name: MMLU, kind: benchmark, papers: 42, year: 2021,
+   paper: "https://arxiv.org/abs/2009.03300", url: "https://github.com/hendrycks/test",
+   corpus_keys: [mmlu, mmlustem, mmluclinical], verification: known,
+   notes: "mmlustem/mmluclinical 为按科目切片用法；MMLU-Pro/Redux/ProX 是不同资源"}
+- {id: mmlu-pro, name: MMLU-Pro, kind: benchmark, papers: 14, year: 2024,
+   paper: "https://arxiv.org/abs/2406.01574", url: "https://github.com/TIGER-Lab/MMLU-Pro",
+   corpus_keys: [mmlupro], verification: known}
+- {id: mmlu-redux, name: MMLU-Redux, kind: dataset, papers: 2, year: 2024,
+   paper: "https://arxiv.org/abs/2406.04127", corpus_keys: [mmluredux], verification: known}
+- {id: mmlu-prox, name: MMLU-ProX, kind: benchmark, papers: 2, year: 2025,
+   corpus_keys: [mmluprox, mmluproxhealth, mmluproxlite], verification: uncertain,
+   notes: "MMLU-Pro 的多语言扩展；health/lite 为子集用法"}
+- {id: gpqa, name: GPQA, kind: benchmark, papers: 17, year: 2023, org: "Rein et al.",
+   paper: "https://arxiv.org/abs/2311.12022", url: "https://github.com/idavidrein/gpqa",
+   corpus_keys: [gpqa], verification: known,
+   notes: "裸称 GPQA 实践中常指 diamond 子集（本地证据 acl-long.1239 即写作 GPQA-D）；usage 级需确认 split"}
+- {id: gpqa-diamond, name: GPQA-Diamond, kind: benchmark, papers: 24, year: 2023,
+   paper: "https://arxiv.org/abs/2311.12022", corpus_keys: [gpqadiamond, gpqad, gpqadiamondmc],
+   relations: "subset_of gpqa（198 题高质量子集）", verification: known}
+- {id: supergpqa, name: SuperGPQA, kind: benchmark, papers: 5, year: 2025, org: "M-A-P / ByteDance Seed",
+   paper: "https://arxiv.org/abs/2502.14739", url: "https://github.com/SuperGPQA/SuperGPQA",
+   corpus_keys: [supergpqa], relations: "distinct_from gpqa（对标命名，独立构建）",
+   verification: web-verified}
+- {id: hle, name: "Humanity's Last Exam", kind: benchmark, papers: 4, year: 2025, org: "CAIS / Scale AI",
+   paper: "https://arxiv.org/abs/2501.14249", url: "https://huggingface.co/datasets/cais/hle",
+   corpus_keys: [hle], verification: web-verified,
+   notes: "注意版本：2025-09 后修订版扩至约 3000 题"}
+- {id: triviaqa, name: TriviaQA, kind: dataset, papers: 16, year: 2017,
+   paper: "https://arxiv.org/abs/1705.03551", corpus_keys: [triviaqa], verification: known}
+- {id: natural-questions, name: Natural Questions, kind: dataset, papers: 14, year: 2019, org: Google,
+   paper: "https://arxiv.org/abs/1901.08634", url: "https://github.com/google-research-datasets/natural-questions",
+   corpus_keys: [naturalquestions, naturalquestionsnq], verification: known}
+- {id: popqa, name: PopQA, kind: benchmark, papers: 11, year: 2022,
+   paper: "https://arxiv.org/abs/2212.10511", url: "https://github.com/AlexTMallen/adaptive-retrieval",
+   corpus_keys: [popqa], verification: known}
+- {id: hotpotqa, name: HotpotQA, kind: dataset, papers: 30, year: 2018,
+   paper: "https://arxiv.org/abs/1809.09600", corpus_keys: [hotpotqa], verification: known}
+- {id: 2wikimultihopqa, name: 2WikiMultiHopQA, kind: dataset, papers: 20, year: 2020,
+   paper: "https://arxiv.org/abs/2011.00460", corpus_keys: [2wikimultihopqa], verification: known}
+- {id: musique, name: MuSiQue, kind: benchmark, papers: 20, year: 2022,
+   paper: "https://arxiv.org/abs/2108.00573", corpus_keys: [musique, musiqueans],
+   notes: "musiqueans 为其 answerable 子集用法", verification: known}
+- {id: squad, name: SQuAD, kind: dataset, papers: 7, year: 2016,
+   paper: "https://arxiv.org/abs/1606.05250", corpus_keys: [squad, squadv11, squadv2],
+   notes: "v1.1 / v2 版本差异保留在 usage 记录", verification: known}
+- {id: drop, name: DROP, kind: benchmark, papers: 6, year: 2019,
+   paper: "https://arxiv.org/abs/1903.00161", corpus_keys: [drop], verification: known}
+- {id: boolq, name: BoolQ, kind: dataset, papers: 6, year: 2019,
+   paper: "https://arxiv.org/abs/1905.10044", corpus_keys: [boolq], verification: known}
+- {id: webquestions, name: WebQuestions, kind: dataset, papers: 3, year: 2013, org: "Berant et al.",
+   corpus_keys: [webquestions], relations: "distinct_from webquestionssp",
+   verification: known}
+- {id: webquestionssp, name: WebQuestionsSP, kind: dataset, papers: 1, year: 2016,
+   paper: "https://arxiv.org/abs/1607.01725", corpus_keys: [webquestionssp], verification: known}
+- {id: webqsp, name: WebQSP, kind: dataset, papers: 3, year: 2016,
+   paper: "https://arxiv.org/abs/1607.01725", corpus_keys: [webqsp], verification: known,
+   notes: "与 webquestionssp 同源的 SP 版？两处引用需逐篇核对（webqsp 与 webquestionssp 可能同物）"}
+- {id: cwq, name: ComplexWebQuestions, kind: dataset, papers: 3, year: 2018,
+   paper: "https://arxiv.org/abs/1803.06628", corpus_keys: [cwq], verification: known}
+- {id: bamboogle, name: Bamboogle, kind: benchmark, papers: 6, year: 2022,
+   paper: "https://arxiv.org/abs/2210.03350", corpus_keys: [bamboogle], verification: known}
+- {id: strategyqa, name: StrategyQA, kind: dataset, papers: 4, year: 2021,
+   paper: "https://arxiv.org/abs/2101.02235", corpus_keys: [strategyqa], verification: known}
+- {id: logiqa, name: LogiQA, kind: dataset, papers: 4, year: 2020,
+   paper: "https://arxiv.org/abs/2007.08124", corpus_keys: [logiqa, logiqa20, logiqav2],
+   notes: "LogiQA 2.0 为扩展版本", verification: known}
+- {id: commonsenseqa, name: CommonsenseQA, kind: dataset, papers: 8, year: 2019,
+   paper: "https://arxiv.org/abs/1811.00937", corpus_keys: [commonsenseqa], verification: known}
+- {id: openbookqa, name: OpenBookQA, kind: dataset, papers: 4, year: 2018,
+   paper: "https://arxiv.org/abs/1809.02789", corpus_keys: [openbookqa], verification: known}
+- {id: sciq, name: SciQ, kind: dataset, papers: 3, year: 2017,
+   paper: "https://arxiv.org/abs/1707.06209", corpus_keys: [sciq], verification: known}
+- {id: archivalqa, name: ArchivalQA, kind: dataset, papers: 1, year: 2022,
+   corpus_keys: [archivalqa], verification: known}
+- {id: frames, name: FRAMES, kind: benchmark, papers: 4, year: 2024, org: Google,
+   paper: "https://arxiv.org/abs/2409.02941", corpus_keys: [frames], verification: known}
+
+  # ---- 常识/推理经典件 ----
+- {id: arc, name: ARC (AI2 Reasoning Challenge), kind: dataset, papers: 5, year: 2018, org: AI2,
+   paper: "https://arxiv.org/abs/1803.05457", corpus_keys: [arc],
+   notes: "umbrella：challenge/easy 两个 split；裸称 ARC 需逐篇确认指哪个",
+   verification: known}
+- {id: arc-challenge, name: ARC-Challenge, kind: benchmark, papers: 15, year: 2018, org: AI2,
+   paper: "https://arxiv.org/abs/1803.05457", corpus_keys: [arcchallenge, arcc],
+   relations: "subset_of arc", verification: known}
+- {id: arc-easy, name: ARC-Easy, kind: benchmark, papers: 8, year: 2018, org: AI2,
+   paper: "https://arxiv.org/abs/1803.05457", corpus_keys: [arceasy, arce],
+   relations: "subset_of arc", verification: known}
+- {id: hellaswag, name: HellaSwag, kind: benchmark, papers: 11, year: 2019,
+   paper: "https://arxiv.org/abs/1905.07830", corpus_keys: [hellaswag], verification: known}
+- {id: winogrande, name: WinoGrande, kind: benchmark, papers: 12, year: 2019,
+   paper: "https://arxiv.org/abs/1907.10641", corpus_keys: [winogrande], verification: known}
+- {id: piqa, name: PIQA, kind: dataset, papers: 10, year: 2019,
+   paper: "https://arxiv.org/abs/1911.11641", corpus_keys: [piqa], verification: known}
+- {id: siqa, name: SIQA, kind: dataset, papers: 3, year: 2019,
+   paper: "https://arxiv.org/abs/1904.09728", corpus_keys: [siqa], verification: known}
+- {id: lambada, name: LAMBADA, kind: dataset, papers: 3, year: 2016,
+   paper: "https://arxiv.org/abs/1606.06031", corpus_keys: [lambada], verification: known}
+- {id: commonsense170k, name: Commonsense170K, kind: dataset, papers: 4, year: 2023,
+   paper: "https://arxiv.org/abs/2304.01933",
+   url: "https://github.com/AGI-Edgerunners/LLM-Adapters",
+   corpus_keys: [commonsense170k],
+   relations: "composite_of boolq/piqa/siqa/hellaswag/winogrande/arc-easy/arc-challenge/openbookqa 训练集",
+   verification: web-verified}
+
+  # ---- 指令遵循 / 评测 LLM 判决 ----
+- {id: ifeval, name: IFEval, kind: benchmark, papers: 11, year: 2023, org: Google,
+   paper: "https://arxiv.org/abs/2311.07911", corpus_keys: [ifeval], verification: known}
+- {id: ifbench, name: IFBench, kind: benchmark, papers: 3, year: 2025, org: AI2,
+   paper: "https://arxiv.org/abs/2507.02833", url: "https://github.com/allenai/IFBench",
+   corpus_keys: [ifbench], relations: "distinct_from ifeval（扩展其验证器但约束集全新）",
+   verification: web-verified}
+- {id: cfbench, name: CFBench, kind: benchmark, papers: 3, year: 2024, org: "PKU-Baichuan",
+   paper: "https://arxiv.org/abs/2408.01122", url: "https://github.com/PKU-Baichuan-MLSystemLab/CFBench",
+   corpus_keys: [cfbench], relations: "distinct_from CFBenchmark（金融助手评测）",
+   verification: web-verified}
+- {id: multi-if, name: Multi-IF, kind: benchmark, papers: 3, year: 2024, org: Meta,
+   url: "https://github.com/facebookresearch/Multi-IF", corpus_keys: [multiif], verification: known}
+- {id: mt-bench, name: MT-Bench, kind: benchmark, papers: 10, year: 2023, org: LMSYS,
+   paper: "https://arxiv.org/abs/2306.05685", url: "https://github.com/lm-sys/FastChat",
+   corpus_keys: [mtbench], verification: known}
+- {id: alpacaeval, name: AlpacaEval, kind: benchmark, papers: 9, year: 2023, org: Stanford,
+   paper: "https://arxiv.org/abs/2304.12275", url: "https://github.com/tatsu-lab/alpaca_eval",
+   corpus_keys: [alpacaeval, alpacaeval20, alpacaeval2, alpacaevalv10],
+   relations: "2.0 = version_of（Dubois et al. 2024, length-controlled win rate）；官方要求引用时区分 1.0/2.0",
+   verification: web-verified, notes: "案例 J 相关"}
+- {id: judgebench, name: JudgeBench, kind: benchmark, papers: 3, year: 2024, org: "UC Berkeley",
+   paper: "https://arxiv.org/abs/2410.12784", url: "https://github.com/ScalerLab/JudgeBench",
+   corpus_keys: [judgebench], verification: web-verified}
+- {id: truthfulqa, name: TruthfulQA, kind: benchmark, papers: 7, year: 2021,
+   paper: "https://arxiv.org/abs/2109.07958", corpus_keys: [truthfulqa], verification: known}
+- {id: bbh, name: BIG-Bench Hard, kind: benchmark, papers: 4, year: 2022,
+   paper: "https://arxiv.org/abs/2210.09261", corpus_keys: [bbh], verification: known}
+- {id: glue, name: GLUE, kind: benchmark, papers: 6, year: 2018,
+   paper: "https://arxiv.org/abs/1804.07461", corpus_keys: [glue, rte],
+   notes: "RTE 为 GLUE 子任务，此处并入 umbrella；如需细分再拆", verification: known}
+- {id: rewardbench, name: RewardBench, kind: benchmark, papers: 6, year: 2024, org: AI2,
+   paper: "https://arxiv.org/abs/2403.13787", corpus_keys: [rewardbench, rewardbenchv2],
+   verification: known}
+- {id: game-of-24, name: Game of 24, kind: benchmark, papers: 3, year: 2023,
+   paper: "https://arxiv.org/abs/2305.10601", corpus_keys: [gameof24],
+   notes: "ToT 论文的玩具任务", verification: known}
+
+  # ---- 安全 / 对齐 ----
+- {id: advbench, name: AdvBench, kind: benchmark, papers: 12, year: 2023,
+   paper: "https://arxiv.org/abs/2307.15043", url: "https://github.com/llm-attacks/llm-attacks",
+   corpus_keys: [advbench, advbenchadv], verification: known}
+- {id: harmbench, name: HarmBench, kind: benchmark, papers: 7, year: 2024, org: CAIS,
+   paper: "https://arxiv.org/abs/2402.04249", url: "https://github.com/centerforaisafety/HarmBench",
+   corpus_keys: [harmbench, harmbenchadv], verification: known}
+- {id: jailbreakbench, name: JailBreakBench, kind: benchmark, papers: 6, year: 2024,
+   paper: "https://arxiv.org/abs/2404.01318", corpus_keys: [jailbreakbench], verification: known}
+- {id: xstest, name: XSTest, kind: benchmark, papers: 5, year: 2023,
+   paper: "https://arxiv.org/abs/2308.01263", corpus_keys: [xstest], verification: known}
+- {id: beavertails, name: BeaverTails, kind: dataset, papers: 4, year: 2023, org: "PKU-Alignment",
+   paper: "https://arxiv.org/abs/2307.04657", corpus_keys: [beavertails, beavertails30k],
+   verification: known}
+- {id: pku-saferlhf, name: PKU-SafeRLHF, kind: dataset, papers: 3, year: 2024, org: "PKU-Alignment",
+   paper: "https://arxiv.org/abs/2406.15513", corpus_keys: [pkusaferlhf], verification: known}
+
+  # ---- 偏好 / 人类反馈 ----
+- {id: ultrafeedback, name: UltraFeedback, kind: dataset, papers: 3, year: 2023,
+   paper: "https://arxiv.org/abs/2310.01377", corpus_keys: [ultrafeedback], verification: known}
+- {id: ultrachat, name: UltraChat, kind: dataset, papers: 3, year: 2023,
+   paper: "https://arxiv.org/abs/2305.14233", corpus_keys: [ultrachat, ultrachat200k],
+   verification: known}
+- {id: alpaca, name: "Alpaca (Stanford)", kind: dataset, papers: 3, year: 2023, org: Stanford,
+   url: "https://github.com/tatsu-lab/stanford_alpaca",
+   corpus_keys: [alpaca, alpaca52k, alpacacleaned, alpacagpt4],
+   relations: "distinct_from alpacaeval；alpaca-cleaned/gpt4 为衍生清洗版",
+   verification: known}
+- {id: dolly, name: "Dolly 15k (Databricks)", kind: dataset, papers: 4, year: 2023, org: Databricks,
+   url: "https://github.com/databrickslabs/dolly", corpus_keys: [dolly, dollyac],
+   verification: known, notes: "'Dolly (AC)' 拼写归属待逐篇确认"}
+- {id: prism-alignment, name: "PRISM (human feedback)", kind: dataset, papers: 2, year: 2024, org: "Kirk et al.",
+   paper: "https://arxiv.org/abs/2404.16019", corpus_keys: [prism],
+   notes: "同名异源之一：个体化人类反馈数据集（acl-long.1265/1391 用法）",
+   verification: web-verified}
+- {id: prism-hallucination, name: "PRISM (hallucination diagnostic)", kind: benchmark, papers: 1, year: 2026,
+   corpus_keys: [prism],
+   notes: "同名异源之二：2026.acl-long.1551 自称 'we propose PRISM'，疑为该文自建 benchmark；身份以该文为准",
+   verification: uncertain}
+
+  # ---- Agent / 工具 / 记忆 ----
+- {id: gaia, name: GAIA, kind: benchmark, papers: 12, year: 2023,
+   paper: "https://arxiv.org/abs/2311.12983", url: "https://huggingface.co/datasets/gaia-benchmark/GAIA",
+   corpus_keys: [gaia, gaia2, gaiatext], verification: known,
+   notes: "GAIA-2 为后续版本；GAIA-Text 为纯文本子集用法"}
+- {id: webshop, name: WebShop, kind: benchmark, papers: 4, year: 2022,
+   paper: "https://arxiv.org/abs/2207.01206", corpus_keys: [webshop], verification: known}
+- {id: alfworld, name: ALFWorld, kind: benchmark, papers: 6, year: 2020,
+   paper: "https://arxiv.org/abs/2010.03768", corpus_keys: [alfworld], verification: known}
+- {id: locomocom, name: LoCoMo, kind: benchmark, papers: 8, year: 2024, org: "Snap Research / UNC",
+   paper: "https://arxiv.org/abs/2402.17753", url: "https://github.com/snap-research/locomo",
+   corpus_keys: [locomo], verification: web-verified,
+   notes: "案例 I 相关：公开版仅 10 段对话（locomo10.json），论文全量 50 段未公开——10/50 口径不一致的来源"}
+- {id: longmemeval, name: LongMemEval, kind: benchmark, papers: 3, year: 2024, org: "UCLA / Tencent AI Lab",
+   paper: "https://arxiv.org/abs/2410.10813", url: "https://github.com/xiaowu0162/LongMemEval",
+   corpus_keys: [longmemeval, longmemevals],
+   relations: "S/M/Oracle 为官方子版本", verification: web-verified, notes: "案例 I 相关"}
+- {id: bfcl, name: "BFCL (Berkeley Function Calling Leaderboard)", kind: benchmark, papers: 3, year: 2024,
+   url: "https://github.com/ShishirPatil/gorilla",
+   corpus_keys: [bfcl, bfclberkeleyfunctioncallingleaderboard, bfclv3, bfclv4multiturn],
+   notes: "v3/v4 为版本，保留在 usage 记录", verification: known}
+- {id: browsecomp, name: BrowseComp, kind: benchmark, papers: 4, year: 2025, org: OpenAI,
+   paper: "https://arxiv.org/abs/2504.12516", url: "https://github.com/openai/simple-evals",
+   corpus_keys: [browsecomp, browsecompzh],
+   relations: "browsecomp-plus 为第三方衍生（Waterloo, arXiv:2508.06600）",
+   verification: web-verified}
+- {id: browsecomp-plus, name: BrowseComp-Plus, kind: benchmark, papers: 1, year: 2025, org: "U. Waterloo",
+   paper: "https://arxiv.org/abs/2508.06600", corpus_keys: [browsecompplus],
+   relations: "derived_from browsecomp（固定离线语料版；后为 2026.acl-long.1023）",
+   verification: web-verified}
+- {id: deepresearch-bench, name: DeepResearch Bench, kind: benchmark, papers: 3, year: 2025, org: USTC,
+   paper: "https://arxiv.org/abs/2506.11763", url: "https://github.com/Ayanami0730/deep_research_bench",
+   corpus_keys: [deepresearchbench], verification: web-verified,
+   notes: "同名异源风险：arXiv:2509.25106 个性化版也叫 'Deep Research Bench'；带空格拼写需按上下文区分"}
+- {id: webwalkerqa, name: WebWalkerQA, kind: benchmark, papers: 4, year: 2025, org: "Alibaba Tongyi",
+   paper: "https://arxiv.org/abs/2501.07572", url: "https://github.com/Alibaba-NLP/WebWalker",
+   corpus_keys: [webwalkerqa, webwalker],
+   notes: "WebWalker 为同论文的 agent 框架，名字常被混用；2025.acl-long.508",
+   verification: web-verified}
+- {id: aitz, name: "Android-In-The-Zoo (AITZ)", kind: benchmark, papers: 3, year: 2024, org: "Fudan / Huawei",
+   paper: "https://arxiv.org/abs/2403.02713", url: "https://github.com/IMNearth/CoAT",
+   corpus_keys: [aitz], relations: "subset_of AITW（重标注 CoAT 语义）", verification: web-verified}
+- {id: gui-odyssey, name: GUIOdyssey, kind: dataset, papers: 5, year: 2024, org: "OpenGVLab / Shanghai AI Lab",
+   paper: "https://arxiv.org/abs/2406.08451", url: "https://github.com/OpenGVLab/GUI-Odyssey",
+   corpus_keys: [guiodyssey], verification: web-verified}
+
+  # ---- 长上下文 ----
+- {id: longbench, name: LongBench, kind: benchmark, papers: 5, year: 2023, org: THUDM,
+   paper: "https://arxiv.org/abs/2308.14508", url: "https://github.com/THUDM/LongBench",
+   corpus_keys: [longbench, longbenchv1, longbenche],
+   relations: "distinct_from longbench-v2", verification: known, notes: "案例 B 相关"}
+- {id: longbench-v2, name: LongBench v2, kind: benchmark, papers: 2, year: 2024, org: THUDM,
+   paper: "https://arxiv.org/abs/2412.15204", corpus_keys: [longbenchv2],
+   verification: known, notes: "案例 B 相关；2025.acl-long.183"}
+- {id: ruler, name: RULER, kind: benchmark, papers: 3, year: 2024,
+   paper: "https://arxiv.org/abs/2404.06654", corpus_keys: [ruler], verification: known,
+   notes: "案例 B/L 相关"}
+- {id: lamp, name: LaMP, kind: benchmark, papers: 4, year: 2023,
+   paper: "https://arxiv.org/abs/2304.11406", corpus_keys: [lamp, lamp5],
+   relations: "distinct_from longlamp", verification: known}
+- {id: longlamp, name: LongLaMP, kind: benchmark, papers: 3, year: 2024,
+   corpus_keys: [longlamp], verification: known}
+
+  # ---- 多语言 ----
+- {id: xnli, name: XNLI, kind: dataset, papers: 5, year: 2018,
+   paper: "https://arxiv.org/abs/1809.05053", corpus_keys: [xnli], verification: known}
+- {id: belebele, name: Belebele, kind: benchmark, papers: 5, year: 2023, org: Meta,
+   paper: "https://arxiv.org/abs/2308.16884", corpus_keys: [belebele], verification: known}
+- {id: xquad, name: XQuAD, kind: benchmark, papers: 3, year: 2019,
+   paper: "https://arxiv.org/abs/1910.11856", corpus_keys: [xquad], verification: known}
+- {id: flores-200, name: FLORES-200, kind: benchmark, papers: 4, year: 2022, org: Meta,
+   paper: "https://arxiv.org/abs/2207.04672", corpus_keys: [flores200, flores200devtest, floresmvf],
+   relations: "version_of flores-101；后更名 flores-plus", verification: web-verified}
+- {id: flores-101, name: FLORES-101, kind: benchmark, papers: 1, year: 2021,
+   paper: "https://arxiv.org/abs/2106.03193", corpus_keys: [flores101], verification: web-verified}
+- {id: flores-plus, name: FLORES+, kind: benchmark, papers: 3, year: 2023, org: OLDI,
+   url: "https://huggingface.co/datasets/openlanguagedata/flores_plus",
+   corpus_keys: [flores], relations: "version_of flores-200（OLDI 接管更名）",
+   verification: web-verified}
+
+  # ---- 多模态 / 文档 ----
+- {id: mme, name: MME, kind: benchmark, papers: 3, year: 2023,
+   paper: "https://arxiv.org/abs/2306.13394", corpus_keys: [mme], verification: known}
+- {id: mmbench, name: MMBench, kind: benchmark, papers: 3, year: 2023,
+   paper: "https://arxiv.org/abs/2307.06281", corpus_keys: [mmbench, mmbenchgui], verification: known}
+- {id: video-mme, name: Video-MME, kind: benchmark, papers: 3, year: 2024,
+   paper: "https://arxiv.org/abs/2405.21075", corpus_keys: [videomme, videommelong], verification: known}
+- {id: pope, name: POPE, kind: benchmark, papers: 4, year: 2023,
+   paper: "https://arxiv.org/abs/2305.10355", corpus_keys: [pope], verification: known}
+- {id: textvqa, name: TextVQA, kind: dataset, papers: 4, year: 2019,
+   paper: "https://arxiv.org/abs/1904.08920", corpus_keys: [textvqa], verification: known}
+- {id: docvqa, name: DocVQA, kind: dataset, papers: 3, year: 2021,
+   paper: "https://arxiv.org/abs/2007.00398", corpus_keys: [docvqa], verification: known}
+- {id: chartqa, name: ChartQA, kind: dataset, papers: 6, year: 2022,
+   paper: "https://arxiv.org/abs/2203.10244", corpus_keys: [chartqa], verification: known}
+- {id: vqa-v2, name: VQA v2, kind: dataset, papers: 3, year: 2016,
+   paper: "https://arxiv.org/abs/1612.00837", corpus_keys: [vqav2], verification: known}
+- {id: omnidocbench, name: OmniDocBench, kind: benchmark, papers: 4, year: 2024, org: OpenDataLab,
+   paper: "https://arxiv.org/abs/2412.07626", url: "https://github.com/opendatalab/OmniDocBench",
+   corpus_keys: [omnidocbench], verification: web-verified,
+   notes: "官方有 v1.5/v1.6 扩充版"}
+- {id: mmlongbench-doc, name: MMLongBench-Doc, kind: benchmark, papers: 3, year: 2024, org: "NTU S-Lab",
+   paper: "https://arxiv.org/abs/2407.01523", url: "https://github.com/mayubo2333/MMLongBench-Doc",
+   corpus_keys: [mmlongbenchdoc],
+   relations: "distinct_from MMLongBench（Edinburgh, 2025）", verification: web-verified}
+- {id: mmlongbench, name: MMLongBench, kind: benchmark, papers: 1, year: 2025, org: "Edinburgh NLP",
+   url: "https://github.com/edinburghnlp/mmlongbench", corpus_keys: [mmlongbench],
+   verification: web-verified}
+- {id: mrag-bench, name: MRAG-Bench, kind: benchmark, papers: 3, year: 2024, org: "UCLA",
+   paper: "https://arxiv.org/abs/2410.08182", url: "https://github.com/mragbench/MRAG-Bench",
+   corpus_keys: [mragbench], relations: "distinct_from Chart-MRAG Bench",
+   verification: web-verified}
+- {id: mathvista, name: MathVista, kind: benchmark, papers: 2, year: 2023,
+   paper: "https://arxiv.org/abs/2310.02255", corpus_keys: [mathvista], verification: known}
+- {id: mathvision, name: MATH-Vision, kind: benchmark, papers: 2, year: 2024,
+   paper: "https://arxiv.org/abs/2402.14804", corpus_keys: [mathvision], verification: known}
+
+  # ---- 医学 / 生物 ----
+- {id: medqa, name: MedQA, kind: dataset, papers: 9, year: 2020,
+   paper: "https://arxiv.org/abs/2009.13081", url: "https://github.com/jind11/MedQA",
+   corpus_keys: [medqa, medqausmle, medqabstain], verification: known}
+- {id: medmcqa, name: MedMCQA, kind: dataset, papers: 6, year: 2022,
+   paper: "https://arxiv.org/abs/2203.14371", corpus_keys: [medmcqa], verification: known}
+- {id: pubmedqa, name: PubMedQA, kind: dataset, papers: 3, year: 2019,
+   paper: "https://arxiv.org/abs/1909.06146", corpus_keys: [pubmedqa], verification: known}
+- {id: pubmed, name: PubMed, kind: dataset, papers: 3, org: NLM,
+   url: "https://pubmed.ncbi.nlm.nih.gov/", corpus_keys: [pubmed], verification: known}
+- {id: mimic-iv, name: MIMIC-IV, kind: dataset, papers: 6, year: 2020, org: PhysioNet,
+   url: "https://physionet.org/content/mimiciv/", corpus_keys: [mimiciv, mimicivnotes],
+   verification: known, notes: "需授权访问"}
+- {id: mimic-cxr, name: MIMIC-CXR, kind: dataset, papers: 3, year: 2019, org: PhysioNet,
+   url: "https://physionet.org/content/mimic-cxr/", corpus_keys: [mimiccxr],
+   verification: known}
+- {id: cdr, name: "CDR (BioCreative V)", kind: dataset, papers: 3, year: 2016, org: NCBI,
+   url: "https://biocreative.bioinformatics.udel.edu/tasks/biocreative-v/track-3-cdr/",
+   corpus_keys: [cdr],
+   notes: "本地三处用法一致（chemical-disease relation，1500 摘要）；Li et al. 2016，无 arxiv",
+   verification: web-verified}
+
+  # ---- NLP 基础 / 预训练语料 ----
+- {id: wikitext-2, name: WikiText-2, kind: dataset, papers: 11, year: 2016, org: Salesforce,
+   paper: "https://arxiv.org/abs/1609.07843", corpus_keys: [wikitext2], verification: known}
+- {id: wikitext-103, name: WikiText-103, kind: dataset, papers: 3, year: 2016, org: Salesforce,
+   paper: "https://arxiv.org/abs/1609.07843", corpus_keys: [wikitext103],
+   relations: "distinct_from wikitext-2（同为 Pointer Sentinel 论文的不同规模切片）",
+   verification: known}
+- {id: wikitext-unspecified, name: "WikiText (unspecified)", kind: dataset, papers: 1,
+   corpus_keys: [wikitext], verification: uncertain}
+- {id: c4, name: C4, kind: dataset, papers: 6, year: 2019, org: Google,
+   paper: "https://arxiv.org/abs/1910.10683", corpus_keys: [c4], verification: known}
+- {id: redpajama, name: RedPajama, kind: dataset, papers: 3, year: 2023, org: Together,
+   url: "https://github.com/togethercomputer/RedPajama-Data", corpus_keys: [redpajama],
+   verification: known}
+- {id: fineweb-edu, name: FineWeb-Edu, kind: dataset, papers: 4, year: 2024, org: HuggingFace,
+   url: "https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu", corpus_keys: [finewebedu],
+   verification: known}
+- {id: librispeech, name: LibriSpeech, kind: dataset, papers: 4, year: 2015,
+   url: "https://www.openslr.org/12", corpus_keys: [librispeech, librispeech960h],
+   verification: known}
+- {id: audiocaps, name: AudioCaps, kind: dataset, papers: 3, year: 2019, org: Google,
+   corpus_keys: [audiocaps], verification: known}
+- {id: matterport3d, name: Matterport3D, kind: dataset, papers: 3, year: 2017,
+   corpus_keys: [matterport3d], verification: known}
+
+  # ---- 检索 / 推荐 / 个性化 ----
+- {id: beir, name: BEIR, kind: benchmark, papers: 4, year: 2021,
+   paper: "https://arxiv.org/abs/2104.08663", corpus_keys: [beir], verification: known}
+- {id: mteb, name: MTEB, kind: benchmark, papers: 4, year: 2022,
+   paper: "https://arxiv.org/abs/2210.07316", corpus_keys: [mteb], verification: known}
+- {id: zsre, name: "zsRE (zero-shot RE)", kind: dataset, papers: 3, year: 2017,
+   paper: "https://arxiv.org/abs/1708.07763", corpus_keys: [zsre],
+   notes: "模型编辑文献中与 counterfact 配套", verification: known}
+- {id: counterfact, name: CounterFact, kind: dataset, papers: 5, year: 2022,
+   paper: "https://arxiv.org/abs/2202.05262", corpus_keys: [counterfact], verification: known}
+- {id: theoremqa, name: TheoremQA, kind: benchmark, papers: 4, year: 2023,
+   paper: "https://arxiv.org/abs/2305.12524", corpus_keys: [theoremqa], verification: known}
+
+  # ---- 表格 / 数据库 ----
+- {id: spider, name: Spider, kind: dataset, papers: 7, year: 2018,
+   paper: "https://arxiv.org/abs/1809.08887", corpus_keys: [spider],
+   relations: "spider-syn/realistic/dk 等为衍生变体，见 merge_map", verification: known}
+- {id: bird, name: BIRD, kind: benchmark, papers: 6, year: 2023,
+   paper: "https://arxiv.org/abs/2305.03111", corpus_keys: [bird], verification: known}
+- {id: finqa, name: FinQA, kind: dataset, papers: 3, year: 2021,
+   paper: "https://arxiv.org/abs/2109.00122", corpus_keys: [finqa, finqatas], verification: known}
+
+#####################################################################
+# 2. merge_map：归一化 key -> 规范 id（仅列非自映射的；未列出的 key
+#    默认自成身份）。spelling 变体已在 corpus_keys 内，无需重复。
+#####################################################################
+merge_map:
+  # 跨 key 合并（同物不同写法/年份写法）
+  aime2024: aime-2024
+  amc2023: amc-2023
+  arcc: arc-challenge
+  arce: arc-easy
+  naturalquestionsnq: natural-questions
+  humanevalplus: humaneval-plus
+  gpqad: gpqa-diamond
+  gpqadiamondmc: gpqa-diamond
+  minerva: minerva-math
+  minervamath: minerva-math
+  musiqueans: musique
+  squadv11: squad
+  squadv2: squad
+  logiqa20: logiqa
+  logiqav2: logiqa
+  alpacaeval20: alpacaeval
+  alpacaeval2: alpacaeval
+  alpacaevalv10: alpacaeval
+  bfclberkeleyfunctioncallingleaderboard: bfcl
+  bfclv3: bfcl
+  bfclv4multiturn: bfcl
+  browsecompzh: browsecomp
+  gaia2: gaia
+  gaiatext: gaia
+  livecodebenchv5: livecodebench
+  livecodebenchv6: livecodebench
+  livecodebenchexec: livecodebench
+  longbenchv1: longbench
+  longbenche: longbench
+  longmemevals: longmemeval
+  lamp5: lamp
+  mmlustem: mmlu
+  mmluclinical: mmlu
+  mmluproxhealth: mmlu-prox
+  mmluproxlite: mmlu-prox
+  advbenchadv: advbench
+  harmbenchadv: harmbench
+  beavertails30k: beavertails
+  ultrachat200k: ultrachat
+  alpaca52k: alpaca
+  alpacacleaned: alpaca
+  alpacagpt4: alpaca
+  dollyac: dolly
+  medqausmle: medqa
+  medqabstain: medqa
+  mimicivnotes: mimic-iv
+  librispeech960h: librispeech
+  videommelong: video-mme
+  mmbenchgui: mmbench
+  flores200devtest: flores-200
+  floresmvf: flores-200
+  finqatas: finqa
+  dapomath: dapo-math-17k
+  deepmath: deepmath-103k
+  rewardbenchv2: rewardbench
+  webwalker: webwalkerqa
+  # umbrella 归属（年份/规格不明）
+  aime: aime-unspecified
+  aime2425: aime-unspecified
+  aime2024andaime2025: aime-unspecified
+  amc: amc-unspecified
+  wikitext: wikitext-unspecified
+  # 衍生/变体保持独立身份（不合并，仅登记关系）：
+  #   gsm8kv, gsm8kzh, mmluredux, mmluprox, longbenchv2, browsecompplus,
+  #   humanevalfix, mbppsanitized, spiderdk, spiderrealistic, spidersyn,
+  #   spidertas, math10k, mathvista, mathvision, mathverse, mathqa,
+  #   arch..., webquestionssp, flores101, codecontests(+号靠原始拼写拆)
+  # —— 以上 key 自成条目或 singleton，不并入。
+
+#####################################################################
+# 3. 同 key 拆分规则：归一化后撞 key 但身份不同，建边时必须按原始
+#    拼写或上下文拆开。
+#####################################################################
+split_within_key:
+  humaneval:
+    "HumanEval": humaneval
+    "HumanEval+": humaneval-plus
+  mbpp:
+    "MBPP": mbpp
+    "MBPP+": mbpp-plus
+  codecontests:
+    "CodeContests": codecontests
+    "CodeContests+": codecontests-plus
+  prism:
+    _by_context: "Kirk et al. 2024 引用 -> prism-alignment；acl-long.1551 自称提出 -> prism-hallucination"
+
+#####################################################################
+# 4. v1 抽取噪声 key：不是具体资源，建边时应剔除或人工归位。
+#####################################################################
+noise_keys:
+- mathematicalreasoningbenchmark          # "Mathematical reasoning benchmark" 泛指
+- mathematicalreasoningbenchmarksgsm8kmath500amc23aime24aime25  # 多个 benchmark 被抽成一条
+- mathematicsdatasetmathd                 # "Mathematics Dataset (MathD)"，身份存疑
+
+#####################################################################
+# 5. 同名异源警戒清单（建边/核查时优先人工确认）
+#####################################################################
+homonym_alerts:
+- prism: [prism-alignment, prism-hallucination]
+- deepresearchbench: "USTC 版 vs arXiv:2509.25106 个性化版（带空格拼写时）"
+- gpqa: "裸称多指 diamond 子集，但不保证"
+- minervamath: "272 题 OCWCourses vs lm-eval-harness 的 MATH 4-shot 任务组"
+- codecontests: "DeepMind 原版 vs CodeContests+ vs CodeContests++ vs CodeContests-O"
+- mmlongbench: "MMLongBench-Doc vs Edinburgh MMLongBench"

@@ -5,9 +5,10 @@ description = "E07: P4A 候选池——961 观测集论文子集 + 噪声 + 资�
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 
-# 主线阶段只用标准库，与 e01 同一条约定：必须能在没有网络、没有第三方包的
-# 机器上原样复现。
-dependencies = []
+# p0（语料复制）保持 stdlib-only，由 make verify-stdlib 的隔离环境闸门背书。
+# p1 起要读 layer4 的 YAML 记录，引入 pyyaml 作为唯一第三方依赖；依赖清单
+# 仍保持最小，隔离闸门验证"干净环境装完声明依赖即可复现"。
+dependencies = ["pyyaml>=6"]
 
 [build-system]
 requires = ["hatchling"]

@@ -197,6 +197,12 @@ source = { virtual = "experiments/e06-static-prefix" }
 name = "cacheplan-e07"
 version = "0.1.0"
 source = { editable = "experiments/e07-p4a-case-pool" }
+dependencies = [
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pyyaml", specifier = ">=6" }]
 
 [[package]]
 name = "certifi"

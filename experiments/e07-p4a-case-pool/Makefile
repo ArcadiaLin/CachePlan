@@ -3,7 +3,8 @@
 #   make setup          委派给仓库根：建共享 .venv 并装 git 过滤器
 #   make p0             筛出 961 观测集的 952 篇论文，复制 mineru/layer4/cite 三层数据
 #   make verify         重跑 p0 的校验（复制是幂等的：先清空再复制）
-#   make verify-stdlib  在无第三方依赖的隔离环境里跑 p0 小样，守住 dependencies = []
+#   make verify-stdlib  在干净隔离环境里跑 p0 小样（p0 本身保持 stdlib-only；
+#                       隔离环境会装上声明的 pyyaml，验证依赖清单自足）
 
 UV ?= uv
 RUN = $(UV) run
