@@ -1,0 +1,73 @@
+# E07 案例 A 标注：需求条件（query spec）与候选核查判断
+#
+# 口径：
+# - 本文件是人工/agent 核查的标注材料，版本化、可 diff；不放 data/processed
+#   （那边只放可重建产物）。
+# - conditions 是判断基准，版本化固定；为排除某论文而事后收紧条件是不允许的，
+#   确需调整时升版本并记录原因（见 docs 案例 A 的明确要求）。
+# - judgments 取值：satisfied / partial / not_satisfied / insufficient_evidence /
+#   unchecked。判断必须附 evidence（材料位置 + 摘录），区分论文声称与材料观察。
+# - entry_path 记录候选进入池子的途径，与判断标签分开。
+
+case: A
+title: 从 Agent 执行轨迹寻找可复用经验
+spec_version: v1-draft   # 待用户确认后改为 v1
+spec_updated: 2026-09-13
+
+query: >
+  寻找把 Agent 执行轨迹组织、抽象并用于后续任务的研究：
+  说明输入（什么样的轨迹/历史）、加工产物（workflow / plan / skill / 经验条目）
+  和复用方式（后续任务如何检索或调用该产物并影响执行）。
+
+# 满足条件（v1 草案）：逐项判断，全部 satisfied 才是种子正例。
+conditions:
+- {id: c1, label: 轨迹输入,
+   detail: 方法以 agent 执行轨迹或多次执行历史为输入，而非仅当前任务的单次上下文}
+- {id: c2, label: 抽象产物,
+   detail: 从轨迹中提炼出显式的中间产物（workflow / plan / skill / 经验条目等），
+   而非仅把历史摘要或拼接进 prompt}
+- {id: c3, label: 后续调用,
+   detail: 产物在后续（新任务或新 episode）执行中被检索或调用，并实际影响行为}
+- {id: c4, label: 跨任务复用,
+   detail: 产物服务于与其来源不同的任务或场景（跨任务、跨站点或跨环境）}
+
+# 明确暂不纳入 v1 条件的维度（保留记录，不用于排除）：
+non_conditions:
+- 轨迹是否必须自身生成（人工演示来源不自动排除，见 Synapse 讨论）
+- 经验构建是在线还是离线（ExpeL 的离线阶段不自动排除）
+
+# 候选清单：初始为外部建议线索；语料内候选经 notebook 锚点/关键词定位后补入。
+candidates:
+- paper: "arxiv:2409.07429"   # AWM / Agent Workflow Memory
+  name: AWM
+  in_corpus: false
+  entry_path: external-suggestion（用户检索经历 + Claude/Kimi 补强；语料内被 4 篇引用）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+- paper: "arxiv:2504.07079"   # SkillWeaver
+  name: SkillWeaver
+  in_corpus: false
+  entry_path: external-suggestion（语料内被 1 篇引用）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+- paper: "arxiv:2308.10144"   # ExpeL
+  name: ExpeL
+  in_corpus: false
+  entry_path: external-suggestion（语料内暂无引用锚点）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+- paper: "arxiv:2305.16291"   # Voyager
+  name: Voyager
+  in_corpus: false
+  entry_path: external-suggestion（语料内被 6 篇引用）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+- paper: "arxiv:2306.07863"   # Synapse
+  name: Synapse
+  in_corpus: false
+  entry_path: external-suggestion（潜在负例线索，需按 query 核查演示数据来源）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+
+# 困难候选（第一批噪声）在核查中从此清单衍生：同 venue、主题接近、
+# 逐项记录不满足的条件。
