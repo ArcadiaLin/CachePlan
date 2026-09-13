@@ -13,12 +13,16 @@
 #
 # _provenance:
 #   curated_by: kimi (Kimi Code CLI)
-#   curated_at: 2026-09-12
+#   curated_at: 2026-09-12（第一轮：dataset/benchmark）；2026-09-13（第二轮：
+#     model/code/tool/protocol 等，覆盖 >=3 篇的全部未注册名 + ==2 篇的非
+#     dataset/benchmark 名，共 128 个名字）
 #   source_stats: 952 篇 E07 语料，dataset/benchmark 类共 1837 个归一化名字，
-#     其中 >=3 篇提到的 144 个为本表主体；<3 篇的只在与主体有合并/混淆
-#     关系时收录。
+#     其中 >=3 篇提到的 144 个为第一轮主体；<3 篇的只在与主体有合并/混淆
+#     关系时收录。第二轮源为 p1 产物的 unregistered_names.jsonl。
 #   method: 归一化聚类 -> 本地 evidence 上下文判读（PRISM/CDR/Minerva 等）
-#     -> 26 项 web 核查（一手来源优先）
+#     -> 第一轮 26 项 web 核查；第二轮 38 个名字经 6 组 subagent 一手来源
+#     核查（全部 web-verified，同名异源拆出 13 组），其余 90 个为整理者
+#     熟知资源标 known。
 
 #####################################################################
 # 1. 规范资源条目
@@ -510,6 +514,456 @@ canonical_resources:
 - {id: finqa, name: FinQA, kind: dataset, papers: 3, year: 2021,
    paper: "https://arxiv.org/abs/2109.00122", corpus_keys: [finqa, finqatas], verification: known}
 
+  # ---- 模型（第二轮扩充 2026-09-13）----
+  # 口径同第一轮：kind 取主要角色；papers 为语料提及篇数；instruct/chat/it 等
+  # 指令版与基座分列，以 version_of 关联；裸族名（llama/qwen25 等）为 umbrella。
+- {id: gpt-4o, name: GPT-4o, kind: model, papers: 12, year: 2024, org: OpenAI,
+   url: "https://openai.com/index/hello-gpt-4o/", corpus_keys: [gpt4o],
+   notes: "语料中 kind 混标 benchmark/model/resource/tool，均指此模型；API 快照版本留 usage 记录",
+   verification: known}
+- {id: gpt-4o-mini, name: GPT-4o-mini, kind: model, papers: 6, year: 2024, org: OpenAI,
+   url: "https://openai.com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/",
+   corpus_keys: [gpt4omini], verification: known}
+- {id: gpt-4-1, name: GPT-4.1, kind: model, papers: 3, year: 2025, org: OpenAI,
+   corpus_keys: [gpt41], verification: known}
+- {id: gpt-4-1-mini, name: GPT-4.1-mini, kind: model, papers: 2, year: 2025, org: OpenAI,
+   corpus_keys: [gpt41mini], verification: known}
+- {id: gpt-5-mini, name: GPT-5-mini, kind: model, papers: 2, year: 2025, org: OpenAI,
+   url: "https://platform.openai.com/docs/models/gpt-5-mini", corpus_keys: [gpt5mini],
+   notes: "2025-08 随 GPT-5 发布的闭源轻量 API 模型；无独立论文",
+   verification: web-verified}
+- {id: gpt-3-5-turbo, name: GPT-3.5-Turbo, kind: model, papers: 3, year: 2022, org: OpenAI,
+   corpus_keys: [gpt35turbo], verification: known}
+- {id: gpt2, name: GPT-2, kind: model, papers: 2, year: 2019, org: OpenAI,
+   url: "https://github.com/openai/gpt-2", corpus_keys: [gpt2], verification: known}
+- {id: gpt-oss-120b, name: gpt-oss-120b, kind: model, papers: 5, year: 2025, org: OpenAI,
+   paper: "https://arxiv.org/abs/2508.10925", url: "https://huggingface.co/openai/gpt-oss-120b",
+   corpus_keys: [gptoss120b],
+   relations: "distinct_from gpt-oss-20b（同系列姊妹模型）",
+   notes: "117B 总参数/5.1B 激活 MoE，Apache 2.0；官方代码 openai/gpt-oss",
+   verification: web-verified}
+- {id: llama-unspecified, name: "LLaMA (version-unspecified)", kind: model, papers: 2, org: Meta,
+   corpus_keys: [llama],
+   notes: "裸称 LLaMA，version 归属需逐篇确认", verification: uncertain}
+- {id: llama-2, name: LLaMA-2, kind: model, papers: 3, year: 2023, org: Meta,
+   paper: "https://arxiv.org/abs/2307.09288", corpus_keys: [llama2],
+   notes: "family umbrella；具体尺寸见下", verification: known}
+- {id: llama-2-7b, name: Llama-2-7B, kind: model, papers: 2, year: 2023, org: Meta,
+   paper: "https://arxiv.org/abs/2307.09288", url: "https://huggingface.co/meta-llama/Llama-2-7b-hf",
+   corpus_keys: [llama27b], relations: "member_of llama-2", verification: known}
+- {id: llama-2-7b-chat, name: Llama-2-7B-Chat, kind: model, papers: 2, year: 2023, org: Meta,
+   paper: "https://arxiv.org/abs/2307.09288", url: "https://huggingface.co/meta-llama/Llama-2-7b-chat-hf",
+   corpus_keys: [llama27bchat], relations: "version_of llama-2-7b", verification: known}
+- {id: llama-3, name: Llama-3, kind: model, papers: 4, year: 2024, org: Meta,
+   paper: "https://arxiv.org/abs/2407.21783", corpus_keys: [llama3],
+   notes: "family umbrella（3/3.1/3.2/3.3 裸称混用时归此）", verification: known}
+- {id: llama-3-8b, name: Llama-3-8B, kind: model, papers: 4, year: 2024, org: Meta,
+   paper: "https://arxiv.org/abs/2407.21783", url: "https://huggingface.co/meta-llama/Meta-Llama-3-8B",
+   corpus_keys: [llama38b], relations: "member_of llama-3", verification: known}
+- {id: llama-3-8b-instruct, name: Llama-3-8B-Instruct, kind: model, papers: 6, year: 2024, org: Meta,
+   paper: "https://arxiv.org/abs/2407.21783", url: "https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct",
+   corpus_keys: [llama38binstruct], relations: "version_of llama-3-8b", verification: known}
+- {id: llama-3-1-8b, name: Llama-3.1-8B, kind: model, papers: 4, year: 2024, org: Meta,
+   paper: "https://arxiv.org/abs/2407.21783", url: "https://huggingface.co/meta-llama/Llama-3.1-8B",
+   corpus_keys: [llama318b], relations: "member_of llama-3", verification: known}
+- {id: llama-3-1-8b-instruct, name: Llama-3.1-8B-Instruct, kind: model, papers: 11, year: 2024, org: Meta,
+   paper: "https://arxiv.org/abs/2407.21783", url: "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct",
+   corpus_keys: [llama318binstruct], relations: "version_of llama-3-1-8b", verification: known}
+- {id: llama-3-2-1b, name: Llama-3.2-1B, kind: model, papers: 3, year: 2024, org: Meta,
+   url: "https://huggingface.co/meta-llama/Llama-3.2-1B",
+   corpus_keys: [llama321b], relations: "member_of llama-3", verification: known}
+- {id: llama-3-2-1b-instruct, name: Llama-3.2-1B-Instruct, kind: model, papers: 2, year: 2024, org: Meta,
+   url: "https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct",
+   corpus_keys: [llama321binstruct], relations: "version_of llama-3-2-1b", verification: known}
+- {id: llama-3-2-3b-instruct, name: Llama-3.2-3B-Instruct, kind: model, papers: 2, year: 2024, org: Meta,
+   url: "https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct",
+   corpus_keys: [llama323binstruct], relations: "member_of llama-3", verification: known}
+- {id: llama-3-3-70b, name: Llama-3.3-70B, kind: model, papers: 2, year: 2024, org: Meta,
+   url: "https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct",
+   corpus_keys: [llama3370b], relations: "member_of llama-3",
+   notes: "Llama 3.3 70B 仅发布 Instruct 版，裸称多指它", verification: known}
+- {id: qwen25, name: Qwen2.5, kind: model, papers: 3, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2412.15115", corpus_keys: [qwen25],
+   notes: "family umbrella", verification: known}
+- {id: qwen25-1-5b-instruct, name: Qwen2.5-1.5B-Instruct, kind: model, papers: 3, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2412.15115", url: "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct",
+   corpus_keys: [qwen2515binstruct], relations: "member_of qwen25", verification: known}
+- {id: qwen25-7b, name: Qwen2.5-7B, kind: model, papers: 6, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2412.15115", url: "https://huggingface.co/Qwen/Qwen2.5-7B",
+   corpus_keys: [qwen257b], relations: "member_of qwen25", verification: known}
+- {id: qwen25-7b-instruct, name: Qwen2.5-7B-Instruct, kind: model, papers: 12, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2412.15115", url: "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct",
+   corpus_keys: [qwen257binstruct], relations: "version_of qwen25-7b", verification: known}
+- {id: qwen25-math-7b, name: Qwen2.5-Math-7B, kind: model, papers: 3, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2409.12122", url: "https://huggingface.co/Qwen/Qwen2.5-Math-7B",
+   corpus_keys: [qwen25math7b], relations: "member_of qwen25", verification: known}
+- {id: qwen25-math-7b-instruct, name: Qwen2.5-Math-7B-Instruct, kind: model, papers: 2, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2409.12122", url: "https://huggingface.co/Qwen/Qwen2.5-Math-7B-Instruct",
+   corpus_keys: [qwen25math7binstruct], relations: "version_of qwen25-math-7b", verification: known}
+- {id: qwen25-vl, name: Qwen2.5-VL, kind: model, papers: 2, year: 2025, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2502.13923", corpus_keys: [qwen25vl],
+   notes: "family umbrella", verification: known}
+- {id: qwen25-vl-7b, name: Qwen2.5-VL-7B, kind: model, papers: 2, year: 2025, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2502.13923", url: "https://huggingface.co/Qwen/Qwen2.5-VL-7B",
+   corpus_keys: [qwen25vl7b], relations: "member_of qwen25-vl", verification: known}
+- {id: qwen2-7b, name: Qwen2-7B, kind: model, papers: 2, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2407.10671", url: "https://huggingface.co/Qwen/Qwen2-7B",
+   corpus_keys: [qwen27b], verification: known}
+- {id: qwen2-vl, name: Qwen2-VL, kind: model, papers: 2, year: 2024, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2409.12191", corpus_keys: [qwen2vl],
+   notes: "family umbrella", verification: known}
+- {id: qwen3, name: Qwen3, kind: model, papers: 4, year: 2025, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2505.09388", corpus_keys: [qwen3],
+   notes: "family umbrella", verification: known}
+- {id: qwen3-0-6b, name: Qwen3-0.6B, kind: model, papers: 2, year: 2025, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2505.09388", url: "https://huggingface.co/Qwen/Qwen3-0.6B",
+   corpus_keys: [qwen306b], relations: "member_of qwen3", verification: known}
+- {id: qwen3-1-7b, name: Qwen3-1.7B, kind: model, papers: 3, year: 2025, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2505.09388", url: "https://huggingface.co/Qwen/Qwen3-1.7B",
+   corpus_keys: [qwen317b], relations: "member_of qwen3", verification: known}
+- {id: qwen3-8b, name: Qwen3-8B, kind: model, papers: 10, year: 2025, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2505.09388", url: "https://huggingface.co/Qwen/Qwen3-8B",
+   corpus_keys: [qwen38b], relations: "member_of qwen3", verification: known}
+- {id: qwen3-4b-instruct, name: Qwen3-4B-Instruct, kind: model, papers: 2, year: 2025, org: "Alibaba Qwen",
+   url: "https://huggingface.co/Qwen/Qwen3-4B-Instruct",
+   corpus_keys: [qwen34binstruct], relations: "member_of qwen3", verification: known}
+- {id: qwen3-4b-instruct-2507, name: Qwen3-4B-Instruct-2507, kind: model, papers: 2, year: 2025, org: "Alibaba Qwen",
+   url: "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507",
+   corpus_keys: [qwen34binstruct2507],
+   relations: "version_of qwen3-4b-instruct（2025-07 更新版，勿并入）", verification: known}
+- {id: qwen3-vl-8b-instruct, name: Qwen3-VL-8B-Instruct, kind: model, papers: 3, year: 2025, org: "Alibaba Qwen",
+   paper: "https://arxiv.org/abs/2511.21631", url: "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct",
+   corpus_keys: [qwen3vl8binstruct],
+   notes: "系列论文为 Qwen3-VL Technical Report；同系列另有 2B/32B 等，勿并入",
+   verification: web-verified}
+- {id: mistral-7b, name: Mistral-7B, kind: model, papers: 6, year: 2023, org: "Mistral AI",
+   paper: "https://arxiv.org/abs/2310.06825", url: "https://huggingface.co/mistralai/Mistral-7B-v0.1",
+   corpus_keys: [mistral7b],
+   notes: "裸称多指 v0.1 base；版本需逐篇确认", verification: known}
+- {id: mistral-7b-instruct-v02, name: Mistral-7B-Instruct-v0.2, kind: model, papers: 2, year: 2023, org: "Mistral AI",
+   url: "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2",
+   corpus_keys: [mistral7binstructv02], relations: "version_of mistral-7b", verification: known}
+- {id: mistral-7b-instruct-v03, name: Mistral-7B-Instruct-v0.3, kind: model, papers: 2, year: 2024, org: "Mistral AI",
+   url: "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.3",
+   corpus_keys: [mistral7binstructv03], relations: "version_of mistral-7b", verification: known}
+- {id: gemma-2-2b, name: Gemma-2-2B, kind: model, papers: 2, year: 2024, org: Google,
+   paper: "https://arxiv.org/abs/2408.00118", url: "https://huggingface.co/google/gemma-2-2b",
+   corpus_keys: [gemma22b], verification: known}
+- {id: gemma-2-9b, name: Gemma-2-9B, kind: model, papers: 2, year: 2024, org: Google,
+   paper: "https://arxiv.org/abs/2408.00118", url: "https://huggingface.co/google/gemma-2-9b",
+   corpus_keys: [gemma29b], verification: known}
+- {id: gemma-2-9b-it, name: Gemma-2-9B-IT, kind: model, papers: 2, year: 2024, org: Google,
+   paper: "https://arxiv.org/abs/2408.00118", url: "https://huggingface.co/google/gemma-2-9b-it",
+   corpus_keys: [gemma29bit], relations: "version_of gemma-2-9b", verification: known}
+- {id: gemini-2-5-pro, name: Gemini 2.5 Pro, kind: model, papers: 3, year: 2025, org: "Google DeepMind",
+   paper: "https://arxiv.org/abs/2507.06261", corpus_keys: [gemini25pro],
+   notes: "闭源 API 模型；2025 年内 preview->GA 多次更新，快照时点留 usage 记录",
+   verification: web-verified}
+- {id: deepseek-v3, name: DeepSeek-V3, kind: model, papers: 3, year: 2024, org: DeepSeek-AI,
+   paper: "https://arxiv.org/abs/2412.19437", url: "https://huggingface.co/deepseek-ai/DeepSeek-V3",
+   corpus_keys: [deepseekv3], verification: known}
+- {id: deepseek-v3-2, name: DeepSeek-V3.2, kind: model, papers: 2, year: 2025, org: DeepSeek-AI,
+   paper: "https://arxiv.org/abs/2512.02556", url: "https://huggingface.co/deepseek-ai/DeepSeek-V3.2",
+   corpus_keys: [deepseekv32],
+   notes: "同族另有 V3.2-Exp / V3.2-Speciale 变体，语料未区分；long.1517 引作 'Liu et al., 2024' 属引用噪声",
+   verification: web-verified}
+- {id: deepseek-r1-distill-qwen-7b, name: DeepSeek-R1-Distill-Qwen-7B, kind: model, papers: 6, year: 2025, org: DeepSeek-AI,
+   paper: "https://arxiv.org/abs/2501.12948", url: "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+   corpus_keys: [deepseekr1distillqwen7b], verification: known}
+- {id: deepseek-r1-distill-llama-8b, name: DeepSeek-R1-Distill-Llama-8B, kind: model, papers: 2, year: 2025, org: DeepSeek-AI,
+   paper: "https://arxiv.org/abs/2501.12948", url: "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+   corpus_keys: [deepseekr1distillllama8b], verification: known}
+- {id: deepseek-ocr, name: DeepSeek-OCR, kind: model, papers: 2, year: 2025, org: DeepSeek-AI,
+   paper: "https://arxiv.org/abs/2510.18234", url: "https://huggingface.co/deepseek-ai/DeepSeek-OCR",
+   corpus_keys: [deepseekocr],
+   relations: "distinct_from deepseek-ocr-2（2026 年后续版，语料未出现）",
+   notes: "3B 视觉-语言 OCR 模型；代码在 deepseek-ai/DeepSeek-OCR", verification: web-verified}
+- {id: bert, name: BERT, kind: model, papers: 2, year: 2018, org: Google,
+   paper: "https://arxiv.org/abs/1810.04805", corpus_keys: [bert],
+   notes: "裸称 BERT；base/large 与 cased/uncased 变体需逐篇确认", verification: known}
+- {id: bert-base, name: BERT-base, kind: model, papers: 2, year: 2018, org: Google,
+   paper: "https://arxiv.org/abs/1810.04805", corpus_keys: [bertbase],
+   relations: "subset_of bert", verification: known}
+- {id: roberta, name: RoBERTa, kind: model, papers: 2, year: 2019,
+   paper: "https://arxiv.org/abs/1907.11692", corpus_keys: [roberta], verification: known}
+- {id: roberta-large, name: RoBERTa-Large, kind: model, papers: 3, year: 2019,
+   paper: "https://arxiv.org/abs/1907.11692", corpus_keys: [robertalarge],
+   relations: "subset_of roberta", verification: known}
+- {id: xlm-roberta, name: XLM-RoBERTa, kind: model, papers: 2, year: 2019, org: "Meta AI",
+   paper: "https://arxiv.org/abs/1911.02116", corpus_keys: [xlmroberta], verification: known}
+- {id: arabert, name: AraBERT, kind: model, papers: 2, year: 2020, org: "AUB MIND Lab",
+   paper: "https://arxiv.org/abs/2003.00104", url: "https://huggingface.co/aubmindlab/bert-base-arabert",
+   corpus_keys: [arabert], verification: known}
+- {id: clip, name: CLIP, kind: model, papers: 5, year: 2021, org: OpenAI,
+   paper: "https://arxiv.org/abs/2103.00020", url: "https://github.com/openai/CLIP",
+   corpus_keys: [clip], verification: known}
+- {id: whisper, name: Whisper, kind: model, papers: 2, year: 2022, org: OpenAI,
+   paper: "https://arxiv.org/abs/2212.04356", url: "https://github.com/openai/whisper",
+   corpus_keys: [whisper], verification: known}
+- {id: tinyllama, name: TinyLlama, kind: model, papers: 2, year: 2024,
+   paper: "https://arxiv.org/abs/2401.02385", url: "https://github.com/jzhang38/TinyLlama",
+   corpus_keys: [tinyllama], verification: known}
+- {id: coconut, name: "Coconut (Chain of Continuous Thought)", kind: model, papers: 2, year: 2024, org: Meta,
+   paper: "https://arxiv.org/abs/2412.06769", url: "https://github.com/facebookresearch/coconut",
+   corpus_keys: [coconut],
+   notes: "CoCoNuT / Coconut 两种拼写同指 Hao et al. 2024 的 latent reasoning 范式与官方实现",
+   verification: web-verified}
+- {id: all-minilm-l6-v2, name: all-MiniLM-L6-v2, kind: model, papers: 4, year: 2021, org: "sentence-transformers",
+   paper: "https://arxiv.org/abs/1908.10084", url: "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
+   corpus_keys: [allminilml6v2], verification: known}
+- {id: all-mpnet-base-v2, name: all-mpnet-base-v2, kind: model, papers: 2, year: 2021, org: "sentence-transformers",
+   paper: "https://arxiv.org/abs/1908.10084", url: "https://huggingface.co/sentence-transformers/all-mpnet-base-v2",
+   corpus_keys: [allmpnetbasev2], verification: known}
+- {id: bge-m3, name: BGE-M3, kind: model, papers: 7, year: 2024, org: BAAI,
+   paper: "https://arxiv.org/abs/2402.03216", url: "https://huggingface.co/BAAI/bge-m3",
+   corpus_keys: [bgem3], verification: known}
+- {id: bge-large-en-v1-5, name: BGE-large-en-v1.5, kind: model, papers: 2, year: 2023, org: BAAI,
+   paper: "https://arxiv.org/abs/2309.07597", url: "https://huggingface.co/BAAI/bge-large-en-v1.5",
+   corpus_keys: [bgelargeenv15], verification: known}
+- {id: e5-base-v2, name: E5-base-v2, kind: model, papers: 2, year: 2022, org: Microsoft,
+   paper: "https://arxiv.org/abs/2212.03533", url: "https://huggingface.co/intfloat/e5-base-v2",
+   corpus_keys: [e5basev2], verification: known}
+- {id: multilingual-e5-large, name: Multilingual-E5-large, kind: model, papers: 2, year: 2024, org: Microsoft,
+   paper: "https://arxiv.org/abs/2402.05672", url: "https://huggingface.co/intfloat/multilingual-e5-large",
+   corpus_keys: [multilinguale5large], verification: known}
+- {id: jina-embeddings-v3, name: Jina-Embeddings-V3, kind: model, papers: 2, year: 2024, org: "Jina AI",
+   paper: "https://arxiv.org/abs/2409.10173", url: "https://huggingface.co/jinaai/jina-embeddings-v3",
+   corpus_keys: [jinaembeddingsv3], verification: known}
+- {id: contriever, name: Contriever, kind: model, papers: 3, year: 2022, org: "Meta AI (FAIR)",
+   paper: "https://arxiv.org/abs/2112.09118", url: "https://github.com/facebookresearch/contriever",
+   corpus_keys: [contriever],
+   notes: "TMLR 2022；MS MARCO 微调版 facebook/contriever-msmarco 为另一权重（version_of），语料未区分",
+   verification: web-verified}
+- {id: panns, name: PANNs, kind: model, papers: 2, year: 2020, org: "University of Surrey",
+   paper: "https://arxiv.org/abs/1912.10211", url: "https://github.com/qiuqiangkong/panns_inference",
+   corpus_keys: [panns],
+   notes: "AudioSet 预训练 CNN 音频模型族；训练代码另在 qiuqiangkong/audioset_tagging_cnn",
+   verification: web-verified}
+
+  # ---- 框架 / 库 / 工具（第二轮扩充 2026-09-13）----
+- {id: vllm, name: vLLM, kind: code, papers: 28, year: 2023, org: "UC Berkeley / vLLM Team",
+   paper: "https://arxiv.org/abs/2309.06180", url: "https://github.com/vllm-project/vllm",
+   corpus_keys: [vllm], verification: known}
+- {id: verl, name: "verl (HybridFlow)", kind: code, papers: 28, year: 2024, org: "ByteDance Seed",
+   paper: "https://arxiv.org/abs/2409.19256", url: "https://github.com/volcengine/verl",
+   corpus_keys: [verl], verification: known}
+- {id: llamafactory, name: LLaMA-Factory, kind: code, papers: 17, year: 2024,
+   paper: "https://arxiv.org/abs/2403.13372", url: "https://github.com/hiyouga/LLaMA-Factory",
+   corpus_keys: [llamafactory], verification: known}
+- {id: lm-evaluation-harness, name: LM Evaluation Harness, kind: tool, papers: 10, year: 2023, org: EleutherAI,
+   url: "https://github.com/EleutherAI/lm-evaluation-harness",
+   corpus_keys: [lmevaluationharness],
+   notes: "规范引用为 Zenodo DOI 10.5281/zenodo.12608602；lmevalharness 拼写经 merge_map 并入",
+   verification: web-verified}
+- {id: lmms-eval, name: LMMs-Eval, kind: tool, papers: 3, year: 2024, org: "LMMs-Lab / NTU S-Lab",
+   paper: "https://arxiv.org/abs/2407.12772", url: "https://github.com/EvolvingLMMs-Lab/lmms-eval",
+   corpus_keys: [lmmseval],
+   relations: "derived_from lm-evaluation-harness", verification: web-verified}
+- {id: faiss, name: FAISS, kind: code, papers: 7, year: 2017, org: "Meta AI",
+   paper: "https://arxiv.org/abs/1702.08734", url: "https://github.com/facebookresearch/faiss",
+   corpus_keys: [faiss], verification: known}
+- {id: trl, name: TRL, kind: code, papers: 5, year: 2020, org: HuggingFace,
+   url: "https://github.com/huggingface/trl", corpus_keys: [trl], verification: known}
+- {id: huggingface-transformers, name: "Hugging Face Transformers", kind: code, papers: 4, year: 2019, org: HuggingFace,
+   paper: "https://arxiv.org/abs/1910.03771", url: "https://github.com/huggingface/transformers",
+   corpus_keys: [huggingfacetransformers], verification: known}
+- {id: langchain, name: LangChain, kind: code, papers: 3, year: 2022, org: LangChain,
+   url: "https://github.com/langchain-ai/langchain", corpus_keys: [langchain], verification: known}
+- {id: langgraph, name: LangGraph, kind: code, papers: 4, year: 2024, org: LangChain,
+   url: "https://github.com/langchain-ai/langgraph", corpus_keys: [langgraph],
+   relations: "derived_from langchain", verification: known}
+- {id: ms-swift, name: "ms-swift (SWIFT)", kind: tool, papers: 5, year: 2025, org: "ModelScope (Alibaba)",
+   paper: "https://arxiv.org/abs/2408.05517", url: "https://github.com/modelscope/ms-swift",
+   corpus_keys: [msswift],
+   notes: "SWIFT = Scalable lightWeight Infrastructure for Fine-Tuning，AAAI 2025 demo；swift key 经 merge_map 并入",
+   verification: web-verified}
+- {id: openrlhf, name: OpenRLHF, kind: code, papers: 3, year: 2024,
+   paper: "https://arxiv.org/abs/2405.11143", url: "https://github.com/OpenRLHF/OpenRLHF",
+   corpus_keys: [openrlhf], verification: known}
+- {id: easyr1, name: EasyR1, kind: tool, papers: 2, year: 2025, org: "hiyouga (LLaMA-Factory 作者群)",
+   url: "https://github.com/hiyouga/EasyR1", corpus_keys: [easyr1],
+   relations: "derived_from verl（HybridFlow 的 clean fork，扩展 VLM GRPO 训练）",
+   notes: "无独立论文，仓库 @misc 即官方引用", verification: web-verified}
+- {id: open-r1, name: OpenR1, kind: code, papers: 2, year: 2025, org: HuggingFace,
+   url: "https://github.com/huggingface/open-r1", corpus_keys: [openr1],
+   relations: "derived_from deepseek-r1（完全开放复现管线）",
+   notes: "无独立论文，仓库 @misc 即官方引用", verification: web-verified}
+- {id: llamacpp, name: llama.cpp, kind: code, papers: 2, year: 2023, org: "ggerganov",
+   url: "https://github.com/ggerganov/llama.cpp", corpus_keys: [llamacpp], verification: known}
+- {id: openhands, name: OpenHands, kind: code, papers: 2, year: 2024,
+   paper: "https://arxiv.org/abs/2407.16741", url: "https://github.com/All-Hands-AI/OpenHands",
+   corpus_keys: [openhands], notes: "前身 OpenDevin", verification: known}
+- {id: smolagents, name: smolagents, kind: code, papers: 2, year: 2024, org: HuggingFace,
+   url: "https://github.com/huggingface/smolagents", corpus_keys: [smolagents], verification: known}
+- {id: easyedit, name: EasyEdit, kind: code, papers: 2, year: 2023, org: "ZJUNLP",
+   paper: "https://arxiv.org/abs/2308.07269", url: "https://github.com/zjunlp/EasyEdit",
+   corpus_keys: [easyedit], verification: known}
+- {id: saelens, name: SAELens, kind: code, papers: 3, year: 2024,
+   url: "https://github.com/jbloomAus/SAELens", corpus_keys: [saelens], verification: known}
+- {id: transformerlens, name: TransformerLens, kind: tool, papers: 2, year: 2022,
+   url: "https://github.com/TransformerLensOrg/TransformerLens",
+   corpus_keys: [transformerlens], verification: known}
+- {id: torchtitan, name: TorchTitan, kind: tool, papers: 2, year: 2024, org: Meta,
+   url: "https://github.com/pytorch/torchtitan", corpus_keys: [torchtitan], verification: known}
+- {id: triton, name: Triton, kind: tool, papers: 2, year: 2019, org: OpenAI,
+   url: "https://github.com/triton-lang/triton", corpus_keys: [triton], verification: known}
+- {id: tree-sitter, name: Tree-sitter, kind: tool, papers: 3, year: 2018,
+   url: "https://github.com/tree-sitter/tree-sitter", corpus_keys: [treesitter], verification: known}
+- {id: spacy, name: spaCy, kind: tool, papers: 2, year: 2017, org: Explosion,
+   url: "https://github.com/explosion/spaCy", corpus_keys: [spacy], verification: known}
+- {id: jieba, name: "jieba (结巴中文分词)", kind: tool, papers: 2, year: 2012, org: "Sun Junyi (fxsjy)",
+   url: "https://github.com/fxsjy/jieba", corpus_keys: [jieba],
+   notes: "无正式论文；多语言移植版均为 derived_from，语料均指 Python 原版", verification: web-verified}
+- {id: easyocr, name: EasyOCR, kind: tool, papers: 2, year: 2020, org: JaidedAI,
+   url: "https://github.com/JaidedAI/EasyOCR", corpus_keys: [easyocr], verification: known}
+- {id: paddleocr, name: PaddleOCR, kind: tool, papers: 2, year: 2020, org: "PaddlePaddle (Baidu)",
+   paper: "https://arxiv.org/abs/2009.09941", url: "https://github.com/PaddlePaddle/PaddleOCR",
+   corpus_keys: [paddleocr], verification: known}
+- {id: bertscore, name: BERTScore, kind: tool, papers: 2, year: 2019,
+   paper: "https://arxiv.org/abs/1904.09675", url: "https://github.com/Tiiiger/bert_score",
+   corpus_keys: [bertscore], notes: "ICLR 2020；PyPI 包 bert-score", verification: web-verified}
+- {id: detoxify, name: Detoxify, kind: tool, papers: 2, year: 2020, org: "Unitary AI",
+   url: "https://github.com/unitaryai/detoxify", corpus_keys: [detoxify],
+   notes: "Jigsaw 数据训练的毒性分类器库；无正式论文", verification: web-verified}
+- {id: labelstudio, name: Label Studio, kind: tool, papers: 3, year: 2020, org: HumanSignal,
+   url: "https://github.com/HumanSignal/label-studio", corpus_keys: [labelstudio], verification: known}
+- {id: opencompass, name: OpenCompass, kind: tool, papers: 2, year: 2023,
+   paper: "https://arxiv.org/abs/2307.10521", url: "https://github.com/open-compass/OpenCompass",
+   corpus_keys: [opencompass], verification: known}
+- {id: vlmevalkit, name: VLMEvalKit, kind: tool, papers: 2, year: 2024, org: "OpenCompass 团队",
+   url: "https://github.com/open-compass/VLMEvalKit", corpus_keys: [vlmevalkit], verification: known}
+- {id: g-eval, name: G-Eval, kind: tool, papers: 2, year: 2023, org: Microsoft,
+   paper: "https://arxiv.org/abs/2303.16634", url: "https://github.com/nlpyang/geval",
+   corpus_keys: [geval],
+   notes: "官方仓库仅含 SummEval 实验脚本；语料'用作 metric'多为按其 prompt 范式自实现，usage 级需确认",
+   verification: web-verified}
+- {id: evalplus, name: EvalPlus, kind: tool, papers: 2, year: 2023, org: "UIUC / Nanjing Univ.",
+   paper: "https://arxiv.org/abs/2305.01210", url: "https://github.com/evalplus/evalplus",
+   corpus_keys: [evalplus],
+   relations: "评测框架身份；产出数据集见 humaneval-plus / mbpp-plus", verification: web-verified}
+- {id: groundingdino, name: Grounding DINO, kind: model, papers: 4, year: 2023, org: IDEA,
+   paper: "https://arxiv.org/abs/2303.05499", url: "https://github.com/IDEA-Research/GroundingDINO",
+   corpus_keys: [groundingdino], verification: known}
+- {id: flashrag, name: FlashRAG, kind: tool, papers: 3, year: 2024, org: "RUC-NLPIR",
+   url: "https://github.com/RUC-NLPIR/FlashRAG", corpus_keys: [flashrag], verification: known}
+- {id: mineru, name: MinerU, kind: tool, papers: 1, year: 2024, org: "OpenDataLab (上海AI Lab)",
+   paper: "https://arxiv.org/abs/2409.18839", url: "https://github.com/opendatalab/MinerU",
+   corpus_keys: [mineru],
+   notes: "与 mineru25 同归一化 key，建边须按 description 拆开（见 split_within_key）",
+   verification: web-verified}
+- {id: mineru25, name: MinerU2.5, kind: model, papers: 1, year: 2025, org: "OpenDataLab (上海AI Lab)",
+   paper: "https://arxiv.org/abs/2509.22186", url: "https://github.com/opendatalab/MinerU",
+   corpus_keys: [], relations: "version_of mineru（1.2B 文档解析 VLM）", verification: web-verified}
+- {id: lora, name: "LoRA (Low-Rank Adaptation)", kind: protocol, papers: 4, year: 2021, org: Microsoft,
+   paper: "https://arxiv.org/abs/2106.09685", url: "https://github.com/microsoft/LoRA",
+   corpus_keys: [lora],
+   notes: "微调技术；有 mention 的 access_url 指向 huggingface/peft，那是第三方集成，规范 URL 取 microsoft/LoRA",
+   verification: web-verified}
+- {id: react, name: ReAct, kind: protocol, papers: 2, year: 2023, org: "Princeton / Google DeepMind",
+   paper: "https://arxiv.org/abs/2210.03629", url: "https://react-lm.github.io",
+   corpus_keys: [react],
+   notes: "'Re-Act' 拼写为同物；语料语境均为 agent baseline，非 React JS 库", verification: web-verified}
+- {id: grpo, name: "GRPO (Group Relative Policy Optimization)", kind: protocol, papers: 2, year: 2024, org: DeepSeek-AI,
+   paper: "https://arxiv.org/abs/2402.03300", corpus_keys: [grpo],
+   notes: "DeepSeekMath 论文提出的 RL 算法；语料 kind 标 tool/model 为抽取误标", verification: web-verified}
+- {id: smoothquant, name: SmoothQuant, kind: tool, papers: 2, year: 2023, org: "MIT Han Lab",
+   paper: "https://arxiv.org/abs/2211.10438", url: "https://github.com/mit-han-lab/smoothquant",
+   corpus_keys: [smoothquant], notes: "ICML 2023 PTQ 框架", verification: web-verified}
+- {id: model-context-protocol, name: "Model Context Protocol (MCP)", kind: protocol, papers: 2, year: 2024, org: Anthropic,
+   url: "https://modelcontextprotocol.io", corpus_keys: [modelcontextprotocolmcp], verification: known}
+- {id: egg, name: "EGG (Emergence of lanGuage in Games)", kind: code, papers: 2, year: 2019, org: "Meta AI",
+   paper: "https://arxiv.org/abs/1907.00852", url: "https://github.com/facebookresearch/EGG",
+   corpus_keys: [egg], notes: "EMNLP-IJCNLP 2019 系统演示", verification: web-verified}
+- {id: pair, name: "PAIR (Prompt Automatic Iterative Refinement)", kind: code, papers: 2, year: 2023, org: "U. Pennsylvania",
+   paper: "https://arxiv.org/abs/2310.08419", url: "https://github.com/SafeAILab/PAIR",
+   corpus_keys: [pair],
+   notes: "acl-long.1197 引作 'Chao et al., 2025' 为引文噪声，同指 2310.08419", verification: web-verified}
+- {id: fourcorners, name: "FourCorners (Thai legal research platform)", kind: tool, papers: 2, year: 2026, org: "VISAI (Thailand)",
+   paper: "https://aclanthology.org/2026.acl-industry.124/", url: "https://fourcorners.law",
+   corpus_keys: [fourcorners],
+   notes: "同一团队两篇 ACL 2026：industry.124（时序法律 KG ThLexGraph）+ demo.46（平台）",
+   verification: web-verified}
+- {id: camel-ai, name: "CAMEL (CAMEL-AI)", kind: tool, papers: 1, year: 2023, org: "CAMEL-AI.org",
+   paper: "https://arxiv.org/abs/2303.17760", url: "https://github.com/camel-ai/camel",
+   corpus_keys: [camel], notes: "Communicative Agents 多智能体框架；见 split_within_key",
+   verification: web-verified}
+- {id: camel-mee, name: "CAMEL (multimedia event extraction)", kind: code, papers: 1, year: 2023, org: "Du et al. (NTU)",
+   paper: "https://doi.org/10.1145/3581783.3612526", url: "https://github.com/ZILIN003/CAMEL",
+   corpus_keys: [], relations: "distinct_from camel-ai", verification: web-verified}
+- {id: adapt-affordance, name: "ADAPT (Affordance-Driven Adaptive Planning)", kind: tool, papers: 1, year: 2026, org: "National Taiwan University",
+   paper: "https://arxiv.org/abs/2604.14902", url: "https://github.com/charlotteannchen/ADAPT-Codebase",
+   corpus_keys: [adapt],
+   notes: "2026.acl-long.1109 自创模块；README 自述代码仍在整理", verification: web-verified}
+- {id: adapt-benchmark-cmit, name: "Adapt (continual multimodal instruction tuning)", kind: benchmark, papers: 1, year: 2025, org: "UNC Chapel Hill",
+   paper: "https://arxiv.org/abs/2410.10636", url: "https://github.com/adymaharana/adapt-inf",
+   corpus_keys: [], relations: "distinct_from adapt-affordance",
+   notes: "Maharana et al.（ICLR 2025）Adapt-∞ 任务序列；acl-long.158 (OASIS) 引作 'Adapt' benchmark",
+   verification: web-verified}
+- {id: clarity-nl2sql, name: "CLARITY (ambiguity in interactive NL2SQL)", kind: benchmark, papers: 1, year: 2026,
+   paper: "https://arxiv.org/abs/2604.22313", corpus_keys: [clarity],
+   notes: "2026.acl-industry.86 自创；未见公开仓库", verification: web-verified}
+- {id: clarity-rl, name: "CLARity (Reasoning Consistency RL)", kind: code, papers: 1, year: 2025,
+   paper: "https://arxiv.org/abs/2510.09278", url: "https://github.com/Infinite-set/CLARity",
+   corpus_keys: [], relations: "distinct_from clarity-nl2sql",
+   notes: "2026.acl-long.1358；语料拼写 CLARITY/CLARity 混用，须按原始拼写拆", verification: web-verified}
+- {id: clear-error-analysis, name: "CLEAR (Error Analysis via LLM-as-a-Judge)", kind: tool, papers: 1, year: 2025, org: "IBM Research / Hebrew Univ.",
+   paper: "https://arxiv.org/abs/2507.18392", url: "https://github.com/IBM/CLEAR",
+   corpus_keys: [clear], notes: "acl-demo.74 引用；同名拼写不可区分，见 split_within_key",
+   verification: web-verified}
+- {id: clear-reverse-training, name: "CLEAR (cross-lingual retrieval reverse-training)", kind: code, papers: 1, year: 2026, org: "Korea University",
+   paper: "https://arxiv.org/abs/2604.05821", url: "https://github.com/dltmddbs100/CLEAR",
+   corpus_keys: [], relations: "distinct_from clear-error-analysis", verification: web-verified}
+- {id: compass-travel, name: "COMPASS (multi-turn travel planning benchmark)", kind: benchmark, papers: 1, year: 2025, org: "Apple / Harvard",
+   paper: "https://arxiv.org/abs/2510.07043", corpus_keys: [compass],
+   notes: "Qin et al.；未见官方仓库", verification: web-verified}
+- {id: compass-agent-framework, name: "COMPASS (Context-Organized Multi-Agent Planning)", kind: tool, papers: 1, year: 2025, org: "Google Cloud AI / UVA",
+   paper: "https://arxiv.org/abs/2510.08790", corpus_keys: [], relations: "distinct_from compass-travel",
+   notes: "2026.acl-long.152；两者 arXiv 均为 2025-10，极易互混", verification: web-verified}
+- {id: scope-spatial, name: "SCOPE (Spatial Consistency across Perspectives)", kind: benchmark, papers: 1, year: 2026, org: "Yonsei University",
+   paper: "https://aclanthology.org/2026.acl-long.1514/", url: "https://github.com/yoongja/SCOPE",
+   corpus_keys: [scope], notes: "未见 arXiv 版", verification: web-verified}
+- {id: scope-position-encoding, name: "ScoPE (Scoped Position Encoding)", kind: code, papers: 1, year: 2026,
+   url: "https://github.com/oncemoe/ScoPE", corpus_keys: [], relations: "distinct_from scope-spatial",
+   notes: "2026.acl-long.1650；未见 arXiv 版", verification: web-verified}
+- {id: macs-benchmark, name: "MACS (Multi-Agent Collaboration Scenario benchmark)", kind: benchmark, papers: 1, year: 2024, org: AWS,
+   paper: "https://arxiv.org/abs/2412.05449", url: "https://github.com/aws-samples/multiagent-collab-scenario-benchmark",
+   corpus_keys: [macs], verification: web-verified}
+- {id: macs-moe, name: "MACS (Modality-Aware Capacity Scaling)", kind: code, papers: 1, year: 2026,
+   paper: "https://arxiv.org/abs/2605.05225", corpus_keys: [], relations: "distinct_from macs-benchmark",
+   notes: "2026.acl-long.1012 自创 MoE MLLM 推理框架", verification: web-verified}
+- {id: mads-persuasion, name: "MADS (Multi-Agent Dialogue Simulation)", kind: tool, papers: 1, year: 2025, org: Baidu,
+   paper: "https://arxiv.org/abs/2510.05124", corpus_keys: [mads],
+   notes: "EMNLP 2025 industry.26；acl-industry.95 引为数据选择 baseline", verification: web-verified}
+- {id: mads-gui, name: "MaDS (Memory-augmented Debate System)", kind: tool, papers: 1, year: 2026,
+   paper: "https://aclanthology.org/2026.acl-long.1202/", corpus_keys: [], relations: "distinct_from mads-persuasion",
+   notes: "未见 arXiv/仓库", verification: web-verified}
+- {id: muse-qualitative, name: "Muse (qualitative research assistant)", kind: tool, papers: 1, year: 2026,
+   paper: "https://arxiv.org/abs/2512.00009", corpus_keys: [muse],
+   notes: "2026.acl-industry.131 的部署中质性研究系统", verification: web-verified}
+- {id: muse-rec-dataset, name: "MUSE (multimodal conversational recommendation)", kind: dataset, papers: 1, year: 2025, org: "Northeastern Univ. (China)",
+   paper: "https://arxiv.org/abs/2412.18416", corpus_keys: [], relations: "distinct_from muse-qualitative",
+   notes: "Findings of ACL 2025", verification: web-verified}
+- {id: prometheus-monitoring, name: "Prometheus (monitoring system)", kind: tool, papers: 1, year: 2016, org: CNCF,
+   url: "https://prometheus.io/", corpus_keys: [prometheus],
+   notes: "acl-demo.42 监控栈用法", verification: web-verified}
+- {id: prometheus-judge, name: "Prometheus (evaluator LLM)", kind: model, papers: 1, year: 2023, org: "KAIST AI",
+   paper: "https://arxiv.org/abs/2310.08491", url: "https://github.com/prometheus-eval/prometheus-eval",
+   corpus_keys: [], relations: "distinct_from prometheus-monitoring",
+   notes: "rubric 评分 judge；Prometheus 2 / M-Prometheus 同仓库", verification: web-verified}
+- {id: radar-routing, name: "RADAR (Risk-Aware Distilled Adaptive Routing)", kind: tool, papers: 1, year: 2026,
+   paper: "https://aclanthology.org/2026.acl-industry.139/", corpus_keys: [radar],
+   notes: "2026.acl-industry.139 自创，无独立发布渠道", verification: web-verified}
+- {id: radar-detector, name: "RADAR (Robust AI-text Detection)", kind: model, papers: 1, year: 2023, org: "IBM Research / CUHK",
+   paper: "https://arxiv.org/abs/2307.03838", url: "https://github.com/IBM/RADAR",
+   corpus_keys: [], relations: "distinct_from radar-routing", verification: web-verified}
+- {id: scan-capability, name: "SCAN (Structured Capability Assessment and Navigation)", kind: benchmark, papers: 1, year: 2025,
+   paper: "https://arxiv.org/abs/2505.06698", url: "https://github.com/liudan193/SCAN",
+   corpus_keys: [scan], notes: "2026.acl-long.126 自创", verification: web-verified}
+- {id: scan, name: "SCAN (Lake & Baroni 2018)", kind: benchmark, papers: 1, year: 2018, org: "NYU / FAIR",
+   paper: "https://arxiv.org/abs/1711.00350", url: "https://github.com/brendenlake/SCAN",
+   corpus_keys: [], relations: "distinct_from scan-capability",
+   notes: "组合泛化基准；acl-long.1447 引 Lake and Baroni 2018", verification: web-verified}
+
 #####################################################################
 # 2. merge_map：归一化 key -> 规范 id（仅列非自映射的；未列出的 key
 #    默认自成身份）。spelling 变体已在 corpus_keys 内，无需重复。
@@ -578,6 +1032,9 @@ merge_map:
   aime2024andaime2025: aime-unspecified
   amc: amc-unspecified
   wikitext: wikitext-unspecified
+  # 第二轮（2026-09-13，model/code/tool 扩充）
+  lmevalharness: lm-evaluation-harness
+  swift: ms-swift
   # 衍生/变体保持独立身份（不合并，仅登记关系）：
   #   gsm8kv, gsm8kzh, mmluredux, mmluprox, longbenchv2, browsecompplus,
   #   humanevalfix, mbppsanitized, spiderdk, spiderrealistic, spidersyn,
@@ -601,6 +1058,40 @@ split_within_key:
     "CodeContests+": codecontests-plus
   prism:
     _by_context: "Kirk et al. 2024 引用 -> prism-alignment；acl-long.1551 自称提出 -> prism-hallucination"
+  # 第二轮同名异源拆分（2026-09-13）。拼写可分流的按原始拼写；
+  # 拼写一致的用 _by_context 记录当前语料的判读结果。
+  adapt:
+    "ADAPT": adapt-affordance
+    "Adapt": adapt-benchmark-cmit
+  clarity:
+    "CLARITY": clarity-nl2sql
+    "CLARity": clarity-rl
+  compass:
+    "COMPASS": compass-agent-framework
+    "Compass": compass-travel
+  scope:
+    "SCOPE": scope-spatial
+    "ScoPE": scope-position-encoding
+  mads:
+    "MADS": mads-persuasion
+    "MaDS": mads-gui
+  muse:
+    "Muse": muse-qualitative
+    "MUSE": muse-rec-dataset
+  clear:
+    _by_context: "acl-demo.74（error analysis 组件）-> clear-error-analysis；acl-long.13（reverse-training 损失）-> clear-reverse-training"
+  macs:
+    _by_context: "acl-demo.34（多智能体协作评测）-> macs-benchmark；acl-long.1012（MoE 推理框架）-> macs-moe"
+  prometheus:
+    _by_context: "acl-demo.42（监控栈时序库）-> prometheus-monitoring；acl-long.1525（rubric 评分 judge）-> prometheus-judge"
+  radar:
+    _by_context: "acl-industry.139（短视频路由）-> radar-routing；acl-long.109（AI 文本检测）-> radar-detector"
+  scan:
+    _by_context: "acl-long.126（自家 LLM 能力评估，同篇 code/benchmark 两条记录）-> scan-capability；acl-long.1447（引 Lake & Baroni 2018）-> scan"
+  camel:
+    _by_context: "acl-long.1233（communicative agents）-> camel-ai；acl-long.1426（多媒体事件抽取）-> camel-mee"
+  mineru:
+    _by_context: "acl-industry.3（1.2B VLM，自称 MinerU2.5）-> mineru25；acl-long.1001（引 Wang et al. 2024a）-> mineru"
 
 #####################################################################
 # 4. v1 抽取噪声 key：不是具体资源，建边时应剔除或人工归位。
@@ -620,3 +1111,17 @@ homonym_alerts:
 - minervamath: "272 题 OCWCourses vs lm-eval-harness 的 MATH 4-shot 任务组"
 - codecontests: "DeepMind 原版 vs CodeContests+ vs CodeContests++ vs CodeContests-O"
 - mmlongbench: "MMLongBench-Doc vs Edinburgh MMLongBench"
+# 第二轮（2026-09-13）确认的同名异源，详见 split_within_key：
+- adapt: [adapt-affordance, adapt-benchmark-cmit]
+- clarity: [clarity-nl2sql, clarity-rl]
+- clear: [clear-error-analysis, clear-reverse-training]
+- compass: [compass-travel, compass-agent-framework]  # 两者 arXiv 均为 2025-10，引用极易互混
+- scope: [scope-spatial, scope-position-encoding]
+- macs: [macs-benchmark, macs-moe]
+- mads: [mads-persuasion, mads-gui]
+- muse: [muse-qualitative, muse-rec-dataset]
+- prometheus: [prometheus-monitoring, prometheus-judge]
+- radar: [radar-routing, radar-detector]
+- scan: [scan-capability, scan]
+- camel: [camel-ai, camel-mee]
+- mineru: [mineru, mineru25]

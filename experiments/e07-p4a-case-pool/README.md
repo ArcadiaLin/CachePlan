@@ -35,6 +35,7 @@
 - `data/processed/e07/corpus/<paper_id>/{mineru,layer4,cite}/`：952 篇的全文 markdown、Layer4 记录和引用材料。该副本不意味着已缓存每篇关联的外部代码与数据。
 - [p0_corpus_summary.json](../../data/processed/e07/p0_corpus_summary.json)：记录复制与校验结果；每层文件数和字节数一致，另有 20 篇的抽样哈希比对。已登记 `2026.acl-long.165` 缺少 `layer4/agent_judgment.json`。
 - `data/processed/e07/p1/`：paper–resource 边（`resource_edges.jsonl`）、引文锚点（`cite_anchors.jsonl`）与未注册名清单（`unregistered_names.jsonl`）；[p1_summary.json](../../data/processed/e07/p1_summary.json) 记录对账与统计。边上的 relation_type 是 v1 线索（`relation_verified=false`），url_key 只是锚点信号，均未做语义核查或跨名合并。
+- [registry/resource_disambiguation.yml](registry/resource_disambiguation.yml)：资源名 → 规范身份的消歧注册表，p1 建边时套用。第一轮（2026-09-12）覆盖 dataset/benchmark 高频名（≥3 篇的 144 个为主体）；第二轮（2026-09-13）扩充 model/code/tool/protocol 等 128 个名字（≥3 篇全部 + 2 篇的非 dataset/benchmark 名），含 13 组同名异源的拆分规则与警戒清单。
 
 当前 952 篇是初始筛选语料；其余 v1 论文及 venue 外论文可以通过步骤 3 扩展进入候选。最终池的范围不限于 p0 复制目录。
 

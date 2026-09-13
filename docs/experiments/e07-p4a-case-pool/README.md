@@ -1,6 +1,6 @@
 # E07 — P4A 样例论文集构造
 
-状态：2026-09-11 按用户确定的五步路线整合。E07 已完成初始语料复制；种子与噪声筛选、扩展、ground truth 核查和案例选择尚未完成。本次更新整理目标与已有案例，不执行新的筛选或评测。
+状态：2026-09-13 更新。E07 已完成初始语料复制（p0）与 paper–resource 边、引文锚点整理（p1）；资源消歧注册表完成两轮扩充。种子与噪声筛选、扩展、ground truth 核查和案例选择尚未完成。
 
 背景：[Papers for Agents：讨论与备忘](../../discussions/2026-09-09-paper-for-agents.md)。工程入口：[E07 README](../../../experiments/e07-p4a-case-pool/README.md)。
 
@@ -27,6 +27,14 @@
 根据 [v1 数据说明](../../../data/raw/p4a-v1/README.md)，本地副本包含 3321 篇 ACL 2025/2026 论文的处理产物，各层覆盖不完全相同。E07 从“961 观测集”中复制了 952 篇不同论文，作为初始筛选语料。
 
 现有 [p0 报告](../../../data/processed/e07/p0_corpus_summary.json)记录了 952 篇的复制结果、逐层文件数与字节数校验，以及 20 篇抽样哈希比对。复制内容为全文 markdown、Layer4 记录和 cite 材料；原 PDF 等材料需按来源另行定位。已登记缺口为 `2026.acl-long.165` 缺少 `layer4/agent_judgment.json`。
+
+p1（2026-09-13）已从 layer4/cite 建立结构化线索，产物在 `data/processed/e07/p1/`：
+
+- `resource_edges.jsonl`：4758 条资源记录 → 4755 条 paper–resource 边 + 3 条噪声剔除，对账通过；全部 kind（benchmark/dataset/code/model/tool 等）都建边，边上的 relation_type 是 v1 线索（`relation_verified=false`）。
+- `cite_anchors.jsonl`：43633 条参考文献 → 15763 条带 arxiv/DOI/URL 锚点，其中 85 条经 arxiv id 精确匹配回语料内论文（内部引文边）。
+- `unregistered_names.jsonl` 与 [p1_summary.json](../../../data/processed/e07/p1_summary.json)：未注册名清单与统计，回喂注册表扩充。
+
+消歧注册表 [`registry/resource_disambiguation.yml`](../../../experiments/e07-p4a-case-pool/registry/resource_disambiguation.yml) 现有 294 个规范条目：第一轮（2026-09-12）覆盖 dataset/benchmark 高频名；第二轮（2026-09-13）扩充 model/code/tool 等 128 个名字，其中 38 个经 subagent 一手来源核查（全部 web-verified），新发现 13 组同名异源并落入拆分规则与警戒清单。建边后 registry 命中 1541 条、拼写拆分 66 条、待上下文确认 21 条。
 
 952 篇是初始筛选范围，不是已经标注好的最终候选池。后续关系扩展可以进入其余 v1 论文，也可以从 ACL 扩展到 venue 外。语料外论文先登记为线索；成为正式正例、负例或案例证据前，要补齐相应判断材料。
 
@@ -139,7 +147,7 @@ E07 保留 p0–p4 的阶段划分；实现状态以其 README 和产物为准�
 | 阶段 | 与五步路线的关系 | 后续交付 |
 | --- | --- | --- |
 | p0 | 准备初始语料 | 已有 952 篇复制子集与校验报告 |
-| p1 | 为种子定位和向外扩展准备线索 | 可回到原始记录的 paper–resource 边及引用入口，语义状态待核查 |
+| p1 | 为种子定位和向外扩展准备线索 | 已有可回到原始记录的 paper–resource 边及引用入口，语义状态待核查 |
 | p2 | 步骤 1–2 | 需求条件、种子正例、同 venue 困难候选及逐项判断 |
 | p3 | 步骤 3–4 | 扩展路径、外部材料、新增候选及扩展干扰项 |
 | p4 | 步骤 5 | 候选池与标签汇总、QA 草案、代表性案例及限制 |
