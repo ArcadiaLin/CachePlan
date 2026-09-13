@@ -8,6 +8,7 @@
 # - judgments 取值：satisfied / partial / not_satisfied / insufficient_evidence /
 #   unchecked。判断必须附 evidence（材料位置 + 摘录），区分论文声称与材料观察。
 # - entry_path 记录候选进入池子的途径，与判断标签分开。
+# - note 记录核查结论要点与保留点；eval_notes 记录评测协议细节（案例 A4 素材）。
 
 case: A
 title: 从 Agent 执行轨迹寻找可复用经验
@@ -48,7 +49,7 @@ known_issues:
 - paper: 2026.acl-long.1432
   issue: cite_contexts 仅 31 个引用点、覆盖 88 条参考文献中的 42 条；
          AWM/Voyager/SkillWeaver（ref 64/58/85）无引用上下文
-  handling: p2 核查到该篇时从 mineru 正文人工摘取相关句子记入 evidence
+  handling: p2 核查时从 mineru 正文人工摘取（已补摘，见该候选 evidence）
 - paper: 2026.acl-industry.7
   issue: paper_record title 字段误抽为作者列表
   handling: 标注层修正或排除；关键词/标题类扫描对该篇不可信
@@ -56,55 +57,178 @@ known_issues:
   issue: 参考文献列表重复收录 AWM（index 26/27，同一 arXiv:2409.07429）
   handling: cite_anchors 已按 arXiv 号去重，计数不受影响；保留为消歧叙事素材
 
-# 候选清单：语料内候选由 p1 锚点/关键词定位 + 2026-09-13 侦察确认；
-# 外部候选为初始建议线索。note 记录的是核查前疑点，不是判断结论。
+# p2 核查进度：
+# - 2026-09-13 第一轮：6 篇语料内候选核查完成（judgments + evidence 已填）。
+# - 外部锚点 5 篇待核查（unchecked）。
 candidates:
-# —— 语料内 ——
+# —— 语料内（已核查 2026-09-13）——
 - paper: "2026.acl-long.1432"   # ReCreate，候选主角 A
   name: ReCreate
   in_corpus: true
   entry_path: keyword + citation-anchor（引 AWM/Voyager/SkillWeaver 三锚点）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    四条件全满足。机制：外层 meta-agent 离线消费任务 agent 的经验
+    e ≜ (τ, Exec, Ver)，产出 scaffold 编辑（规则/工具/workflow/memory 条目），
+    更新后在后续迭代与 held-out test 上生效。保留点：c3 按"产物在后续 episode
+    生效"的宽解读判 satisfied，若要求运行时在线检索的强解读可降 partial
+    （memory 检索命中率无直接统计）；提炼由外层 agent 离线完成（non-condition
+    允许）；c4 限同域跨任务，无跨域迁移实验。
+  evidence:
+  - "c1 | §4.1: 'the interaction experience e contains the full trajectory,
+    execution results and evaluation results'"
+  - "c1 实验 | §5.4 消融: 'removing the full trajectory causes the largest and
+    most consistent performance drop'"
+  - "c2 | §3: scaffold updates 'in the form of rules, tools, and workflows'；
+    App. D: skill 文件夹（SKILL.md+脚本）与 agent_memory.yaml 经验条目"
+  - "c3 | Algorithm 1: 更新后 scaffold 进入下一迭代并在 D_test 上报指标；
+    App. D: memory bank 'specifies when the task agent should … retrieve
+    existing memories'"
+  - "c4 | §5.1: 每域 ~20 dev 实例提炼、38–417 held-out test 评测；
+    Table 2: DOMUPD 'improves cross-task generalization'"
+  - "A3 补摘（cite 层洞，出自 App. B.2）: 'Voyager … continually explores and
+    accumulates reusable skills'；'Agent Workflow Memory … stores workflow
+    fragments that can be replayed for similar tasks'；'SkillWeaver … generate
+    new functions or APIs from interaction experience and execution feedback,
+    and reuse them across tasks'"
+  eval_notes:
+  - "4 域 13 子集：SWE-bench Verified(Django 231/SymPy 75)、DA-Code、DS-1000、
+    MATH500、AppWorld；dev ~20/域 → test 38–417"
+  - "task agent=gpt-5-mini，meta-agent=claude-4.5-opus；McNemar N=1681；
+    成本比 ADAS 低 36%–82%"
 - paper: "2026.acl-industry.46"   # ColorBrowserAgent，候选主角 B
   name: ColorBrowserAgent
   in_corpus: true
   entry_path: resource-anchor:webarena + citation-anchor:AWM（关键词不命中，
     A1 漏网、由 A3 捞回）
-  note: 核查前疑点——知识来源主要是 human feedback 而非执行轨迹，c1 或为 partial
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
-- paper: "2026.acl-long.1157"   # WebSynthesis，困难负例首选
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    核查前疑点部分成立：知识来源确为 human feedback，但 feedback 的对象是
+    执行失败轨迹（'human experts analyze the interaction traces'），c1 仍
+    satisfied；真正的保留点：①抽象由人类专家完成而非自动（non-condition 不
+    排除）；②AKB 从 WebArena 任务本身的失败构建、再在同 812 任务上评测——
+    同分布知识注入，非 held-out，写作时不得暗示泛化；③迁移是跨任务集
+    同站点（WebChoreArena 复用 WebArena 站点）。
+  evidence:
+  - "c1 | App. B.1: 'human experts analyze the interaction traces to diagnose
+    root causes'——输入是失败执行轨迹"
+  - "c2 | §4.1: 52 条站点级 tips（GitLab 13/Map 7/Reddit 5/Shopping 9/Admin 18），
+    '<1 person-day'，评测前冻结；App. C.1 粒度规范 'site-level operational
+    logic rather than query-specific execution traces'"
+  - "c3 | §3.3: 三级级联检索（URL 匹配/关键词/视觉语义嵌入）注入 Summarizer；
+    消融 w/o Adaptor 72.6→65.4（-7.2pt，WebArena-Lite 165）"
+  - "c4 | §4.3: 冻结知识库零样本迁到 WebChoreArena 47.4% vs 无知识 34.4%；
+    App. B.3 严格 zero-shot 隔离"
+  eval_notes:
+  - "WebArena 812 全量 71.2%（GPT-5，BrowserGym+Playwright，SoM+accessibility
+    tree，≤30 步）；消融用 WebArena-Lite 165"
+  - "判分 = answer exact-match/must-include + programmatic 终态检查；
+    WebChoreArena 532 任务"
+- paper: "2026.acl-long.1157"   # WebSynthesis，困难负例（已确认）
   name: WebSynthesis
   in_corpus: true
   entry_path: resource-anchor:mind2web+webarena + citation-anchor:Synapse
-  note: 核查前疑点——轨迹被合成用作训练数据，c2/c3 或不满足；
-    另含丰富评测协议细节（WebArena 542 queries 排 GitLab、Pass@1/3、WebJudge），
-    是 A4 叙事素材
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: not_satisfied, c3: not_satisfied,
+    c4: not_satisfied}
+  note: >
+    困难负例确认。表面高度相关（标题含 Trajectory Synthesis、用 web
+    benchmark、引 Synapse），实际解决"轨迹获取成本"问题而非"经验复用"：
+    world model + MCTS 离线合成 SFT 轨迹，无显式经验产物、无运行时调用。
+  evidence:
+  - "c1 | §3.2: world model 从探索 agent 的 (o,a,o') 转移三元组训练；指令与
+    初始状态来自 AgentTrek/GoBrowse 轨迹"
+  - "c2 | §3.5.2: 产出物是 SFT 轨迹样本与模型权重，无 workflow/skill/经验
+    条目；world model 是环境模拟器而非经验产物 → not_satisfied"
+  - "c3 | 合成轨迹仅离线 SFT 消费（~7.9k 条）；评测时 CoT 逐步决策，全文无
+    运行时产物检索 → not_satisfied"
+  - "c4 | §4.2 的跨环境泛化（合成→真实网站）是训练数据层面的 SFT 泛化，
+    非经验产物跨任务调用 → not_satisfied"
+  eval_notes:
+  - "WebArena 542 queries（排 GitLab 因网络不稳）报 Pass@1/Pass@3
+    （17.28%/28.34%）；引言的 28.34% 是 Pass@3"
+  - "WebVoyager 389 queries 仅 9 站子集，LLM-as-judge；Mind2Web-Online
+    300 queries 用 WebJudge——三 benchmark 判分器各异，横向数字不可比"
+  - "消融在 WebArena-Lite（Qi et al., 2024）"
 - paper: "2026.acl-long.1599"   # RIMRULE
   name: RIMRULE
   in_corpus: true
   entry_path: keyword（摘要近逐字命中 query）
-  note: 核查前疑点——复用发生在 prompt 注入层面，跨工具 ≠ 跨任务，c4 待细读
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    核查前疑点已解：MDL 蒸馏的规则是显式产物（NL+符号双表示、独立存储）；
+    "跨工具"成立为 c4——该 benchmark 的任务即 query，test-unseen 隔离了训练
+    未见工具，相当于环境面变化。复用边界：止步于同 benchmark 内跨 query +
+    跨工具，无跨 benchmark/跨环境迁移。
+  evidence:
+  - "c1 | §2.1.1: 输入为失败轨迹四元组 (x, S, τ⁻, τ*)，来自 agent 在全训练集
+    上的运行记录"
+  - "c2 | §2.1.3: 规则以 NL if–then + 五字段符号形式（Domain/Qualifier/
+    Action/Strength/ToolCategory）双表示存储，MDL 剪枝泛化（ToolHop
+    72→67 条）；生成 prompt 要求 'Rules must not contain query-specific or
+    tool-specific tokens'"
+  - "c3 | §2.3.2: 两阶段符号检索 top-k 注入 prompt；Table 2: ToolHop
+    test-rand 26.5→31.1、test-unseen 35.1→43.1（Llama3.2）"
+  - "c4 | §3.1: test-unseen = 训练中未出现工具的 query；另有跨 LLM 复用
+    （Table 3）；无跨 benchmark 实验"
+  eval_notes:
+  - "ToolHop 392/70/51 + BFCL Live-Multiple 735/175/143（train/test-rand/
+    test-unseen）；accuracy±std；统一 ReAct 框架"
+  - "判分器实现（exact match/LLM judge）正文未明述；无代码仓库 URL"
 - paper: "2026.acl-demo.81"   # AgentFactory
   name: AgentFactory
   in_corpus: true
   entry_path: citation-anchor:Voyager
-  note: 核查前疑点——demo 论文，c3/c4 证据强度待核
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    四条件均 satisfied 但 c3/c4 证据强度弱（demo 规模）：唯一量化指标是编排
+    层 token 数，无成功率、无检索命中率；'所有任务保证无运行时错误完成'
+    意味着完成率是实验保证而非测得结果；Sonnet backbone 下 Batch 2 复用
+    无收益（8223 vs 8163），论文未解释。
+  evidence:
+  - "c1 | §3.1–3.3: Meta-Agent 维护 execution history，成功后保存 subagent、
+    失败时按执行反馈迭代修改"
+  - "c2 | §3.2: 产物 = 纯 Python 可执行 subagent + SKILL.md，'Rather than
+    simply maintaining verbal reflections … transforms successful execution
+    patterns into reusable code'——最强产物形态"
+  - "c3 | §3.3: list_saved_subagents 全量列出 + LLM 判断相关性（无语义索引），
+    调用前先运行候选评估；Batch 2 w/ saved token 下降（Opus 2971 vs 4324）"
+  - "c4 | §5.1+App. B: Batch 2 为 15 个结构镜像迁移任务；§4.2 导出 Claude
+    Code 跨系统复用成功"
+  eval_notes:
+  - "无公开 benchmark：30 自建任务两批（Batch 2 结构镜像作迁移目标）；
+    指标仅编排层 output tokens（排除 subagent 内部消耗），无判分器"
+  - "baselines = ReAct + 文本经验自进化；backbone Opus/Sonnet 4.6；
+    无方差、无统计检验"
 - paper: "2026.acl-long.1670"   # PEEU
   name: PEEU
   in_corpus: true
   entry_path: citation-anchor:AWM（关键词不命中）
-  note: 复刻 AWM 双模式（Atomic/Trajectory-Prompt）为 baseline，A3/A4 叙事素材
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
-# —— 外部锚点 ——
+  judgments: {c1: satisfied, c2: satisfied, c3: partial, c4: satisfied}
+  note: >
+    双重用途已区分：PEEU 本体的经验主用途是 hindsight 合成训练数据（SFT/
+    GRPO 内化进权重），推理时无检索模块 → c3 partial；运行时检索只出现在
+    它复刻的 AWM baseline 里且为负收益。与 query 的运行时复用路线形成
+    方法学对照：'direct training is more effective than retrieval for small
+    models'。
+  evidence:
+  - "c1 | §2.1: 自主探索树（0.1k/2k 任务，≤15 步）轨迹为输入"
+  - "c2 | Eq.(3)(4): 原子经验 ε 与轨迹级经验 μ 显式抽取并聚合为 PEEU task；
+    App. A 给出抽取/聚合 prompt 原文"
+  - "c3 | 经验经训练内化（PEEU-SFT OOD 30.6% vs Vanilla 7.8%）；本体无运行时
+    检索；复刻的 AWM baseline（Atomic/Trajectory-Prompt）7B+0.1k 下 3.7%，
+    低于 Vanilla → partial"
+  - "c4 | §1+App. C: Allrecipes 探索经验训练后迁移 7 个完全未见站点
+    （辅助站点与测试站互斥）；同数据量对照 PEEU-SFT 30.6% vs Coarse-SFT
+    19.0%"
+  - "A3 素材 | AWM 复刻细节：Atomic-Prompt 检索 10 条原子经验、
+    Trajectory-Prompt 检索 1 条轨迹级经验，检索器 all-roberta-large-v1，
+    经验池复用 PEEU 自采（'under the same experiences'）"
+  eval_notes:
+  - "WebVoyager 8 站（Allrecipes ID + 7 OOD；排 Cambridge Dictionary/Google
+    Search/HuggingFace 因访问频率）；过滤后任务总数未说明"
+  - "判分器未复述（WebVoyager 标准为 GPT-4V 自动判分）；SFT llama-factory /
+    GRPO verl，4×A800；分析实验用 Multimodal-Mind2Web 616/684"
+# —— 外部锚点（待核查）——
 - paper: "arxiv:2409.07429"   # AWM / Agent Workflow Memory
   name: AWM
   in_corpus: false
@@ -137,3 +261,4 @@ candidates:
   evidence: []
 
 # 困难候选在核查中从此清单衍生：同 venue、主题接近、逐项记录不满足的条件。
+# 已确认困难负例：WebSynthesis（见上，c2/c3/c4 not_satisfied）。
