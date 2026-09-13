@@ -1,6 +1,6 @@
 # E07 — P4A 样例论文集构造
 
-状态：2026-09-11 整合目标与方案。p0 已实现，已有 952 篇语料复制与校验报告；p1–p4 尚未开始。本次仅更新文档。
+状态：2026-09-13 p1 已实现并全量运行。p0 有 952 篇语料复制与校验报告；p1 有 paper–resource 边与引文锚点产物；p2–p4 尚未开始。
 
 ## 目标与文档入口
 
@@ -34,6 +34,7 @@
 
 - `data/processed/e07/corpus/<paper_id>/{mineru,layer4,cite}/`：952 篇的全文 markdown、Layer4 记录和引用材料。该副本不意味着已缓存每篇关联的外部代码与数据。
 - [p0_corpus_summary.json](../../data/processed/e07/p0_corpus_summary.json)：记录复制与校验结果；每层文件数和字节数一致，另有 20 篇的抽样哈希比对。已登记 `2026.acl-long.165` 缺少 `layer4/agent_judgment.json`。
+- `data/processed/e07/p1/`：paper–resource 边（`resource_edges.jsonl`）、引文锚点（`cite_anchors.jsonl`）与未注册名清单（`unregistered_names.jsonl`）；[p1_summary.json](../../data/processed/e07/p1_summary.json) 记录对账与统计。边上的 relation_type 是 v1 线索（`relation_verified=false`），url_key 只是锚点信号，均未做语义核查或跨名合并。
 
 当前 952 篇是初始筛选语料；其余 v1 论文及 venue 外论文可以通过步骤 3 扩展进入候选。最终池的范围不限于 p0 复制目录。
 
@@ -50,14 +51,14 @@
 | 阶段 | 工作与五步路线的对应 | 状态 |
 | --- | --- | --- |
 | p0 | 筛出并复制 952 篇初始语料，校验来源与副本 | 已实现，已有产物 |
-| p1 | 从 resource_records 建立可追溯的 paper–resource 边，整理引用入口，语义待核查 | 未开始 |
+| p1 | 从 resource_records 建立可追溯的 paper–resource 边，整理引用入口，语义待核查 | 已实现，已有产物 |
 | p2 | 步骤 1–2：固定当前需求条件，核查种子正例与同 venue 困难候选 | 未开始 |
 | p3 | 步骤 3–4：沿共享资源和引用向外扩展，保留自然干扰项并核查标签 | 未开始 |
 | p4 | 步骤 5：汇总池与 QA、比较案例，输出证据表和代表性叙述 | 未开始 |
 
 p1 提供关系线索，不自动完成资源同一性或关系语义核查。p2–p4 的种子阈值、噪声比例、扩展深度和边优先级在看清本地材料后确定；本计划不提前写死。
 
-当前工程下一步仍是 p1 的资源与引用线索整理。未实现阶段的具体脚本与运行按仓库工作节奏另行推进，本次文档整合没有执行新阶段。
+当前工程下一步是 p2：固定当前需求条件，用 p1 的边与锚点定位种子正例并核查。未实现阶段的具体脚本与运行按仓库工作节奏另行推进。
 
 ## 交付与后续评测
 
@@ -71,9 +72,10 @@ p1 提供关系线索，不自动完成资源同一性或关系语义核查。p2
 cd experiments/e07-p4a-case-pool
 make setup    # 委派给仓库根
 make p0       # 重建 952 篇复制子集，并执行校验
-make verify   # 当前依赖 p0，会重新复制并校验
+make p1       # 从语料建 paper–resource 边与引文锚点（需先跑 p0）
+make verify   # 依赖 p0 + p1，会重新复制并校验
 ```
 
 当前 p0 会先清空 `data/processed/e07/corpus/` 再复制；这是现有实现的运行行为。正式标注与后续扩展材料的位置需在对应阶段确定，避免与可重建的 p0 产物混放。
 
-仓库根 uv workspace 成员，`dependencies = []`。不要在本目录直接运行 `uv sync`，使用 `make setup`。
+仓库根 uv workspace 成员，依赖仅 `pyyaml`（p1 读 YAML 记录用；p0 保持 stdlib-only）。不要在本目录直接运行 `uv sync`，使用 `make setup`。
