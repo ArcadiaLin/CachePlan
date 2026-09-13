@@ -59,7 +59,7 @@ known_issues:
 
 # p2 核查进度：
 # - 2026-09-13 第一轮：6 篇语料内候选核查完成（judgments + evidence 已填）。
-# - 外部锚点 5 篇待核查（unchecked）。
+# - 2026-09-13 第二轮：5 篇外部锚点核查完成（arXiv/ar5iv HTML；ExpeL 用本地全文）。
 candidates:
 # —— 语料内（已核查 2026-09-13）——
 - paper: "2026.acl-long.1432"   # ReCreate，候选主角 A
@@ -228,37 +228,134 @@ candidates:
     Search/HuggingFace 因访问频率）；过滤后任务总数未说明"
   - "判分器未复述（WebVoyager 标准为 GPT-4V 自动判分）；SFT llama-factory /
     GRPO verl，4×A800；分析实验用 Multimodal-Mind2Web 616/684"
-# —— 外部锚点（待核查）——
+# —— 外部锚点（已核查 2026-09-13，材料：arXiv/ar5iv HTML，ExpeL 用本地全文）——
 - paper: "arxiv:2409.07429"   # AWM / Agent Workflow Memory
   name: AWM
   in_corpus: false
   entry_path: external-suggestion（用户检索经历 + Claude/Kimi 补强；语料内被 4 篇引用）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    与 query 最贴近的外部锚点。offline 用人工标注训练轨迹归纳、online 用自身
+    评测轨迹（评测器门控）；workflow 显式抽象实例特定值（{product-name}）。
+    调用方式为网站级分组整体注入，而非逐条语义检索（摘要的 'selectively
+    providing' 指网站级选择性）。边界：离线产物直接跨域复用证据弱，跨域主要
+    靠 online 重新归纳。
+  evidence:
+  - "c1 | §2.1: experience = 指令 + (obs, action) 轨迹序列；§2.3: 'induces
+    a set of workflows from one or more past agent experiences'"
+  - "c2 | §2.2: workflow = NL 描述 + 子例程步骤序列（状态/推理/可执行动作）；
+    §2.3: 'replacing dry cat food with {product-name}'；§A.2 产物实例"
+  - "c3 | §2.3: M+W→M_w 注入影响动作生成；§A.3: utility rate WebArena 0.94 /
+    Mind2Web 0.91；§5 workflow-as-action 变体实际调用率 18.5%"
+  - "c4 | §3.1.3 WebArena cross-template 子集（模板不重叠）；§3.2.2 Mind2Web
+    三 split step SR +7.4–8.9 / +3.6–3.8 / +14.0–16.9，'the margins become
+    more substantial as the train-test distribution gap widens'"
+  - "A2 互证 | §3.2.1: 对比检索完整轨迹的 Synapse +5.0 Ele.Acc / +4.0
+    Step SR，归因 'the abstract, reusable nature of workflows'——独立佐证
+    本池对 Synapse c2 partial 的判断"
+  eval_notes:
+  - "WebArena 812 全量、仅 online（无训练轨迹）；GPT-4(0613) temp 0；判分 =
+    官方 execution-based evaluator；online 归纳门控另用 Pan et al. 2024 的
+    LM 评测器——门控与最终判分是两个判分器"
+  - "Mind2Web 三 split、四级指标（Ele.Acc/Action F1/Step SR/SR）；HTML 抽取
+    缺全部表格数值，引用精确数字需读 PDF"
 - paper: "arxiv:2504.07079"   # SkillWeaver
   name: SkillWeaver
   in_corpus: false
   entry_path: external-suggestion（语料内被 1 篇引用）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
-- paper: "arxiv:2308.10144"   # ExpeL
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    产物形态最硬：Python/Playwright API 函数（签名+docstring+usage log），
+    经自动测试用例 honing。轨迹全部来自 agent 自主出题的探索（非人工演示）。
+    c4 限同站跨任务 + 跨 agent（GPT-4o→GPT-4o-mini，+40%–133%）；技能库按
+    站点分别构建，未做跨网站复用。
+  evidence:
+  - "c1 | Fig.1 + §2.2: 自主练习轨迹经 reward model 筛选成功后才提炼；
+    App. A.6: 支持 'multiple task attempts and aggregate results'"
+  - "c2 | §2.2: 'encapsulates the agent's actions from successful trajectories
+    into a reusable and generalized API'；Fig.2 identify_pill 实例；Stage III
+    单元测试 honing"
+  - "c3 | §3.3: API selection 模块检索相关 API 注入 prompt、扩展 action
+    space；§4.1 Table 1: WebArena 相对 +39.8%（GPT-4o）"
+  - "c4 | §1: 与 AWM/ICAL 区分——技能源于自主提出的探索任务、服务于人工
+    标注评测任务；§4.2 跨 agent 迁移 +40%–133%"
+  eval_notes:
+  - "WebArena：判分 = 官方功能正确性自动 evaluator（非 LLM judge）；App. B
+    分站任务数合计 764 与正文 812 不一致（论文未解释）"
+  - "Online-Mind2Web 筛 4 站 57 任务、人工评测（非 WebJudge）；相对提升口径
+    三处不一致（31.8% / 39.8% / 25%–38%），引用需核 PDF 表格"
+- paper: "arxiv:2308.10144"   # ExpeL（本地 references/papers/2024-ExpeL/paper.txt）
   name: ExpeL
   in_corpus: false
   entry_path: external-suggestion（语料内暂无引用锚点）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    材料为本地 AAAI-24 正式版全文。主域非 web 但含 WebShop。产物双粒度：
+    insight 规则集 + 成功轨迹 vectorstore；离线集中构建（non-condition）。
+    有跨数据集迁移（HotpotQA→FEVER），但迁移只携带 insight、不带轨迹池。
+  evidence:
+  - "c1 | Sec 4.1/Alg.1: 每个 trial 的完整轨迹（含失败）写入经验池 B"
+  - "c2 | Sec 4.2: insight 经 ADD/EDIT/UPVOTE/DOWNVOTE 结构化维护、带重要性
+    计数；Faiss 成功轨迹库（all-mpnet-base-v2）"
+  - "c3 | Sec 4.3/Alg.3: 全量 insight 拼入 task specification + top-k 相似
+    轨迹作 fewshot；消融：检索排序 task-similarity 59.0% vs random 42.5%
+    （ALFWorld）"
+  - "c4 | Sec 5.4/Table 1: HotpotQA→FEVER 迁移 70% vs ReAct 63%"
+  eval_notes:
+  - "HotpotQA/ALFWorld/WebShop（+FEVER 迁移目标）；四折验证报均值±标准误；
+    环境规则判分（exact match / 环境 reward），无 LLM judge"
+  - "教师 GPT-4(0613) 抽取 insight、执行用 gpt-3.5-turbo(0613)；每折任务数与
+    Z/k/L 超参正文未写明（需查代码库）"
 - paper: "arxiv:2305.16291"   # Voyager
   name: Voyager
   in_corpus: false
   entry_path: external-suggestion（语料内被 6 篇引用）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    c4 证据最硬：清空 inventory、重置新世界、4 个未见任务 3/3 全成功
+    （baseline 全 0/3），技能库还可迁移给 AutoGPT。全部为自定义协议、无标准
+    benchmark/split——A4 叙事里代表"评测不可横向比较"的一极。
+  evidence:
+  - "c1 | Sec 2.3: 执行反馈/错误/自验证多轮迭代精炼后入库；Sec 2.1 课程
+    prompt 显式含历史已完成/失败任务"
+  - "c2 | Sec 2.2: skill = 可执行代码程序，向量库（描述 embedding 为键、
+    程序为值）"
+  - "c3 | Sec 2.2: 新任务检索 top-5 技能注入代码生成 prompt；App. B.4.4:
+    top-5 检索精度 96.5%；消融 w/o skill library 后期停滞"
+  - "c4 | Sec 3.3/Table 2: 新世界 zero-shot 4 任务全 3/3；'AutoGPT w/ Our
+    Skill Library' 从 0/3 到可解部分任务"
+  eval_notes:
+  - "MineDojo + Mineflayer；gpt-4-0314；任务成功由另一 GPT-4 实例
+    self-verification 判定"
+  - "四轮自定义评测（探索物品数/科技树/地图覆盖/zero-shot），各 3 trials；
+    无标准任务集"
 - paper: "arxiv:2306.07863"   # Synapse
   name: Synapse
   in_corpus: false
   entry_path: external-suggestion（潜在负例线索，需按 query 核查演示数据来源）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  judgments: {c1: satisfied, c2: partial, c3: satisfied, c4: satisfied}
+  note: >
+    疑点确认：轨迹来源为人工演示（MiniWoB++ 演示 + Mind2Web 人工标注训练集），
+    纯离线静态库，且"轨迹即产物"——无 workflow/skill 级抽象，比 query 目标
+    退两步（来源靠人、产物不抽象）。c2 判 partial：exemplar memory 是显式、
+    持久、可索引的中间产物，但不是从轨迹提炼的抽象条目；若把"存储的完整
+    轨迹 exemplar"算作显式产物可升 satisfied，当前按 c2 措辞从保守。AWM
+    对它的对照实验（见 AWM evidence）独立佐证此判断。
+  evidence:
+  - "c1 | Sec 3.3: exemplar = 完整成功轨迹 ⟨task, obs, act, …⟩；来源为人工
+    演示（non-condition 记录，不排除）"
+  - "c2 | Sec 3.4: exemplar memory D=(K,V) 向量库，状态经 abstraction 压缩，
+    但轨迹原样存取、无进一步抽象 → partial"
+  - "c3 | Sec 3.4: 元数据 embedding 相似度检索 top-3 注入 prompt；Sec 4.5:
+    memory 使 Mind2Web cross-task/website Step SR +6%"
+  - "c4 | Sec 4.5: 48 任务演示解决 64 任务（16 个未见任务平均成功率近
+    100%）；cross-domain 增益边际（作者自述 0.2 绝对点）"
+  eval_notes:
+  - "MiniWoB++ legacy：64 任务（48 有 exemplar + 16 未见）×50 episodes，
+    环境自动判分，平均 99.2%"
+  - "Mind2Web 静态离线回放（train 1009 / Cross-Task 252 / Cross-Website 177 /
+    Cross-Domain 912），对照人工标注 GT；未明示是否全量评测"
 
 # 困难候选在核查中从此清单衍生：同 venue、主题接近、逐项记录不满足的条件。
-# 已确认困难负例：WebSynthesis（见上，c2/c3/c4 not_satisfied）。
+# 已确认：WebSynthesis（c2/c3/c4 not_satisfied，困难负例）；
+# Synapse（c2 partial，"存轨迹但不抽象"的边界案例）。
