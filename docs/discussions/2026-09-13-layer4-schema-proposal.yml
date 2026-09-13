@@ -1,0 +1,556 @@
+# =============================================================================
+# P4A Layer4 Schema 提议稿（v2 → v3），带逐行注释的完整实例
+# =============================================================================
+#
+# 状态：**提议，未商定，未实施。** 本文件只是把
+# `docs/discussions/2026-09-11-layer4-schema-revision.md` 的六条改造、第 4 节的三项
+# 建议实现与第 5 节的精简，写成一份可以逐行讨论的 YAML。没有任何字段进入
+# `experiments/p4a/src/extract/layer4_v2/schemas.py`，v1/v2 产物格式保持原样。
+#
+# 怎么读：
+#   - 结构按 v1 的 `paper_record.yml` + `resource_records.yml` 两份文件组织，
+#     便于与 `docs/discussions/p4a-v1-protocol.md` 的 4.1 / 4.2 示例逐行对照。
+#   - 行尾注释的标记含义：
+#       [v1]  沿用 v1 字段，语义不变
+#       [改]  v1 有这个字段，但形态或取值约束变了（括号里是改造编号）
+#       [新]  v1 没有，本次新增（括号里是依据的小节）
+#       [路]  v1 写了但恒空，本次不删、改为接上已有的产出路径
+#       [删]  v1 有、本次建议删除——不出现在正文里，集中列在文件末尾的附录 B
+#   - 括号里的 6.x / 第 N 节，指 2026-09-11 那份意见稿的小节号。
+#   - A1–A4 指 `paper/introduction.zh.md` 的四类研究活动：
+#     A1 发现 / A2 甄别 / A3 扩展与引证 / A4 复现与使用。
+#
+# 示例取值的来源与可信度：
+#   实例仍用 `2025.acl-long.803`（LIFBench），与 v1 协议 4.1/4.2 同一篇，方便对照。
+#   [v1] 标记的取值抄自该论文的真实 v1 产物；[新]/[改] 标记的取值是按论文内容
+#   手写的**示例**，没有重新抽取，char_span、paragraph_index 等定位数字尤其
+#   只表示形态、不表示实测结果。
+#
+# =============================================================================
+# 文件 1/2：paper_record.yml —— 单篇论文的记录
+# =============================================================================
+
+paper_record:                                        # [v1] 顶层键不变，一篇论文一个文件
+  paper_id: paper::2025.acl-long.803                 # [v1] 主键，由 ACL 论文号生成，全局唯一
+  source_type: paper                                 # [v1] 记录类型，当前只有 paper 一种
+  schema_version: layer4/v3-proposal                 # [新] 产物自带 schema 版本，避免混批时靠目录猜
+  pipeline_run_id: e07-trial-001                     # [新] 哪一次运行产出的，便于回溯与重跑对账
+
+  metadata:                                          # [v1] 论文元数据，绝大部分来自 ACL/arXiv，不靠 LLM
+    title: 'LIFBENCH: Evaluating the Instruction Following Performance and Stability of Large Language Models in Long-Context Scenarios'  # [v1] 标题原文
+    authors:                                         # [改] v1 恒空 100%；改为从 source_artifacts.arxiv.authors 回填，不由 LLM 抽
+    - Xiaodong Wu                                    # [改] 回填结果：第一作者
+    - Minhao Wang                                    # [改] 回填结果：第二作者（示例只列两位，实际全列）
+    year: '2025'                                     # [v1] 发表年份，字符串以免 YAML 转成数字
+    venue: ACL-LONG 2025                             # [v1] 会议与论文组
+    arxiv_id: '2411.07037'                           # [v1] arXiv 号；e07 里约三分之一论文匹配不到，留空是外部事实
+    acl_id: 2025.acl-long.803                        # [v1] ACL 号，与 paper_id 同源
+    doi: ''                                          # [改] v1 恒空 100%：保留字段但必须由 absence 三态说明为何空（见 field_status）
+    url: https://arxiv.org/abs/2411.07037            # [v1] 论文入口 URL
+    pdf_path: data/processed/mineru/acl/2025/acl/2025.acl-long.803/vlm/2025.acl-long.803_origin.pdf          # [v1] 本地 PDF 副本
+    markdown_path: data/processed/mineru/acl/2025/acl/2025.acl-long.803/vlm/2025.acl-long.803.md            # [v1] MinerU 解析出的全文 markdown，是全部证据定位的基准文件
+    content_list_path: data/processed/mineru/acl/2025/acl/2025.acl-long.803/vlm/2025.acl-long.803_content_list_v2.json  # [v1] MinerU 的块级结构，表格与图片原料在这里
+
+  content_units:                                     # [v1] 从论文正文切出的内容单元
+    abstract: 'As Large Language Models (LLMs) evolve in natural language processing (NLP), their ability to stably follow instructions in long-context inputs has become critical for real-world applications. ...'  # [v1] 摘要原文（示例截断）
+    section_outline:                                 # [改] v1 只有 level/title/line；新增 section_id，作为 6.3 证据定位的锚
+    - section_id: sec-1                              # [新] 章节稳定标识，由章节序号生成，证据字段引用它而不是引用标题字符串
+      level: 1                                       # [v1] 标题层级
+      title: 1 Introduction                          # [v1] 标题原文
+      line: 28                                       # [v1] 在 markdown 中的起始行号
+      paragraph_range: [3, 19]                       # [新] 该章节覆盖的段落序号区间，用于校验证据的 paragraph_index 落在正确章节
+    - section_id: sec-4                              # [新] 第二个章节示例：实验章节
+      level: 1                                       # [v1]
+      title: 4 Experiments                           # [v1]
+      line: 301                                      # [v1]
+      paragraph_range: [52, 74]                      # [新]
+    has_appendix: true                               # [v1] 是否有附录，决定证据是否可能落在正文之外
+    has_supplementary_material: false                # [v1] 是否有补充材料
+    tables:                                          # [路] v1 恒空 100%；MinerU 已有表格原料，A2 要比较的实验结果主要在表里，故接上产出路径
+    - table_id: 2025.acl-long.803::tab::2            # [新] 表的稳定标识，按 content_list 中的出现次序生成
+      label: Table 2                                 # [新] 论文里的表号；A3 引证时要指名"表 2"，不能只给内部 id
+      caption: Overall performance of 20 LLMs across six length intervals.  # [新] 表题原文，是判断这张表测什么的主要依据
+      section_id: sec-4                              # [新] 表所属章节，与 section_outline 对齐
+      paragraph_index: 58                            # [新] 表在拼装全文中的段落序号，与证据定位同一套坐标
+      body_kind: html                                # [新] MinerU 输出的表体形式：html | markdown | image；image 表示这张表没被解析成结构
+      md_span: [412, 455]                            # [新] 表体在 markdown_path 中的行区间，可程序校验存在性
+      parsed: true                                   # [新] 表体是否真被解析成行列；false 时下游不得声称读到了表内数值
+    figures:                                         # [路] 同为 v1 恒空；但只登记不解析，图内数值不进入记录（第 5 节：先做表，图留待定）
+    - figure_id: 2025.acl-long.803::fig::1           # [新] 图的稳定标识
+      label: Figure 1                                # [新] 论文里的图号
+      caption: Overview of the LIFBENCH construction pipeline.  # [新] 图题原文，当前是图的唯一可用语义
+      section_id: sec-1                              # [新] 图所属章节
+      paragraph_index: 12                            # [新] 段落序号
+      image_path: data/processed/mineru/acl/2025/acl/2025.acl-long.803/vlm/images/fig1.jpg  # [新] 图片文件位置，供人工复核
+      parsed: false                                  # [新] 恒为 false：本版不做图内容理解，明写出来以免下游误用
+
+  atomic_extracts:                                   # [v1] LLM 抽取的语义字段集合
+    intent:                                          # [v1] 论文意图，服务 A1 的初筛
+      paper_type: benchmark                          # [改] 取值表见附录 A；e07 里 77.1% 是 method，筛选价值低，保留但不单独用于过滤
+      research_problem: Evaluating LLM instruction-following capabilities and stability in long-context scenarios.  # [v1] 一句话研究问题
+      target_domain:                                 # [v1] 领域标签列表，自由文本
+      - Long-context LLMs                            # [v1] 领域标签示例
+      - Instruction Following                        # [v1] 领域标签示例
+
+    methods:                                         # [新] 第 4 节第 2 条：方法具名实体。A3 的必要条件——没有方法名与别名，沿用关系无从建立
+    - method_id: 2025.acl-long.803::method::1        # [新] 方法的稳定标识，篇内唯一
+      name: LIFEVAL                                  # [新] 方法/系统的名字，跨论文关联的主键素材（Layer3 再做消歧）
+      aliases:                                       # [新] 同一方法的其他写法，供 Layer3 归并
+      - LIFEval                                      # [新] 大小写变体
+      - rubric-based assessment                      # [新] 论文中使用的描述性别名
+      role: proposed                                 # [新] 本文与该方法的关系：proposed | reused | extended | compared
+      derived_from: []                               # [新] 沿用来源（被沿用方法的 method_id 或外部 resource_id）；role 为 reused/extended 时必须非空
+      produces_resource_id: res.lifeval              # [新] 若该方法有对应的公开产物，指向资源记录，使"方法—实现"可互相到达
+      evidence:                                      # [新] 方法具名的证据，结构见下方 evidence 说明
+        origin: paper                                # [新] 证据来源类型
+        section_id: sec-1                            # [新] 出处章节
+        paragraph_index: 9                           # [新] 出处段落
+        char_span: [1204, 1388]                      # [新] 段内字符区间（示例值）
+        quote: we propose LIFEVAL, a rubric-based assessment method  # [新] 原文片段，可程序比对
+    - method_id: 2025.acl-long.803::method::2        # [新] 第二个方法示例：一个被沿用而非提出的方法
+      name: Automated Rubric-based Scoring           # [新]
+      aliases: [ARS]                                 # [新]
+      role: proposed                                 # [新]
+      derived_from: []                               # [新]
+      produces_resource_id: ''                       # [新] 没有独立公开产物时留空，并在 field_status 里给 absence
+      evidence:                                      # [新]
+        origin: paper                                # [新]
+        section_id: sec-3                            # [新]
+        paragraph_index: 41                          # [新]
+        char_span: [302, 447]                        # [新]
+        quote: Automated Rubric-based Scoring (ARS) assigns scores according to task-specific rubrics  # [新]
+
+    contributions:                                   # [v1] 论文自述贡献，自由文本；e07 空值率 2.0%，完备性够用
+    - text: We introduce LIFBENCH, a benchmark designed to evaluate instruction-following capabilities in long-context scenarios, containing 11 tasks across three scenarios.  # [v1] 一条贡献
+      evidence:                                      # [改] v1 的 contributions 只有 text；本版要求每条带证据（形状不稳定是 2.2 合并丢失的根因）
+        origin: paper                                # [新]
+        section_id: sec-1                            # [新]
+        paragraph_index: 17                          # [新]
+        char_span: [12, 205]                         # [新]
+        quote: We introduce LIFBENCH, a benchmark designed to evaluate instruction-following capabilities  # [新]
+
+    claims:                                          # [改] 第 5 节：限 1–2 条，且**必须**链接到支持它的实验；不做链接则整字段删除
+    - claim_id: 2025.acl-long.803::claim::1          # [新] 主张的稳定标识
+      text: LIFEVAL enables precise automated scoring of complex LLM responses without LLM-assisted assessment or human judgment.  # [v1] 主张正文，来自摘要
+      supported_by:                                  # [新] 这条主张由哪些实验记录支持——这是保留 claims 的唯一理由
+      - 2025.acl-long.803::exp::2                    # [新] 指向下面 experiments 里的实验 id
+      support_strength: partial                      # [新] 由证据链支持到什么程度：direct | partial | claimed_only；claimed_only 表示只有作者说法
+
+    experiments:                                     # [改] 6.1：v1 是 [{text}] 自由文本，不可比较、不可过滤（A2 的最大缺口）；改为结构化
+    - experiment_id: 2025.acl-long.803::exp::1       # [新] 实验的稳定标识
+      task: long-context instruction following       # [新] 这次实验做的任务，A2 过滤用
+      resources_used:                                # [新] 这次实验用到的资源及其角色——把"用了什么"落到实验粒度，而不是论文粒度
+      - resource_id: res.lifbench                    # [新] 指向资源记录；注意 id 不含 kind（6.6）
+        role: evaluation_target                      # [新] 资源在本次实验中的角色：training_data | evaluation_target | analysis_input | tooling | unknown
+        split: ''                                    # [新] 用了哪个 split；A4 复现的关键条件，无则留空并给 absence
+        subset: 11 tasks across 3 scenarios          # [新] 用了哪个子集，原文怎么说就怎么记
+        version: ''                                  # [新] 资源版本，A4 判断可比性用
+      subjects:                                      # [新] 被测对象（模型、系统、方法），与被使用的资源分开记
+      - name: 20 prominent LLMs                      # [新] 原文表述；无法拆成具体模型名时保持原样，不猜
+        version: ''                                  # [新] 被测对象版本
+      conditions:                                    # [新] 实验条件维度，A2 判断差异主要看这里
+      - dimension: context_length                    # [新] 条件名
+        values: 4k / 8k / 16k / 32k / 64k / 128k     # [新] 条件取值，保留原文写法
+      metrics:                                       # [新] 评测指标
+      - name: Instruction Following Stability (IFS)  # [新] 指标名
+        scoring: program                             # [新] 打分方式：program | llm_judge | human | unknown；A4 复现成本差别很大
+      baselines: []                                  # [新] 对照方法；抽不稳定就删字段而不是留空（第 8 节风险 2）
+      result_refs:                                   # [新] 结果落在哪张表/图——连上 content_units.tables，使 A3 可以引证到具体表
+      - table_id: 2025.acl-long.803::tab::2          # [新]
+      evidence:                                      # [新] 这条实验记录的证据定位
+        origin: paper                                # [新]
+        section_id: sec-4                            # [新]
+        paragraph_index: 55                          # [新]
+        char_span: [88, 332]                         # [新]
+        quote: We conduct detailed experiments on 20 prominent LLMs across six length intervals  # [新]
+    - experiment_id: 2025.acl-long.803::exp::2       # [新] 第二条实验：用于支持上面的 claim::1
+      task: automated scoring reliability            # [新]
+      resources_used:                                # [新]
+      - resource_id: res.lifeval                     # [新]
+        role: tooling                                # [新]
+        split: ''                                    # [新]
+        subset: ''                                   # [新]
+        version: ''                                  # [新]
+      subjects: []                                   # [新] 本条没有独立被测对象，空值含义由 field_status 说明
+      conditions: []                                 # [新]
+      metrics:                                       # [新]
+      - name: agreement with human judgment          # [新]
+        scoring: human                               # [新]
+      baselines: []                                  # [新]
+      result_refs: []                                # [新]
+      evidence:                                      # [新]
+        origin: paper                                # [新]
+        section_id: sec-4                            # [新]
+        paragraph_index: 70                          # [新]
+        char_span: [15, 240]                         # [新]
+        quote: LIFEVAL scores align closely with human evaluation across sampled responses  # [新]
+
+    limitations:                                     # [v1] 论文自述局限，自由文本；A2 甄别时有用，保持不结构化
+    - text: Programmatic validation constraints limit support for semantic constraints in task scenarios.  # [v1]
+    future_work: []                                  # [v1] 论文自述 future work；e07 空值率 18.3%，空值含义由 field_status 给出
+
+    citation_context:                                # [v1] 从 MinerU 解析结果抽出的引用及其上下文；e07 共 39433 条，每篇中位 40 条
+      cite:                                          # [v1] 引用条目列表
+      - context_id: 2025.acl-long.803::cite::3       # [v1] 按出现次序生成的引用 id
+        raw_citation: (Zhang et al., 2024b)          # [v1] 原文里的引用串
+        reference_indices: [12]                      # [v1] 对应参考文献表的序号
+        reference_titles:                            # [v1] 对应的参考文献标题
+        - 'Longbench: A bilingual, multitask benchmark for long context understanding'  # [v1]
+        context: Existing long-context benchmarks such as LongBench (Zhang et al., 2024b) focus on comprehension rather than instruction following.  # [v1] 引用所在的上下文片段
+        section: 2 Related Work                      # [v1] 保留原有的章节字符串，便于与历史产物对照
+        section_id: sec-2                            # [新] 同时给结构化章节锚，供程序校验
+        paragraph_index: 33                          # [v1] 段落序号
+        sentence: Existing long-context benchmarks such as LongBench (Zhang et al., 2024b) focus on comprehension rather than instruction following.  # [v1] 引用所在句
+        citation_function: benchmark_source          # [改] 第 5 节：改为**选择性**标注，只标七类与 A3 相关的角色，其余一律留空
+        anchor_type: arxiv                           # [新] p1 从参考文献解析出的外部锚类型：arxiv | doi | url | none
+        anchor: '2308.14508'                         # [新] 锚值本身，是跨论文连边的依据
+        target_paper_id: ''                          # [新] 若被引论文在本地语料内，回填其 paper_id；否则留空表示语料外
+        resolved_in_corpus: false                    # [新] 是否匹配回语料内论文；e07 的 43633 条参考文献里只有 85 条能匹配上
+      - context_id: 2025.acl-long.803::cite::1       # [v1] 第二条：一个泛引用的例子
+        raw_citation: (Achiam et al., 2023; Brown, 2020)  # [v1]
+        reference_indices: [1, 6]                    # [v1]
+        reference_titles:                            # [v1]
+        - Gpt-4 technical report                     # [v1]
+        - Language models are few-shot learners      # [v1]
+        context: As Large Language Models (LLMs) continue to make significant strides across practical applications (Achiam et al., 2023; Brown, 2020)  # [v1]
+        section: 1 Introduction                      # [v1]
+        section_id: sec-1                            # [新]
+        paragraph_index: 6                           # [v1]
+        sentence: As Large Language Models (LLMs) continue to make significant strides across practical applications.  # [v1]
+        citation_function: ''                        # [改] 背景性泛引用不产生可用的追踪边，按选择性标注规则留空（v1 会标成 background）
+        anchor_type: arxiv                           # [新]
+        anchor: '2303.08774'                         # [新]
+        target_paper_id: ''                          # [新]
+        resolved_in_corpus: false                    # [新]
+
+  links:                                             # [路] 取代 v1 的 `cites` / `cited_by` 两个恒空字段；数据来自 p1 的 cite_anchors.jsonl，不依赖外部 API
+    cites:                                           # [路] 出边：本文引了谁。A3 的直接承载
+    - reference_index: 12                            # [新] 参考文献表序号，回指 citation_context 的 reference_indices
+      anchor_type: arxiv                             # [新] 锚类型
+      anchor: '2308.14508'                           # [新] 锚值
+      target_paper_id: ''                            # [新] 语料内论文的 id；语料外留空
+      resolved_in_corpus: false                      # [新] 是否落在本地语料内
+      context_ids:                                   # [新] 该参考文献在正文中的引用位置，使"引了谁"能落到"在哪引、作什么用"
+      - 2025.acl-long.803::cite::3                   # [新]
+      roles:                                         # [新] 由上面各 context 的 citation_function 汇总而来，A3 按角色筛边
+      - benchmark_source                             # [新]
+    cites_summary:                                   # [新] 建边统计，便于一眼看出这篇的引文边有多少可用
+      references_total: 61                           # [新] 参考文献总数
+      anchored: 22                                   # [新] 解析出锚的条数
+      resolved_in_corpus: 1                          # [新] 匹配回语料内的条数
+
+  source_artifacts:                                  # [v1] 论文的外部源材料；v2 已把 HTML/TeX 下载后置为可选增强，本版保持不变
+    arxiv:                                           # [v1] arXiv 元数据
+      arxiv_id: '2411.07037'                         # [v1]
+      version: v3                                    # [v1] 抓取到的版本号，A4 判断材料时效性用
+      url: https://arxiv.org/abs/2411.07037          # [v1]
+      metadata_status: available                     # [v1] available | unfetched | missing
+      metadata_checked_by: arxiv-mcp                 # [改] 取值收进受控词表（附录 A），不再是自由文本
+      authors:                                       # [v1] arXiv 侧作者列表，是 metadata.authors 的回填来源
+      - Xiaodong Wu                                  # [v1]
+      - Minhao Wang                                  # [v1]
+      submitted: '2024-11-11'                        # [v1] 首次提交时间
+      updated: ''                                    # [v1] 最近更新时间
+      primary_category: cs.CL                        # [v1] arXiv 主分类
+    html_downloaded:                                 # [v1] arXiv HTML 版本的下载结果
+      exists: true                                   # [v1] 是否存在该形式的源材料
+      status: available                              # [v1] 下载状态
+      path: data/processed/layer4/2025.acl-long.803/arxiv/html/2411.07037.html  # [v1] 本地路径
+      checked_by: curl                               # [改] 同样收进受控词表
+      notes: HTML downloaded successfully.           # [v1] 人读备注
+    tex_source_downloaded:                           # [v1] arXiv TeX 源码的下载结果，字段同上
+      exists: true                                   # [v1]
+      status: available                              # [v1]
+      path: data/processed/layer4/2025.acl-long.803/arxiv/src/2411.07037.tar.gz  # [v1]
+      checked_by: curl                               # [改]
+      notes: TeX source downloaded as tar.gz.        # [v1]
+
+  resources_introduced:                              # [改] 本文引入的资源 id 列表；id 形态按 6.6 去掉 kind 前缀
+  - res.lifbench                                     # [改] v1 写作 benchmark::lifbench
+  - res.lifeval                                      # [改] v1 写作 tool::lifeval
+  resources_used: []                                 # [v1] 本文使用的既有资源 id 列表；空值含义由 field_status 给出
+
+  field_status:                                      # [新] 6.4 + 6.5：字段级来源分级与空值三态。**只**为两类字段登记：可被外部观察的、以及取值为空的
+    metadata.doi:                                    # [新] 键是相对本记录的字段路径
+      absence: not_found                             # [新] 空值三态：not_applicable（本来就没有）| not_found（查了没有）| not_checked（没查）
+      observed_by: arxiv_api                         # [新] 是谁得出"没有"这个结论的，受控词表见附录 A
+      observed_at: '2026-06-30T18:33:11Z'            # [新] 观察时间，ISO8601，判断时效性用
+    metadata.authors:                                # [新] 一个 external_observation 的例子
+      source: external_observation                   # [新] 来源分级：paper_claim（论文这么写）| external_observation（外部材料观察到）| inferred（模型推断）
+      observed_by: arxiv_api                         # [新] 仅 external_observation 时有值
+      observed_at: '2026-06-30T18:33:11Z'            # [新]
+    atomic_extracts.future_work:                     # [新] 一个空列表的例子：论文确实没写 future work
+      absence: not_applicable                        # [新] 与"抽取失败"和"合并丢失"区分开——2.2 的空列表歧义就出在这里
+    resources_used:                                  # [新] 另一个空列表的例子：查过了，这篇没用外部资源
+      absence: not_found                             # [新]
+      observed_by: agent                             # [新]
+    atomic_extracts.claims.1.support_strength:       # [新] 路径里的数字表示列表下标，指第 1 条 claim
+      source: inferred                               # [新] 支持强度是模型判断的，不是论文声称，也不是外部观察
+
+  provenance:                                        # [v1] 记录本身的来龙去脉
+    extracted_from:                                  # [v1] 抽取所依据的论文 id
+    - 2025.acl-long.803                              # [v1]
+    inputs_digest: sha256:9f2c...                    # [新] 输入全文的哈希，重跑时用来判断"输入没变"，支撑可复现
+    model: Qwen3-32B                                 # [新] 产出这条记录的模型，比较不同模型的抽取质量时必需
+    prompt_version: layer4-v3-call1@2026-09-13       # [新] prompt 版本，避免把不同 prompt 的产物混在一起统计
+    last_checked: '2026-06-30T18:33:11.498512+00:00' # [v1] 最近一次核验时间（v1 的 availability_check.checked_at 与它重复，已删）
+
+# =============================================================================
+# 文件 2/2：resource_records.yml —— 该论文引入或使用的资源，一条资源一个 record
+# =============================================================================
+---
+
+- resource_record:                                   # [v1] 列表项，键名不变
+    resource_id: res.lifbench                        # [改] 6.6：id 不再编码 kind。v1 是 benchmark::lifbench，kind 判错即身份分裂（e07 里 7.6% 的资源名对应多个 id）
+    name: LIFBENCH                                   # [v1] 资源名，原文写法
+    name_normalized: lifbench                        # [新] 6.6：规范化名（小写、去连字符与空格），Layer3 聚合的主依据
+    aliases:                                         # [v1] 别名列表，Layer3 归并时一并参考
+    - Long-context Instruction Following Benchmark   # [v1] 全称
+    - LIFBench                                       # [新] 大小写变体也登记，e07 里 math-500 / math500 就是因为没登记而分裂
+    kind: benchmark                                  # [改] 6.6：kind 降为**可被 Layer3 修正的属性**，不再进主键；取值表见附录 A
+    anchors:                                         # [新] 6.6：外部来源锚，比名字稳定得多，是跨论文归并的硬依据
+      github: SheldonWu0327/LIFBench-2024            # [新] GitHub 的 owner/name
+      huggingface: ''                                # [新] HF 的 type/org/name，无则留空并给 absence
+      doi: ''                                        # [新] 数据集 DOI
+      url: https://github.com/SheldonWu0327/LIFBench-2024  # [新] 兜底 URL
+    description: A scalable benchmark for evaluating LLM instruction-following capabilities and stability in long-context scenarios, with three scenarios and eleven tasks over 2,766 instructions.  # [v1] 资源描述
+
+    profile:                                         # [新] 第 4 节第 1 条：资源用途画像。v1 承诺过 domain / evaluation_metrics 但从未落地，是 A2/A4 的第二大缺口
+      task: long-context instruction following       # [新] 这个资源用于什么任务
+      domain:                                        # [新] 领域标签
+      - NLP                                          # [新]
+      languages:                                     # [新] 覆盖语言，A4 判断适用性用
+      - en                                           # [新]
+      scale: 2766 instructions / 11 tasks / 3 scenarios  # [新] 规模，按原文写法记，不换算
+      splits:                                        # [新] 有哪些切分，A4 复现时必须对齐
+      - name: full                                   # [新] 切分名
+        size: 2766                                   # [新] 切分规模；数不出来时留空并给 absence
+      evaluation_metrics:                            # [新] 该资源自带的评测指标
+      - Instruction Following Stability (IFS)        # [新]
+      scoring: program                               # [新] 评分方式：program | llm_judge | human | mixed | unknown；决定复现成本
+      prerequisites:                                 # [新] 使用前置条件，A4 的"用之前要准备什么"
+      - Python 3.10+                                 # [新]
+      - local model inference for up to 128k context # [新] 资源消耗类前置条件也记在这里
+      evidence:                                      # [新] 画像的证据；来自 README 的部分必须标 origin: repository，不能与论文证据混同（2.7）
+        origin: repository                           # [新] paper | repository | model_card | dataset_card | external_page
+        locator: README.md#L12-L30                   # [新] 外部材料里的位置，代替论文的 section/paragraph 坐标
+        quote: LIFBench contains 2,766 instructions across 11 tasks.  # [新] 原文片段
+
+    paper_relation:                                  # [改] 6.2：v1 的 relation_type 六值实际只用到三值，且"我能不能照着做"所需的信息无处存放
+      role: introduced                               # [改] 取代 relation_type：introduced | used | evaluated | cited_only | unknown（删掉了只有 2 条的 extended）
+      split: ''                                      # [新] 本文用了哪个切分
+      subset: 11 tasks across 3 scenarios            # [新] 本文用了哪个子集
+      version: ''                                    # [新] 本文用的是哪个版本
+      modification: ''                               # [新] 本文对它改了什么——取代 v1 的 relation_type: extended，把"改动"降为使用记录里的一个字段
+      used_in_experiments:                           # [新] 在哪些实验里被用到，连回 paper_record.experiments
+      - 2025.acl-long.803::exp::1                    # [新]
+      citation_context_ids: []                       # [v1] 相关引用上下文 id；本文自己引入的资源通常为空
+      evidence:                                      # [改] 6.3：v1 是自由文本复合串（e07 抽样严格匹配仅 83.6%），改为结构化定位，"证据是否真在原文"变成一次字符串比对
+        origin: paper                                # [新] 证据来源类型；与上面 profile 的 repository 证据分开存放
+        section_id: sec-0                            # [新] 章节锚；sec-0 约定表示 Abstract
+        paragraph_index: 1                           # [新] 段落序号
+        char_span: [88, 296]                         # [新] 段内字符区间
+        quote: we introduce LIFBENCH, a scalable dataset designed to evaluate LLMs' instruction-following capabilities and stability across long contexts  # [新] 原文片段，必须能在 markdown_path 中定位
+
+    access:                                          # [v1] 获取方式；e07 里 license 空 86.6%、url 空 57.1%，是 A4 的实测空白
+      access_type: public                            # [v1] public | request_only | restricted | missing | unknown
+      url: https://github.com/SheldonWu0327/LIFBench-2024  # [v1] 获取入口
+      license: ''                                    # [v1] 许可；空值必须由 field_status 说明是没查还是查了没有
+
+    material_completeness:                           # [新] 第 4 节第 3 条：把"材料完备性"做成程序可核验的观察，取代删掉的 agent_callable
+      repo_exists: true                              # [新] 仓库是否存在
+      repo_non_empty: true                           # [新] 是否非空（只有 README 的空壳仓库要能被识别出来）
+      has_readme: true                               # [新] 有无 README
+      has_dependency_manifest: true                  # [新] 有无依赖声明（requirements.txt / pyproject 等），A4 判断能否装起来
+      has_entrypoint: true                           # [新] 有无可运行入口（脚本、CLI、Makefile）
+      declared_license: ''                           # [新] 仓库声明的许可，与 access.license 分开记：论文说的和仓库写的可能不一致
+      last_commit_at: '2025-08-03T00:00:00Z'         # [新] 最近提交时间，判断维护状态
+      observed_by: github_api                        # [新] 谁观察的，受控词表
+      observed_at: '2026-06-30T18:33:11Z'            # [新] 何时观察的
+      notes: Python project, 7 stars, evaluation scripts under eval/.  # [新] 人读备注，不承担结构化语义
+
+    availability:                                    # [改] v1 的 availability_check：删掉恒空的 checked_at，checked_by 收进受控词表
+      status: available                              # [v1] available | partial | missing | broken | empty | unknown
+      source: external_observation                   # [新] 6.4：这条状态是论文声称还是外部观察——e07 里 available 的资源有 49.8% 无任何外部核验，这是最需要区分的一处
+      observed_by: github_api                        # [改] 受控词表取值（v1 这里出现过 29 个自由标签，其中 8 个是"没查、论文这么写"的同义词）
+      observed_at: '2026-06-30T18:33:11Z'            # [改] 取代恒空的 checked_at，与 provenance.last_checked 不再重复
+      notes: Repository verified via GitHub API.     # [v1] 人读备注
+
+    provenance:                                      # [v1] 这条资源记录的来龙去脉
+      extracted_from:                                # [v1] 来自哪篇论文
+      - 2025.acl-long.803                            # [v1]
+      registry_entry: lifbench                       # [新] 命中的消歧注册表条目（experiments/e07-p4a-case-pool/registry/resource_disambiguation.yml）
+      registry_status: matched                       # [新] matched | split_by_spelling | needs_context | unregistered，对应 p1 的四类结果
+      last_checked: '2026-06-30T18:33:11.498512+00:00'  # [v1] 最近核验时间
+
+# -----------------------------------------------------------------------------
+# 第二条记录不是 2025.acl-long.803 的真实产物：这篇论文的 resources_used 为空。
+# 它是为展示 6.2（使用记录）、6.4（来源分级）与 6.6（同名异源）而构造的示例，
+# 形态取自 e07 里常见的"使用他人 benchmark"情形。
+# -----------------------------------------------------------------------------
+- resource_record:                                   # [v1]
+    resource_id: res.gsm8k                           # [改] 6.6：不含 kind。e07 里 GPT-4o 曾同时以 benchmark:: / model:: / resource:: / tool:: 四种 id 存在
+    name: GSM8K                                      # [v1]
+    name_normalized: gsm8k                           # [新] 规范名
+    aliases:                                         # [v1]
+    - Grade School Math 8K                           # [v1] 全称
+    kind: benchmark                                  # [改] 属性而非主键；此处 dataset 与 benchmark 的争议由 Layer3 裁决，不影响身份
+    anchors:                                         # [新] 锚比名字稳：即使 kind 判错，靠锚也能归并
+      github: openai/grade-school-math               # [新]
+      huggingface: dataset/openai/gsm8k              # [新]
+      doi: ''                                        # [新]
+      url: https://github.com/openai/grade-school-math  # [新]
+    description: A dataset of 8.5K grade-school math word problems used to evaluate multi-step arithmetic reasoning.  # [v1]
+
+    profile:                                         # [新] 用他人资源时，画像多半只能来自外部卡片，注意 evidence.origin
+      task: multi-step arithmetic reasoning          # [新]
+      domain: [math reasoning]                       # [新]
+      languages: [en]                                # [新]
+      scale: 8.5K problems (7.5K train / 1.3K test)  # [新]
+      splits:                                        # [新]
+      - name: train                                  # [新]
+        size: 7473                                   # [新]
+      - name: test                                   # [新]
+        size: 1319                                   # [新]
+      evaluation_metrics: [exact match accuracy]     # [新]
+      scoring: program                               # [新]
+      prerequisites: []                              # [新] 没有特殊前置条件时留空列表，并在 field_status 给 not_applicable
+      evidence:                                      # [新]
+        origin: dataset_card                         # [新] 证据来自 HF dataset card，不是本文正文
+        locator: huggingface.co/datasets/openai/gsm8k#dataset-structure  # [新]
+        quote: The dataset is split into 7.47K training and 1.32K test problems.  # [新]
+
+    paper_relation:                                  # [改] 6.2：这条展示"使用记录"真正要存的东西
+      role: evaluated                                # [改] 本文把它当评测对象用
+      split: test                                    # [新] 只用了 test 切分——A4 判断结果可比性的第一道条件
+      subset: first 500 problems                     # [新] 还只用了子集；v1 没有位置记这件事，结果无法比较
+      version: v1.1                                  # [新] 版本
+      modification: rewrote answer format to boxed notation  # [新] 改动了什么。这正是 v1 里只有 2 条的 relation_type: extended 应该待的位置
+      used_in_experiments:                           # [新]
+      - 2025.acl-long.803::exp::3                    # [新]
+      citation_context_ids:                          # [v1] 使用他人资源时通常有引用，连上 A3 的引文边
+      - 2025.acl-long.803::cite::17                  # [v1]
+      evidence:                                      # [改] 6.3
+        origin: paper                                # [新] 这条是论文内证据
+        section_id: sec-4                            # [新]
+        paragraph_index: 61                          # [新]
+        char_span: [40, 210]                         # [新]
+        quote: We evaluate on the first 500 problems of the GSM8K test split.  # [新]
+
+    access:                                          # [v1]
+      access_type: public                            # [v1]
+      url: https://huggingface.co/datasets/openai/gsm8k  # [v1]
+      license: MIT                                   # [v1] 这条查到了许可，来源在 field_status 里登记为外部观察
+
+    material_completeness:                           # [新] 数据集类资源只有部分字段适用，不适用的写 false/空并由 absence 说明
+      repo_exists: true                              # [新]
+      repo_non_empty: true                           # [新]
+      has_readme: true                               # [新]
+      has_dependency_manifest: false                 # [新] 纯数据集没有依赖声明，属于 not_applicable 而非缺陷
+      has_entrypoint: false                          # [新] 同上
+      declared_license: MIT                          # [新] 仓库声明的许可，与 access.license 一致——不一致时两处都要留着
+      last_commit_at: '2024-11-02T00:00:00Z'         # [新]
+      observed_by: huggingface_api                   # [新]
+      observed_at: '2026-06-30T18:40:02Z'            # [新]
+      notes: Dataset card and parquet files present.  # [新]
+
+    availability:                                    # [改]
+      status: available                              # [v1]
+      source: external_observation                   # [新] 与下一行配对：有外部观察才允许写 available 而不降级
+      observed_by: huggingface_api                   # [改]
+      observed_at: '2026-06-30T18:40:02Z'            # [改]
+      notes: Verified via HF datasets API.           # [v1]
+
+    field_status:                                    # [新] 资源记录同样登记来源分级与空值三态
+      access.license:                                # [新]
+        source: external_observation                 # [新] 许可是从仓库观察到的，不是论文声称
+        observed_by: huggingface_api                 # [新]
+        observed_at: '2026-06-30T18:40:02Z'          # [新]
+      profile.prerequisites:                         # [新]
+        absence: not_applicable                      # [新] 纯数据集本来就没有运行前置条件
+      paper_relation.version:                        # [新]
+        source: paper_claim                          # [新] 版本号是论文自己写的，没有回到资源侧核对
+      anchors.doi:                                   # [新]
+        absence: not_found                           # [新] 查过，这个资源没有 DOI
+        observed_by: agent                           # [新]
+
+    provenance:                                      # [v1]
+      extracted_from:                                # [v1]
+      - 2025.acl-long.803                            # [v1]
+      registry_entry: gsm8k                          # [新] 命中注册表
+      registry_status: matched                       # [新] p1 建边时的归并结果
+      last_checked: '2026-06-30T18:40:02+00:00'      # [v1]
+
+# =============================================================================
+# 附录 A：受控词表（凡本文件标注"受控词表"的字段，取值只能来自这里）
+# =============================================================================
+#
+# paper_type:      survey | empirical | benchmark | dataset | method | theory | position | unknown
+#                  （沿用 v1；e07 里 77.1% 是 method，单独拿来过滤没有区分度）
+# kind:            dataset | benchmark | code | model | tool
+#                  （删掉 v1 的 skill / protocol / resource：e07 4758 条里合计只有 69 条，
+#                   且三者边界从未写清；kind 现在是可修正属性，误判不再固化进 id）
+# role（资源）:     introduced | used | evaluated | cited_only | unknown
+#                  （删掉 extended：两份语料里各只有 2 条，改动改由 modification 字段承载）
+# role（方法）:     proposed | reused | extended | compared
+# role（实验内）:   training_data | evaluation_target | analysis_input | tooling | unknown
+# access_type:     public | request_only | restricted | missing | unknown          （沿用 v1）
+# availability:    available | partial | missing | broken | empty | unknown        （沿用 v1）
+# scoring:         program | llm_judge | human | mixed | unknown
+# citation_function（选择性标注，其余一律留空）:
+#                  dataset_source | benchmark_source | baseline | method_source |
+#                  model_source | tool_source | contrast
+#                  （v1 还有 background / related_work / claim_support / comparison / other /
+#                   unknown；e07 里 background + method_source 占四成，background 这类泛引用
+#                   不产生可用的追踪边，本版不标）
+# evidence.origin: paper | repository | model_card | dataset_card | external_page
+#                  （2.7：v1 把论文内证据与 README 证据塞进同一个自由文本字段，
+#                   导致这类证据永远无法在正文定位）
+# field_status.source:   paper_claim | external_observation | inferred
+# field_status.absence:  not_applicable | not_found | not_checked
+# observed_by:     github_api | huggingface_api | arxiv_api | web_fetch | agent | human
+#                  （v1 的 checked_by 在 e07 里出现 29 个自由取值，其中 8 个
+#                   ——paper / paper_evidence / paper_derived / paper_claimed / paper_only /
+#                   paper_assertion / paper_url / paper_and_reference——表达的都是"没查"。
+#                   本版把"没查"移到 source: paper_claim，observed_by 只留真正的观察者）
+# registry_status: matched | split_by_spelling | needs_context | unregistered
+#                  （对应 p1 建边的四类结果：命中 1541 / 拼写拆分 66 / 待上下文确认 21 / 未注册）
+#
+# =============================================================================
+# 附录 B：本版删除的 v1 字段，以及删除理由
+# =============================================================================
+#
+# metadata.doi                          保留字段但恒空 → 改为必须给 absence；不再默认留白
+# content_units.figures[].内容解析        不做图内容理解，只登记 caption 与路径（parsed 恒 false）
+# cites / cited_by（篇级两个恒空字段）      cites 改由 links.cites 承载（接 p1 的 cite_anchors.jsonl）；
+#                                       cited_by 删除：它需要外部 API，p1 的锚点边覆盖不到
+# atomic_extracts.citation_context.cited_by   删除：要求把被引关系落到具体引用上下文，无产出路径
+# source_paper / comparison              删除：v1 示例里就是空串，语义从未定义
+# availability_check.checked_at          删除：与 provenance.last_checked 功能重复，且恒空；
+#                                       真正需要的"何时观察"由 availability.observed_at 承担
+# agent_callable（can_wrap / difficulty / notes）  删除：e07 里 can_wrap False 91.4%、
+#                                       difficulty unknown 90.8%、notes 空 65.5%，无证据、
+#                                       无区分度、无法核验；其意图由 material_completeness 承接
+# v1 4.3 的 skill_wrapped / skill_candidate       删除，同上
+# extraction_confidence（模型自评）        删除：e07 里 82.5% 是 high，没有区分度；
+#                                       改用 field_status.source 回答"谁观察到的"
+# relation_type: extended                删除该枚举值，改由 paper_relation.modification 承载
+# kind: skill / protocol / resource      删除这三个取值（见附录 A）
+#
+# =============================================================================
+# 附录 C：这份 schema 没有解决的问题
+# =============================================================================
+#
+# 1. 新字段的正确性比旧字段难核验。experiments 与 profile 若没有独立小样本标注，
+#    很可能只是变长的自由文本。2026-09-11 意见稿第 2 节能给出那么多数字，
+#    恰恰因为那些都是结构性指标；本文件新增字段的价值量不在结构层。
+# 2. 字段数量本身是风险。experiments 与 profile 已接近上限形态。试抽若显示
+#    baselines / subset / splits.size 抽不稳定，直接删掉，不要留空占位——
+#    v1 的九个恒空字段就是"先留着"的结果，e07 这批一个都没好转。
+# 3. 落地成本：6.1 / 6.2 / 6.4 / 6.5 / 6.6 落在 v2 现有两次调用之内（output 从约
+#    4–5K 升到约 8K）；6.3 的 char_span / paragraph_index 需要 build_paper_inputs.py
+#    给拼装全文加段落编号并送进 prompt；tables 需要接 MinerU 的 content_list；
+#    links.cites 接 p1 已有的 cite_anchors.jsonl，不需要新抽取。
+# 4. 待商定的仍是 2026-09-11 意见稿第 9 节那几条：是否试抽、先做哪几条、
+#    样本量与人工核验规模、A3 三项（方法具名 / 表格定位 / 引用角色收窄）是否并入。
+#    未经确认不改 schemas.py、不写脚本、不启动批量运行。

@@ -1,12 +1,20 @@
 # Layer4 Schema 改造：一份意见稿
 
-状态：**提议，未商定，未实施。** 本文记录 Agent 对 Layer4 schema 的看法，供讨论与否决。
-没有任何字段改动被落地，`experiments/p4a/src/extract/layer4_v2/schemas.py` 与
-`skill/paper-mineru-resource-extract/SKILL.md` 保持原样。
+状态：**提议，未商定，Layer4 字段未实施。** 本文记录 Agent 对 Layer4 schema 的看法，
+供讨论与否决。没有任何 Layer4 字段改动被落地，
+`experiments/p4a/src/extract/layer4_v2/schemas.py` 与
+`skill/paper-mineru-resource-extract/SKILL.md` 保持原样。唯一的例外是 6.6 的轻量版
+（不重抽、只在 Layer3 侧归并既有 id）：它已在 e07 落地，见 2.5 与第 7 节。
+
+2026-09-13 修订：研究行动框架由初稿的 Q1–Q4 改为 `paper/introduction.zh.md` 的 A1–A4，
+第 1、3、4、5 节按新框架重述。其中 A3（扩展与引证）在旧框架里没有对应项，
+它翻转了图表与引文相关字段的处置建议；2.5 与第 7 节回填 09-12/13 的既成事实。
+第 2 节的测量一字未改。
 
 依据材料：
 
-- 研究方向与研究行动：[Papers for Agents：讨论与备忘](2026-09-09-paper-for-agents.md)（第 12、13 节）
+- 研究活动框架（A1–A4）：`paper/introduction.zh.md`（2026-09-13 修订）与 `paper/main.tex`
+- 研究方向与初稿使用的 Q1–Q4 框架：[Papers for Agents：讨论与备忘](2026-09-09-paper-for-agents.md)（第 12、13 节）
 - 原始协议：[P4A v1 协议](p4a-v1-protocol.md)（Layer4 与 4-3 过渡契约）
 - 抽取实现：`experiments/p4a/refractor.md`、`experiments/p4a/src/extract/layer4_v2/schemas.py`、
   `experiments/p4a/skill/paper-mineru-resource-extract/SKILL.md`
@@ -40,22 +48,28 @@
 v1 协议是自底向上写的：Layer4 抽什么 → 4-3 过渡 → 分类树与谱系。它的
 `layer3_processing_contract` 列出 7 个下游产物，Layer4 的字段集是这 7 个的并集。
 
-新方向只承认四类研究行动（发现/筛选、理解/判断、寻找资源并判断用途、选择与使用准备）。
+新方向承认四类研究活动：**A1 发现 / A2 甄别 / A3 扩展与引证 / A4 复现与使用**。
 建议先收敛 Layer3 的产物集合，再决定 Layer4 抽什么——否则 Layer4 会继续为没有下游的
 字段付出抽取成本和核验债务。第 2 节的恒空字段清单说明这不是假想风险，已经发生了。
+
+与本文初稿使用的 Q1–Q4 相比，A1–A4 不是改名：旧 Q3（寻找资源、判断用途）被拆进
+A2、A3 与 A4，而 **A3（沿引文、方法沿用与资源关联追踪，并引证支撑当前判断）在旧框架里
+没有对应项**。引文与方法沿用因此从"下游收益不明的字段"变成一类研究活动的直接承载，
+下表与第 3、4、5 节据此调整。
 
 | v1 Layer3 产物 | 建议处置 | 理由 |
 |---|---|---|
 | `resource_relations` | 保留，作为主线 | 直接支撑资源用途判断与使用准备 |
-| `important_citation_mining` | 保留但收窄到资源来源、基线、方法来源 | 支撑"还有什么相关"与"与谁比较" |
+| `important_citation_mining` | 保留并上调优先级，收窄到资源来源、基线、方法来源 | A3 的主要承载，不再只是"顺带支撑还有什么相关" |
 | `taxonomy_construction` | 不实现 | 多 view、本体对齐、随时间演化是独立研究问题；v1 自述最常见情形是没有现成分类树可用；无唯一正确划分，评测不可落地 |
-| `contribution_genealogy` | 不实现，只在 Layer4 保留原料 | 同上，收益链条长 |
+| `contribution_genealogy` | 不实现，但原料（方法具名）优先级上调 | A3 只要求关系可追踪且有证据，不要求产出谱系体系；方法名与别名缺失则沿用关系无从建立（第 4 节第 2 条） |
 | `reproducibility` | 大幅精简为"材料完备性" | 只保留程序可核验部分，删除完整复现与分领域验证 |
 | `social_discussion` | 删除 | 取证不可核查、不可稳定复现 |
 | `domain_verification` | 删除 | 另一个课题 |
 
 砍掉 taxonomy 与 genealogy 不等于放弃跨论文组织。它们需要的原料（方法具名、资源使用、
-引用角色）仍由 Layer4 产出，只是系统不承诺产出分类体系本身。
+引用角色）仍由 Layer4 产出，只是系统不承诺产出分类体系本身。在 A1–A4 下这一点更清楚：
+A3 要的是可追踪的关系与支撑证据，不是一棵分类树或一张谱系图。
 
 ## 2. 对照实际产物
 
@@ -100,9 +114,9 @@ v1 协议的 Layer4 示例取自 `2025.acl-long.803`，那一篇的产物与协�
 | 字段 | e07 空值率 | 说明 |
 |---|---|---|
 | `metadata.authors` | 100% | 协议注释已提到"author 抽取好像存在点问题"；但 `source_artifacts.arxiv.authors` 有 67% 填了值——同一事实存在两处，规范位置恒空 |
-| `content_units.figures` / `tables` | 100% | 从未实现 |
-| `cites` / `cited_by` | 100% | 协议说明来自外部 API，流水线从未接 |
-| `atomic_extracts.citation_context.cited_by` | 100% | 同上 |
+| `content_units.figures` / `tables` | 100% | 从未实现，但原料在：MinerU markdown 已含表格与图片引用（抽查 `2026.acl-long.1490`，34 处表格标记、3 处图片引用）。新叙事把图表列为证据来源，处置改判见第 5 节 |
+| `cites` / `cited_by` | 100% | 协议说明来自外部 API，流水线从未接；但 p1 已从参考文献锚点建出内部引文边（2.5），产出路径不再缺失 |
+| `atomic_extracts.citation_context.cited_by` | 100% | 同样来自外部 API；与篇级 `cited_by` 不同，它要求把被引关系落到具体引用上下文，p1 的锚点边覆盖不到，仍建议删（第 5 节） |
 | `source_paper` / `comparison` | 100% | 协议示例里就是空串，语义从未定义 |
 | `availability_check.checked_at` | 100% | 与 `provenance.last_checked`（100% 有值）功能重复，留了死的那个 |
 | `metadata.doi` | **100%**（全语料 99.7%） | — |
@@ -198,6 +212,15 @@ v1 协议说 Layer4 不做跨论文消歧，这没错。但 id 的构造方式�
 把一个易错的语义判断编进主键，等于把错误固化进身份。这是本文新增的一条改造（6.6），
 优先级不低于实验设定结构化；对 e07 的下一步（p1 建 paper–resource 边）尤其直接。
 
+**2026-09-13 更新：6.6 的轻量版已经落地，本小节的判断得到实测支持。**
+e07 的消歧注册表（`experiments/e07-p4a-case-pool/registry/resource_disambiguation.yml`）
+经两轮扩充有 294 个规范条目（第二轮 128 个 model/code/tool 名，38 个经一手来源核查，
+新发现 13 组同名异源）。p1 把 4758 条资源记录建成 4755 条 paper–resource 边（3 条噪声剔除），
+其中 registry 命中 1541 条、拼写拆分 66 条、待上下文确认 21 条。同期 `cite_anchors.jsonl`
+从 43633 条参考文献抽出 15763 条带 arxiv / DOI / URL 锚点，其中 85 条经 arxiv id 精确匹配回
+语料内论文，构成内部引文边——这正是 2.1 里 `cites` / `cited_by` 两个恒空字段的现成产出路径。
+归并发生在 Layer3 侧，Layer4 的 `resource_id` 构造方式未改，6.6 的完整版仍待商定。
+
 篇内引用完整性没问题：全语料 `resources_introduced` / `resources_used` 引用的 15837 个 id
 全部能在同篇 `resource_records.yml` 找到，0 悬空。
 
@@ -231,14 +254,14 @@ markdown 比对：严格滑窗匹配可定位 **83.6%**，放宽后（去 sectio
 `citation_function` 有 20.5% 是空串，`background`（20.1%）+ `method_source`（19.3%）
 占掉四成。逐条标注的成本与它的区分度不匹配。
 
-## 3. 现状对四类研究行动的缺口（以 e07 为准）
+## 3. 现状对四类研究活动（A1–A4）的缺口（以 e07 为准）
 
-| 研究行动 | 当前承载字段 | 判断 |
+| 研究活动 | 当前承载字段 | 判断 |
 |---|---|---|
-| 发现、筛选 | `intent`、`contributions` | 完备性好（contributions 空 2.0%），但 `paper_type` 77.1% 是 `method`，几乎不能用于筛选 |
-| 理解、判断差异 | `experiments: [{text}]`、`limitations` | **最大缺口**：自由文本不可比较、不可过滤；e07 的 `experiments` 中位 3 条，都是句子 |
-| 寻找资源、判断用途 | `resource.description`、`kind`、`relation_type` | **第二缺口**：v1 承诺的 `domain` / `evaluation_metrics` 从未落地；id 分裂使跨论文聚合不可靠 |
-| 选择、使用准备 | `access`、`availability_status`、`repository`、`agent_callable` | **实测几乎为空**（2.6），且 `available` 中 49.8% 未经核验 |
+| A1 发现 | `intent`、`contributions` | 完备性好（contributions 空 2.0%），但 `paper_type` 77.1% 是 `method`，几乎不能用于筛选 |
+| A2 甄别 | `experiments: [{text}]`、`limitations`、`resource.description`、`kind`、`relation_type` | **最大缺口**：实验条件是自由文本，不可比较、不可过滤（e07 的 `experiments` 中位 3 条，都是句子）；v1 承诺的 `domain` / `evaluation_metrics` 从未落地；id 分裂使跨论文比较不可靠 |
+| A3 扩展与引证 | `citation_context`、`citation_function`、`resources_used` | **旧框架未评估过的一类**：引文侧数据量大，但角色标注 20.5% 为空、四成集中在 `background` + `method_source`（2.7）；方法沿用无字段承载（无方法具名，见第 4 节第 2 条）；`cites` / `cited_by` 恒空，产出路径由 p1 补上（2.5）；跨论文追踪仍受 id 分裂拖累 |
+| A4 复现与使用 | `access`、`availability_status`、`repository`、`agent_callable` | **实测几乎为空**（2.6），且 `available` 中 49.8% 未经核验；版本、split、配置无处存放（6.2） |
 
 ## 4. 建议实现（v1 写过但没落地）
 
@@ -247,6 +270,8 @@ markdown 比对：严格滑窗匹配可定位 **83.6%**，放宽后（去 sectio
    这是 v1"资源描述的最小字段"承诺过、schema 里缺失的部分。
 2. **方法具名实体。** 当前只有 `contributions` 自由文本，没有"本文提出的方法或系统
    叫什么、有哪些别名"。缺它则跨论文关联只能靠标题模糊匹配。成本极低。
+   **A3 使这条从"顺带做"变成必要条件**：方法沿用是 A3 明确包含的追踪路径，
+   没有方法名与别名就建立不了沿用关系，只能退回到"有没有引用"这一层。
 3. **材料完备性的程序化核验。** 仓库是否非空、有无 README、有无依赖声明与入口、许可、
    最近提交时间。v2 的外部验证阶段已在调用 GitHub / HF API，这些是顺手可得的观察，
    但没有进入 schema——于是出现 2.3 的局面：观察做了一部分，记录不下来。
@@ -258,12 +283,20 @@ markdown 比对：严格滑窗匹配可定位 **83.6%**，放宽后（去 sectio
 - **`agent_callable`**：e07 里 `can_wrap` False 91.4%、difficulty `unknown` 90.8%、
   notes 空 65.5%。无证据、无区分度、无法核验。建议删除，或降级为第 4 节第 3 条那组
   程序可核验信号。
-- **九个恒空字段**（2.1）：`metadata.authors`（或改为从 arXiv 元数据回填）、`figures`、
-  `tables`、`cites`、`cited_by`、`citation_context.cited_by`、`source_paper`、`comparison`、
-  `availability_check.checked_at`。要么删，要么给出产出路径，不留"看起来已核查"的空壳。
-- **`citation_functions` 全量标注**：改为选择性标注，只标
+- **九个恒空字段**（2.1）：原则不变——要么删，要么给出产出路径，不留"看起来已核查"的
+  空壳。按 A1–A4 重新分组后，**五个建议删**：`metadata.authors`（或改为从 arXiv 元数据
+  回填）、`source_paper`、`comparison`、`availability_check.checked_at`、
+  `atomic_extracts.citation_context.cited_by`；**四个改判为给产出路径**：
+  - `content_units.tables` / `figures`：A2 要比较的实验结果主要在表里，A3 的引证也需要
+    指向具体表格，而 MinerU markdown 已含表格与图片引用（2.1）。建议先做表格，图片留待定；
+    它同时是 6.1 实验设定结构化的原料来源。
+  - `cites` / `cited_by`：A3 的直接承载。p1 的 `cite_anchors.jsonl` 已把 43633 条参考文献
+    变成 15763 条锚点与 85 条内部引文边（2.5），字段要接的是这条现成路径，不是外部 API。
+- **`citation_functions` 全量标注**：仍建议改为选择性标注，只标
   `dataset_source` / `benchmark_source` / `baseline` / `method_source` /
-  `model_source` / `tool_source` / `contrast`，其余留空。
+  `model_source` / `tool_source` / `contrast`，其余留空。**但理由换了**：A3 成为一等活动后，
+  "区分度低、标注成本不匹配"不再是充分理由；保留这七类的依据是它们正好构成 A3 追踪与
+  引证所需的角色集合，而 `background` 这类泛引用不产生可用的追踪边。
 - **`extraction_confidence`（模型自评）**：82.5% 是 `high`，无区分度。
   用"谁观察到的"替代"模型觉得多有把握"（见 6.4）。
 - **死枚举值**（2.4）：`kind` 的 `skill` / `protocol` / `resource`、`relation_type` 的
@@ -279,7 +312,7 @@ YAML 为草图，用于说明字段形态，不是最终 schema。字段过多�
 
 ### 6.1 实验设定结构化
 
-`experiments: [{text}]` 改为可比较、可过滤的结构。服务"判断差异"与"判断资源用途"。
+`experiments: [{text}]` 改为可比较、可过滤的结构。服务 A2（甄别）与 A4（复现与使用）。
 
 ```yaml
 experiments:
@@ -389,7 +422,9 @@ anchors:
 
 6.6 有一个只涉及既有数据的轻量版本：不重新抽取，仅在 Layer3 侧按
 `name_normalized` + anchors 归并现有 id，把 kind 冲突记为待裁决。
-这对 e07 的 p1（建 paper–resource 边）可能比任何新字段都更早需要。
+**这一版已在 e07 落地**（2026-09-12/13 两轮注册表，p1 建边后命中 1541 条，见 2.5），
+不再是待商定项。它留下的遗留问题属于 Layer3，不由本文的 Layer4 改造回答：
+kind 冲突与 21 条"待上下文确认"由谁裁决、依据什么证据，以及注册表随语料扩展如何维护。
 
 另有一件与 schema 无关、可独立决定的事：2.2 的 2025 批约 800 篇合并丢失，
 可以用现存 `agent_judgment.json` 零 LLM 成本恢复。
@@ -410,14 +445,19 @@ anchors:
 ## 9. 待商定
 
 下一步仍建议是一件事：**在 e07 的少量论文上做一次 schema 试抽**，先做 6.1 与 6.2，
-人工核验一小部分，回答两个问题——这些字段能否稳定抽出；有了它们，"判断差异"与
-"判断资源用途"的结论是否真的不同。若答案否定，其余改造不应进行。
+人工核验一小部分，回答两个问题——这些字段能否稳定抽出；有了它们，A2（甄别）与
+A4（复现与使用）的结论是否真的不同。若答案否定，其余改造不应进行。
 e07 已有 952 篇的全文、Layer4 记录与引用材料，是现成的试抽底座。
+
+A3 的三项新需求（方法具名、表格定位、引用角色收窄）是否并入同一次试抽，需要单独决定：
+它们成本不高，但验证的不是同一件事——A3 的收益体现在跨论文追踪，
+样本要成对或成链，与单篇抽取的样本量要求不同。
 
 需要用户决定：
 
-- 是否做试抽；先做哪几条；样本量与人工核验规模。
-- 6.6 的轻量版（只归并既有 id，不重抽）是否先于试抽做——它直接影响 e07 的 p1。
+- 是否做试抽；先做哪几条；样本量与人工核验规模；A3 的三项是否并入。
+- 改判为"给产出路径"的四个恒空字段（`tables` / `figures` / `cites` / `cited_by`）是否接入
+  ——前两个要改 `build_paper_inputs.py`，后两个接 p1 已有的 `cite_anchors.jsonl`。
 - 是否重跑 2025 批的合并以恢复约 800 篇语义字段；是否在 e07 向外扩展之前完成。
 - 第 2 节的统计是否需要落为可复跑的脚本（当前是一次性统计，脚本未入库）。
 
