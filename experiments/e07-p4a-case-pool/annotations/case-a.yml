@@ -60,10 +60,13 @@ known_issues:
 # p2 核查进度：
 # - 2026-09-13 第一轮：6 篇语料内候选核查完成（judgments + evidence 已填）。
 # - 2026-09-13 第二轮：5 篇外部锚点核查完成（arXiv/ar5iv HTML；ExpeL 用本地全文）。
+# - 2026-09-13 第三轮：补充声明的 4 篇外部锚点核查完成（15/15 全部已核查）。
+#   AutoRefine(2601.22758) 方法名即 AutoRefine；Memento c2 partial（与 Synapse
+#   同属"原样存取+学习检索"家族）。
 
 # 补充声明（2026-09-13，用户确认）：经开放检索侦察（OpenAlex 3 式 top-25 +
 # websearch 3 式，原始记录 tmps/e07_openalex_recon/）发现案例池未覆盖的权威
-# 工作，以下 4 篇已加入 candidates（unchecked，待 p2 第三轮核查）：
+# 工作，以下 4 篇已加入 candidates 并于第三轮核查完成（判断见各条目）：
 # - arXiv:2601.22758  From Trajectories to Reusable Expertise（web 检索发现，
 #   与 query 近同构；显式对比 ExpeL/AutoGuide/AutoManual）
 # - arXiv:2507.06229  Agent KB（A3 引用节点：被 PEEU、AgentFactory 引用）
@@ -371,33 +374,114 @@ candidates:
   - "Mind2Web 静态离线回放（train 1009 / Cross-Task 252 / Cross-Website 177 /
     Cross-Domain 912），对照人工标注 GT；未明示是否全量评测"
 
-# —— 补充声明的新外部锚点（待 p2 第三轮核查，见文件头补充声明）——
-- paper: "arxiv:2601.22758"   # From Trajectories to Reusable Expertise
-  name: Trajectories-to-Expertise
+# —— 补充声明的新外部锚点（已核查 2026-09-13，材料：arXiv/ar5iv HTML）——
+- paper: "arxiv:2601.22758"   # 标题 From Trajectories to Reusable Expertise…
+  name: AutoRefine
   in_corpus: false
-  entry_path: open-retrieval（2026-09-13 websearch 侦察；与 query 近同构，
-    显式对比 ExpeL/AutoGuide/AutoManual）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  entry_path: open-retrieval（2026-09-13 websearch 侦察；与 query 近同构）
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    与 query 近同构：双形态产物（Skill Pattern + Subagent Pattern）、每 K=10
+    任务批量跨轨迹抽取、prompt 增强/工具注册/层级委派三种执行集成。c4 限同域
+    跨实例（跨域迁移自列为 future work）。两处"声称 vs 证据"裂缝（A3 素材）：
+    声称胜过 AutoGuide 但未实测（§4.1 'We also plan to compare with
+    AutoGuide'，数字转引自原文）；ALFWorld 98.4%（摘要/主表 Claude）vs 97.0%
+    （Table 2，GPT-4-turbo 对齐前人）两口径并存；ScienceWorld 任务数 §4.1 与
+    §B.1 不一致。ICML 在投格式预印本。
+  evidence:
+  - "c1 | §3.4: 每 K=10 任务对近期成功+失败轨迹集批量抽取；'extract patterns
+    from batches of trajectories … cross-trajectory analysis'"
+  - "c2 | §3.1: Skill Pattern（NL 指南/可执行代码片段）+ Subagent Pattern，
+    带六元组元数据；§1: 'Flattened textual knowledge is insufficient for
+    procedural logic'"
+  - "c3 | §3.3: 语义检索 top-k，三种执行集成；§4.3: 消融 w/o Subagents
+    TravelPlanner 35.6→13.3；利用率完整模型维持 0.71（无维护变体跌至 0.08）"
+  - "c4 | §B.1: ALFWorld valid-unseen 134 训练 → test-unseen 140 评测；
+    §5: 跨域迁移为 future work"
+  - "A3 素材 | §2.2 + App. A.1: 六点显式对比 ExpeL/AutoGuide/AutoManual/
+    Voyager/AdaPlanner（表示形态/抽取策略/检索/维护/执行集成/元数据）"
+  eval_notes:
+  - "ALFWorld 134→140、ScienceWorld（口径矛盾）、TravelPlanner valid 180 →
+    test 1000；环境二元判分，无 LLM judge；3 seeds + paired t-test"
+  - "检索：Qwen3-Embedding-4B + Elasticsearch RRF；主模型 Claude-sonnet-4，
+    Table 2 全体改 GPT-4-turbo 对齐前人"
 - paper: "arxiv:2507.06229"   # Agent KB
   name: Agent KB
   in_corpus: false
-  entry_path: citation-anchor（被 PEEU、AgentFactory 引用；A3 引用扩展节点）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  entry_path: citation-anchor（被 PEEU 引用，与 AWM/Memento/Memp 同句并列；
+    另被 AgentFactory 引用）
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    PEEU 的归类（'structured knowledge bases … prompt engineering without
+    training'）基本准确；但经验是跨框架集体经验（4 个 agent 框架 rollout）+
+    80 条人工种子引导，非严格"自身历史"——属 query 的更宽变体。跨域证据
+    不对称：推理→SWE 部分可用，SWE→推理明显退化（Fig. 6）。
+  evidence:
+  - "c1 | §4.1: 80 条人工种子轨迹引导 smolagents/OWL/SWE-Agent/OpenHands
+    自动 rollout，规范化成功与失败 run → ~9k workflow summaries + 7k
+    execution snippets"
+  - "c2 | §3.2: 结构化经验单元 E=⟨π,γ,S,C⟩；消融 'w/ Raw Workflow' 58.18%
+    低于结构化经验 61.21%——抽象产物本身有贡献"
+  - "c3 | §3.3: Reason-Retrieve-Refine 两阶段（实体映射/工具替换/步骤重排
+    合成可执行 plan）；消融去 Refine -6.06 为最大降幅"
+  - "c4 | 构建语料与评测集无重叠（GAIA/HLE-Bio-Chem/GPQA/SWE-bench Lite）；
+    Fig. 6: 推理经验在 SWE-bench 保留 37.0%，SWE 经验在 GAIA 明显退化"
+  eval_notes:
+  - "GAIA val 165、SWE-bench Lite 300；判分 exact match / test passage
+    （HLE/GPQA 判分未写明）"
+  - "引用陷阱：pass@1/2/3 是顺序 refinement pass 而非独立采样；知识库规模
+    两处口径不一（Table 5 合计 9,502 vs 正文 9k+7k）"
 - paper: "arxiv:2508.16153"   # Memento
   name: Memento
   in_corpus: false
-  entry_path: citation-anchor（被 PEEU 引用，与 AWM 同句并列为
-    'prompt engineering without training' 路线）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  entry_path: citation-anchor（被 PEEU 引用，与 AWM 同句并列）
+  judgments: {c1: satisfied, c2: partial, c3: satisfied, c4: satisfied}
+  note: >
+    与 Synapse 同属"原样存取 + 学习检索"家族：case=(task, plan, reward)
+    三元组原样存储，无抽象步骤，学习发生在检索侧 Q-function。PEEU 将其与
+    AWM 并列在 c1/c3/c4 层面成立，但 c2 层面不同构（AWM 归纳抽象
+    workflow，Memento 不提炼）——引用归类与核查结论的分歧本身即 A3
+    叙事素材。
+  evidence:
+  - "c1 | §5.4: GAIA validation 三轮迭代累积成功+失败轨迹入 case bank；
+    §5.3: 仅写轨迹末步 (s,a,r) 保持紧凑"
+  - "c2 | §4.1: case=(task, plan, reward) 原样三元组；§2.3 自述与抽象路线
+    （ExpeL/AutoGuide/AWM）的区别：'learn a neural case-selection policy
+    over an episodic case bank via online soft Q-learning' → partial"
+  - "c3 | §4.1: 检索 case 拼入 planner prompt；§5.5.1: K 扫描 K=4 最优、
+    K=0 明显更差；Table 5 消融 CBR +4.5~+8.2"
+  - "c4 | §5.5.4 OOD 协议：4 训练数据集建库 → 3 个未见数据集 +4.7~9.6%；
+    GAIA test 仅用 validation 积累的 case bank（79.40%）"
+  eval_notes:
+  - "GAIA 口径注意：论文称 300 test+150 val（官方为 466/165）；
+    validation 报 Pass@3（87.88%）vs pass@1 70.91%；摘要 'Pass@33' 为
+    渲染伪影"
+  - "DeepResearcher 系判分器 GPT-4o-mini；基线数字多转引且 backbone/工具
+    预算不等价"
 - paper: "arxiv:2508.06433"   # Memp
   name: Memp
   in_corpus: false
-  entry_path: citation-anchor（被 PEEU 引用）
-  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
-  evidence: []
+  entry_path: citation-anchor（被 PEEU 引用，与 AWM/Agent KB/Memento 同句并列）
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    PEEU 归类准确：Memp 自己的 Related Work 也把 Voyager/AWM/AutoManual 列
+    为同类，§4.4 直接以 ExpeL/AWM 为 baseline。离线构建用训练集 gold 轨迹
+    （偏演示来源，non-condition）；最优配置 Proceduralization = 高层
+    script + 检索到的完整轨迹混合。边界：跨任务复用限同 benchmark 内 +
+    跨模型迁移（GPT-4o→Qwen2.5-14B，+5pt），无跨环境。
+  evidence:
+  - "c1 | §3.1 式3: m=B(τ,r)，轨迹+reward 构建；§4.3: 在线 update 用 agent
+    自身测试期轨迹"
+  - "c2 | §4.2 Script/Proceduralization: 'distilling them into abstract
+    procedural knowledge'；纯 Trajectory 条件为不抽象的对照组"
+  - "c3 | §3.1 式4–5: 余弦相似度检索 top-k 拼入 context；Table 1/2: 所有
+    记忆构建法均超 no-memory 且步数更少"
+  - "c4 | §4.2: train 构建→test 直接复用；§5: 跨模型迁移 +5%、平均步数
+    -1.6"
+  eval_notes:
+  - "ALFWorld 环境 0/1 判分；TravelPlanner 由 GPT-4o 转 JSON 后与 gold
+    规则比对 #CS/#HC（非 LLM judge 打分）"
+  - "任务数在 v4 Appendix C、在线 HTML 未渲染 → insufficient_evidence"
 
 # 困难候选在核查中从此清单衍生：同 venue、主题接近、逐项记录不满足的条件。
 # 已确认：WebSynthesis（c2/c3/c4 not_satisfied，困难负例）；
