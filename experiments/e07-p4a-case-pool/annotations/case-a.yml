@@ -60,6 +60,21 @@ known_issues:
 # p2 核查进度：
 # - 2026-09-13 第一轮：6 篇语料内候选核查完成（judgments + evidence 已填）。
 # - 2026-09-13 第二轮：5 篇外部锚点核查完成（arXiv/ar5iv HTML；ExpeL 用本地全文）。
+
+# 补充声明（2026-09-13，用户确认）：经开放检索侦察（OpenAlex 3 式 top-25 +
+# websearch 3 式，原始记录 tmps/e07_openalex_recon/）发现案例池未覆盖的权威
+# 工作，以下 4 篇已加入 candidates（unchecked，待 p2 第三轮核查）：
+# - arXiv:2601.22758  From Trajectories to Reusable Expertise（web 检索发现，
+#   与 query 近同构；显式对比 ExpeL/AutoGuide/AutoManual）
+# - arXiv:2507.06229  Agent KB（A3 引用节点：被 PEEU、AgentFactory 引用）
+# - arXiv:2508.16153  Memento（A3 引用节点：被 PEEU 引用，与 AWM 同句并列）
+# - arXiv:2508.06433  Memp（A3 引用节点：被 PEEU 引用）
+# 记录在案但暂不补充的线索：DRIVE(2605.23939)、Skill-DisCo(2606.26669)、
+# SKILL-KD(2607.28048)、MUSE-Autoskill(2605.27366)、Trajectory-Informed
+# Memory Generation(2603.10600)、EvoMemBench(2605.18421，评测型)、
+# 综述 2602.20867 / 2605.07358；2026.findings-acl.2091 相关但属语料边界外
+#（语料不含 ACL 2026 Findings——信息范围声明时应注明）。
+# 另经词边界核查校正：ICAL 未被 6 篇语料内候选引用（此前为 logical 子串误报）。
 candidates:
 # —— 语料内（已核查 2026-09-13）——
 - paper: "2026.acl-long.1432"   # ReCreate，候选主角 A
@@ -355,6 +370,34 @@ candidates:
     环境自动判分，平均 99.2%"
   - "Mind2Web 静态离线回放（train 1009 / Cross-Task 252 / Cross-Website 177 /
     Cross-Domain 912），对照人工标注 GT；未明示是否全量评测"
+
+# —— 补充声明的新外部锚点（待 p2 第三轮核查，见文件头补充声明）——
+- paper: "arxiv:2601.22758"   # From Trajectories to Reusable Expertise
+  name: Trajectories-to-Expertise
+  in_corpus: false
+  entry_path: open-retrieval（2026-09-13 websearch 侦察；与 query 近同构，
+    显式对比 ExpeL/AutoGuide/AutoManual）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+- paper: "arxiv:2507.06229"   # Agent KB
+  name: Agent KB
+  in_corpus: false
+  entry_path: citation-anchor（被 PEEU、AgentFactory 引用；A3 引用扩展节点）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+- paper: "arxiv:2508.16153"   # Memento
+  name: Memento
+  in_corpus: false
+  entry_path: citation-anchor（被 PEEU 引用，与 AWM 同句并列为
+    'prompt engineering without training' 路线）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
+- paper: "arxiv:2508.06433"   # Memp
+  name: Memp
+  in_corpus: false
+  entry_path: citation-anchor（被 PEEU 引用）
+  judgments: {c1: unchecked, c2: unchecked, c3: unchecked, c4: unchecked}
+  evidence: []
 
 # 困难候选在核查中从此清单衍生：同 venue、主题接近、逐项记录不满足的条件。
 # 已确认：WebSynthesis（c2/c3/c4 not_satisfied，困难负例）；
