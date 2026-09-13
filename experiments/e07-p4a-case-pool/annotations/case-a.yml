@@ -63,6 +63,8 @@ known_issues:
 # - 2026-09-13 第三轮：补充声明的 4 篇外部锚点核查完成（15/15 全部已核查）。
 #   AutoRefine(2601.22758) 方法名即 AutoRefine；Memento c2 partial（与 Synapse
 #   同属"原样存取+学习检索"家族）。
+# - 2026-09-13 p2d：工作集剩余 78 篇分诊（A 5 / B 14 / C 59），A+B 19 篇
+#   全部深核完成。candidates 总计 34 篇（15 锚点/候选 + 19 p2d 深核）。
 
 # 补充声明（2026-09-13，用户确认）：经开放检索侦察（OpenAlex 3 式 top-25 +
 # websearch 3 式，原始记录 tmps/e07_openalex_recon/）发现案例池未覆盖的权威
@@ -246,6 +248,433 @@ candidates:
     Search/HuggingFace 因访问频率）；过滤后任务总数未说明"
   - "判分器未复述（WebVoyager 标准为 GPT-4V 自动判分）；SFT llama-factory /
     GRPO verl，4×A800；分析实验用 Multimodal-Mind2Web 616/684"
+# —— p2d 深核（2026-09-13）：工作集 78 篇分诊为 A 5 / B 14 / C 59，
+# C 类摘要级排除（明细见 tmps 或 notebook 重算）；A、B 共 19 篇全部
+# 深核完成如下——
+- paper: "2026.acl-long.1519"   # RSMeM，遥感 agent
+  name: RSMeM
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: not_satisfied}
+  note: >
+    摘要级强正例、深核 c4 翻车——声称-证据落差素材。FAM 流确实是自身失败
+    轨迹蒸馏的结构化 reflection（c1–c3 扎实），但检索按 instance 索引绑定
+    （'binding reflections to the specific execution trace'），"下一轮"是
+    R@3 协议下同一实例的重跑；散文三处 "future similar tasks" 措辞与机制
+    矛盾且无实验支撑。注意：论文的跨任务知识来自专家预蒸馏 KB（Stream A），
+    与轨迹无关，不能为 c4 计分。
+  evidence:
+  - "c1 | §3.3: 符号 critic 作用于 'the agent's tool-use trajectory'；
+    GeoTraceCompress 压缩轨迹供 Reflection Generator 蒸馏"
+  - "c2 | §3.3: 产物为 schema 约束 JSON reflection（3–5 句 diagnosis +
+    corrective plan），FAM append"
+  - "c3 | §3.2 Stream B: instance 索引确定性检索 Latest(M_i)；消融 Qwen3-8B
+    Acc 31.98→39.68；案例 Fig. 5/11 行为纠正 trace"
+  - "c4 | §3.2: 'we ensure that corrective guidance is maximally precise and
+    free from interference by unrelated failure patterns'——显式排除跨实例
+    检索；R@3 为同题重跑协议 → not_satisfied"
+  eval_notes:
+  - "Earth-Bench 248 实例选择题，exact match 判分、无 LLM judge；R@3 协议
+    本身让记忆方法天然受益（同题重跑正是 FAM 作用域）"
+- paper: "2026.acl-long.1202"   # MaDS，长程 GUI 自动化
+  name: MaDS
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: partial}
+  note: >
+    c1–c3 闭环完整：反思积累结构化经验节点 v=(L_scene, D_task, S_sig, F_out,
+    Label_suc, Reason)，Negative Warnings 带因果归因作硬约束否决动作；消融
+    去掉经验记忆 TSR 72.22%→5.56%。c4 partial：跨任务复用有设计（按场景
+    而非任务分区）与声称，但无"来源任务≠复用任务"的隔离实验。
+  evidence:
+  - "c1 | §3.1.1: 'evolving experiences accumulated during dynamic
+    interactions'；评测时所有框架注入同一组历史成功轨迹（§5.2.2）"
+  - "c2 | §3.1.1: 结构化节点含 S_sig 抽象过程签名与 Reason 因果归因；
+    'failed operations with causal analysis as Negative Warnings'"
+  - "c3 | §3.2.1: Warnings 作硬约束由 Evaluation Agent 否决动作；消融
+    Table 4 TSR 5.56%→72.22%；案例 F.3.1 Case 5"
+  - "c4 | §3.1.1: 'supports knowledge transfer across similar apps' 仅为设计
+    声称；消融只对比记忆开关，无法区分同任务重试与跨任务迁移 → partial"
+  eval_notes:
+  - "自建 MaDS-Benchmark 271 任务/11 app；TSR 判分器为人工；AITW/AITZ/
+    CAGUI/GUIOdyssey 仅称'sampled'未给数量"
+- paper: "2026.acl-industry.84"   # MemoPhishAgent
+  name: MemoPhishAgent
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: partial, c3: satisfied, c4: not_satisfied}
+  note: >
+    全程单任务（钓鱼 URL 判定）。c2 partial：LLM 蒸馏关键词作索引 key，
+    但 value 是轨迹原样存储，条目间无进一步归纳——比"摘要拼接"强、低于
+    workflow/skill 提炼。c4 not_satisfied：'novel threats' 指新钓鱼模式而
+    非新任务，且 unseen 攻击的处置恰恰是退回完整 ReAct（无记忆可复用）。
+  evidence:
+  - "c1 | §3.3.1: 存自身 ReAct 工具调用轨迹 + verdict"
+  - "c2 | §3.3.1: key=蒸馏关键词，value=完整轨迹原样；'refining its
+    tool-calling strategies' 仅为声称 → partial"
+  - "c3 | §3.3.2 三级策略（no/partial/full match）；消融 w/o memory recall
+    0.9144→0.6369；full match 直接多数投票出判定"
+  - "c4 | 三个数据集是同一任务的不同分布；阈值相似度检索按设计只命中相似
+    URL；无跨任务/站点/环境证据 → not_satisfied"
+  eval_notes:
+  - "TR-OP/DynaPD/自建 SocPhish；无 split（training-free）；标注对齐 APWG
+    taxonomy；GitHub 公开（MIT）"
+- paper: "2026.acl-long.1299"   # MAGNET
+  name: MAGNET
+  in_corpus: true
+  entry_path: citation-anchor:Voyager + keyword
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    四条件全满足（A 类唯一）。混合轨迹来源：离线初始化用人工演示/公开数据
+    集轨迹，在线演化用自身执行轨迹（3 轮 memory-free pass 收割）——叙事
+    时不得归入纯自轨迹阵营。产物为占位符化抽象 workflow + ⟨功能描述,
+    视觉patch⟩ 条目。跨环境迁移有实测（Amex warm-start → AndroidWorld，
+    旧记忆占比 100%→26%）。
+  evidence:
+  - "c1 | §2.1: 离线 'from human demonstrations or curated datasets'；
+    App. C.3.2: 在线 3 轮 memory-free pass 收割自身轨迹"
+  - "c2 | §2.1: 'abstract workflows … high-level steps with categorical
+    placeholders'；§4.2 自我定位区别于 Agent-S 的 per-task summaries"
+  - "c3 | §2.1: planner 余弦检索拼入 context；Table 3 消融去记忆掉点；
+    Table 5 记忆迭代 31.14→40.98"
+  - "c4 | §3.5: Amex→AndroidWorld 跨环境 warm-start 实测；GUI-Odyssey/Amex
+    自建 ID/TS/AS/DS shift 子集"
+  eval_notes:
+  - "AndroidWorld Easy split 61 任务官方脚本判分；离线基准 step SR 规则匹配；
+    代码公开（github sunlibo2390/MAGNET）"
+- paper: "2026.acl-long.1095"   # Metacognitive Consolidation (MC²)
+  name: MC²
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: partial}
+  note: >
+    纯推理域（数学/符号题），无环境交互——轨迹形态为三角色 MRO 的
+    action-critique-correction 记录，c1 按 non-condition 放宽计入并如实
+    标注。产物三级显式文本（reflection→micro-lesson→恰 6 条 meta-knowledge
+    规则），Limitations 自认 'rather than being internalized into model
+    parameters'。c4 partial：主设定同 benchmark 跨实例；附录 G 跨任务
+    warm-start 方向依赖（GSM8K→TheoremQA 反超，两向小降）。
+  evidence:
+  - "c1 | Eq.2/7/8: 策略由历史推理 trace 更新；纯 LLM 推理 episode，
+    无工具/环境交互"
+  - "c2 | §2.2: 三级文本产物带严格 schema（App. I micro-lesson 六字段）；
+    Limitations: 显式 test-time 表示而非参数内化"
+  - "c3 | Eq.12/13 top-k 检索 + prompt 编译；§4.4 case study 前后对比；
+    附录 E 检索相关性 0.73 vs 随机 0.25"
+  - "c4 | Limitations: 'primarily consolidates task-specific … cross-task
+    … future work'；App. G Table 9 迁移方向依赖 → partial"
+  eval_notes:
+  - "GSM8K/MATH-500/TheoremQA/Game-of-24；规则判分（显式 final-answer 字段
+    解析）；3 seeds 95% CI；无公开代码"
+- paper: "2026.acl-industry.29"   # Agent-Ops
+  name: Agent-Ops
+  in_corpus: true
+  entry_path: citation-anchor:WebArena
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: partial}
+  note: >
+    分诊预判部分修正：人工录屏演示轨迹（browser replay 分析 DOM/点击事件）
+    按 non-condition 计入 c1；产物为 groomed SOP/automation templates/
+    element locators。但演示学习全文仅两处提及、无机制细节与消融（c1 为
+    声称级）。c4 partial：复用限于同 SOP 类别新 case + 界面变更。
+  evidence:
+  - "c1 | §B.3: 'experts demonstrate procedures through screen recordings, we
+    extract step-by-step navigation sequences'；§4.1 缓存成功策略"
+  - "c2 | §5.1: automation-ready specifications；§B.3: XPath locators +
+    navigation instructions 自动生成"
+  - "c3 | §4.1: 86.5% execution consistency；§6.5: groomed SOP 比原始文档
+    +13.2% accuracy（88.1 vs 74.9）"
+  - "c4 | 每 SOP 类别独立 grooming（§6.4 按类别报告），无跨类别迁移证据
+    → partial"
+  eval_notes:
+  - "生产数据无公开 benchmark；人工专家 ground truth（κ=0.89）；底层模型为
+    未披露专有 LLM；无代码发布"
+- paper: "2026.acl-industry.65"   # ACRM，困难候选（c2）
+  name: ACRM
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: not_satisfied, c3: satisfied, c4: satisfied}
+  note: >
+    困难候选（卡在 c2）。c1/c3/c4 都成立：Trajectory Memory 持久存储
+    ⟨s,a,o⟩ 轨迹、新漂移事件检索 top-3 做 grounding、消融迭代轮数
+    14.2→8.1（-43%）、跨业务场景/市场状态复用——但检索单位是原始完整
+    轨迹直接当 few-shot 拼 prompt，无任何提炼步骤；专家标注轨迹只做离线
+    DPO 内化进权重。'检索历史 workflow'实为检索历史轨迹本身。
+  evidence:
+  - "c1 | §3.1: 'transforms ephemeral modeling sessions into persistent
+    assets'；~1,200 条专家标注轨迹（人工建模会话埋点）"
+  - "c2 | §3.3: 'what is retrieved is not a static document but a reasoning
+    trace—the full sequence of state-action-outcome tuples'；App E.6: top-3
+    轨迹原样作 few-shot → not_satisfied"
+  - "c3 | 消融 §4.3: 'converges in 8.1 rounds on average (43% reduction)'；
+    App C 具体调用 trace"
+  - "c4 | App A.2: 'retrieved trajectories came from a different market
+    regime'；但全部在信贷模型刷新单一任务族内（限定 satisfied）"
+  eval_notes:
+  - "无公开 benchmark：18 对 Horse Race 在线协议 + 76 事件离线回测
+    （rolling 切分防泄漏）；paired Wilcoxon"
+- paper: "2026.acl-industry.91"   # ONEMODEL，对立路线样本
+  name: ONEMODEL
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: partial, c2: not_satisfied, c3: not_satisfied,
+    c4: not_satisfied}
+  note: >
+    query 的"对立面"：承认历史日志/SOP 是宝贵经验来源，但答案是参数化
+    内化（CPT + logic-compilation SFT），显式反对显式工作流工件
+    （Limitations 自认放弃白盒可调试性）。 intro 中"另一条路线"的对照锚点。
+  evidence:
+  - "c1 | §4.2: 语料含 'premium historical service logs' 与专家交互日志，
+    但混作 CPT/SFT 语料、无轨迹级建模 → partial"
+  - "c2 | Abstract: 'from external workflows to internalized knowledge
+    representation'；§3.3: SOP 'compile' 进 intuitive reasoning paths
+    → not_satisfied"
+  - "c3 | 全文无产物检索/调用机制；§3.4 的 RAG 是事务数据运行时注入，
+    非经验产物 → not_satisfied"
+  - "c4 | Table 2 OOD 泛化是参数化知识泛化，非产物复用 → not_satisfied"
+  eval_notes:
+  - "内部 SSQ 考试 + 未披露 held-out sets；KGA 指标训练/评测同度量（协议
+    弱点）；在线 A/B 对照 PEER pipeline"
+- paper: "2026.acl-industry.96"   # ProductResearch，训练式近邻
+  name: ProductResearch
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: not_satisfied, c3: partial, c4: partial}
+  note: >
+    "经验内化"光谱的纯训练端：轨迹为造数据即时合成（非部署 agent 历史），
+    反思内化的产物是单角色 SFT 训练样本，经验唯一存在形式是微调后权重。
+    与 query 是训练式近邻而非推理式同类。
+  evidence:
+  - "c1 | §2.4: 轨迹经两阶段后处理用于训练；§3.1: 合成 1,000 条轨迹"
+  - "c2 | §2.4: 'distill the corrective insights into a single, consolidated
+    assistant message'——蒸馏终点是 SFT 样本，无独立经验产物
+    → not_satisfied"
+  - "c3 | 推理期无检索机制，但训练产物实际影响 held-out 行为（RACE
+    31.78→45.40）→ partial"
+  - "c4 | 8:1:1 held-out 跨 query 泛化成立，载体是权重而非产物 → partial"
+  eval_notes:
+  - "自建 benchmark 1,000 query 8:1:1；RACE 指标 LLM judge 与 reference
+    成对比较；reference 由同一合成框架产出（循环性风险，以 90 报告人工
+    一致性研究缓解）"
+- paper: "2026.acl-industry.39"   # Journey-Aware 购物模拟
+  name: JourneyAware-Sim
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: partial, c2: not_satisfied, c3: not_satisfied,
+    c4: not_satisfied}
+  note: >
+    闭环合成购物对话轨迹 → critic 筛选 → SFT/DPO 蒸馏小模型的数据合成
+    路线。被接受轨迹原样进训练，无抽象产物；运行时反思只用当轮 critique，
+    无跨 episode 历史。与 query 相邻但机制不同（对照文献）。
+  evidence:
+  - "c1 | §4.1: 轨迹为训练输入，但系框架现场合成；critique 仅 turn 内
+    累积 → partial"
+  - "c2 | App D: 被接受轨迹原样作 SFT target；DPO 偏好对也是轨迹级
+    → not_satisfied"
+  - "c3 | 无推理时检索/调用；行为迁移全靠参数更新（小模型 +24.4%）
+    → not_satisfied"
+  - "c4 | 跨 329 domain 泛化是蒸馏泛化而非产物复用 → not_satisfied"
+  eval_notes:
+  - "held-out helpfulness benchmark，训练用 DeepSeek 判、评测用 Claude 判
+    （刻意跨家族防 judge overfitting）；无代码/数据发布"
+- paper: "2026.acl-demo.58"   # OxyGent / OxyBank
+  name: OxyGent
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: partial, c3: satisfied, c4: partial}
+  note: >
+    分诊预判修正：c1 上调 satisfied——轨迹回流是 OxyBank 一等输入
+    （'captures online execution traces'）。但产物是标注样本/知识库更新/
+    prompt 改写（data-centric），'best practices' 落地为 system prompt
+    重写（近 DSPy 式 prompt 优化）而非可检索经验条目 → c2 partial。
+  evidence:
+  - "c1 | §3.3: MD5 去重 + 调用链元数据分级的轨迹系统性采集"
+  - "c2 | §3.3: 产物='update knowledge bases or fine-tune models' + prompt
+    改写（Fig. 7）；无 skill/workflow schema → partial"
+  - "c3 | Table 1 消融 '+ Memory' 52.16→59.14（验的是 OxyBank 前身的
+    memory 机制）"
+  - "c4 | 'adaptation to novel tasks' 仅声称；业务侧每周自发现 5.4 新类目
+    是分类拓扑演化 → partial"
+  eval_notes:
+  - "GAIA leaderboard 59.14%（2025-07-22 开源第二）；消融未说明 split 与
+    判分细节；复现配置 github jd-opensource/OxyGent tree/gaia59"
+- paper: "2026.acl-industry.79"   # DQA，CBR/RAG 型
+  name: DQA
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: partial, c2: partial, c3: satisfied, c4: partial}
+  note: >
+    case-based RAG 系统：'记忆'是对外部历史病例库（含交互 transcript）的
+    检索聚合 + 会话内诊断状态；系统不从自身运行积累轨迹，状态每轮重算、
+    会话结束即消失。c3 satisfied 来自消融（去诊断状态 -24.9pp）。自引
+    Aamodt & Plaza CBR 传统——与 query 仅在 CBR 共性上沾边。
+  evidence:
+  - "c1 | §3.1: 历史 ticket 含交互 transcript 但为静态外部语料，系统运行
+    不回写 → partial"
+  - "c2 | §4.1: 离线簇 'for interpretability only and not used online'；
+    在线 h_k 为检索时聚合统计；诊断状态会话内临时 → partial"
+  - "c3 | §4: 诊断状态条件化每轮检索与动作选择；Table 2 消融 Diagnostic
+    State +24.9pp"
+  - "c4 | 历史病例→新场景的同领域 CBR 复用；§9 自认单一领域 → partial"
+  eval_notes:
+  - "150 匿名场景 replay 评测 + LLM 模拟用户；LLM judge 三指标全满才算
+    成功；三次运行取平均"
+- paper: "2026.acl-long.1388"   # ReX，参数化经验对照
+  name: ReX
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: not_satisfied, c2: partial, c3: satisfied, c4: satisfied}
+  note: >
+    PEFT/多任务适配论文而非 agent 经验复用：'经验'是在静态 SFT 语料上梯度
+    学出的隐层技能向量库（VAE 编码 + 路由组合 LoRA），输入是单样本隐状态
+    而非执行轨迹，c1 直接出局。c3/c4 在参数化意义下成立（推理时路由检索
+    组合技能原子、OOD 域仍有增益）。定位："experience 的参数化表示"对照
+    ——其 Related Work 反而综述了 Voyager/Reflexion 等目标工作。
+  evidence:
+  - "c1 | §A.1: 训练输入为 OpenR1-Math/OpenThoughts3 监督样本（去 thinking
+    traces）；§4.1: 输入为单样本隐状态 mean-pooling 向量 → not_satisfied"
+  - "c2 | §4.2: Experience Bank 技能原子 U/V + per-instance latent code，
+    是显式模块但为不可读参数向量、由梯度训练产生 → partial"
+  - "c3 | §4.3-4.4: Router 按 latent code 检索组合 LoRA；消融去 latent
+    code 38.05→33.13（参数化意义下的检索调用）"
+  - "c4 | §5.2: OOD Economics +7pt over LoRA；Fig. 4 跨域路由重叠"
+  eval_notes:
+  - "静态推理 benchmark（GPQA-Diamond/MMLU-Pro/MATH500）PEFT 对比，非 agent
+    评测；exact match；代码公开（Apache-2.0）"
+- paper: "2026.acl-long.1021"   # OS-SYMPHONY
+  name: OS-SYMPHONY
+  in_corpus: true
+  entry_path: resource-anchor:osworld + keyword
+  judgments: {c1: partial, c2: partial, c3: partial, c4: not_satisfied}
+  note: >
+    任务内记忆压缩 + 轨迹级自我纠错 + 在线外部检索。RMA 输入确为自身轨迹
+    但仅限当前 episode（c1 partial）；产物是任务内状态摘要/纠错信号/暂存
+    事实数据（c2 partial）；所有调用发生在同任务后续 step（c3 partial）；
+    泛化叙事全部由 Searcher 现搜 tutorial 承担而非复用自身经验，c4 出局。
+  evidence:
+  - "c1 | §3.2: H_long 以当前轨迹为界（下标 j=1..i-1）；Abstract 定位
+    'trajectory-level self-correction … in long-horizon tasks'"
+  - "c2 | App. D prompt: Knowledge Extraction 提取的是任务相关事实数据
+    （如餐厅地址电话），非可迁移操作经验"
+  - "c3 | Tab. 3 消融 LTM 58.05% vs w/o Reflection 54.38%（同任务内有效）"
+  - "c4 | 全文无跨任务持久化/检索机制；Limitations 亦未列 → not_satisfied"
+  eval_notes:
+  - "OSWorld-Verified 361 题（369 剔 8 个 Google Drive 任务）；各 benchmark
+    自带环境状态评估函数判分；消融统一 GPT-5-Mini + 50 步上限"
+- paper: "2026.acl-long.1274"   # SOCIA-EVO，困难候选（c4）
+  name: SOCIA-EVO
+  in_corpus: true
+  entry_path: citation-anchor:Voyager
+  judgments: {c1: satisfied, c2: satisfied, c3: satisfied, c4: not_satisfied}
+  note: >
+    "同任务长程迭代内经验自我策展"代表。Strategy Playbook（结构化修复假设
+    条目 S=⟨R,I,Σ⟩ + Knapsack 检索注入下一轮 prompt，消融齐全）机制完整，
+    但 Playbook 每任务从零初始化（K←∅），复用明确限定 'across runs within
+    the same task/domain'。附录字段说明自称 'transferable across
+    iterations/tasks' 而无机制与实验支撑——设计意图与证据的落差素材。
+  evidence:
+  - "c1 | §3.1 Alg.1: 历轮指标/错误日志/代码历史为诊断输入"
+  - "c2 | §3.2.2 + App. C: Playbook 为 JSON artifact（34 条 insights 实例，
+    含生命周期状态与 usage/success 计数）"
+  - "c3 | §5.2 消融 w/o mem 优化振荡（+0.14 MAE）；§5.3: 第五轮迭代重复
+    错误减少 76%"
+  - "c4 | §4.2: 'reused across runs within the same task/domain'；metric_links
+    须与该任务 Blueprint 白名单精确匹配，结构上绑定单任务 → not_satisfied"
+  eval_notes:
+  - "3 个模拟器校准任务；全自动分布/误差指标（MAE/RMSE/JSD）无 LLM judge；
+    5 seeds 95% CI"
+- paper: "2026.acl-long.1284"   # MemBuilder，对话记忆
+  name: MemBuilder
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: not_satisfied, c2: satisfied, c3: satisfied,
+    c4: not_satisfied}
+  note: >
+    典型对话长期记忆：输入是对话 session 序列而非任务执行轨迹（文中的
+    'trajectory' 是 RL 术语，指记忆构建 rollout）。产物为四维结构化记忆
+    条目（含 Procedural——但内容是'用户在对话中提到的流程'，非 agent
+    自身执行出的流程）。c4 的 OOD 声明是构造模型跨 benchmark 泛化，非记忆
+    产物跨任务复用。c1 若把'逐 session 回答'视为多次执行历史可争议为
+    partial，此处按 query 语境从严。
+  evidence:
+  - "c1 | §3.1: 输入为 conversation sessions 序列 + QA 问题，无环境/动作/
+    成功信号 → not_satisfied"
+  - "c2 | §3.2: Core/Episodic/Semantic/Procedural 四类条目，显式操作动作
+    写入向量库"
+  - "c3 | App. C.1: QA 时检索 top-10 记忆；RL 奖励即下游 QA 准确率"
+  - "c4 | §4.1: LoCoMo/PerLTQA 为 OOD 测试集——是模型泛化非产物复用
+    → not_satisfied"
+  eval_notes:
+  - "LongMemEval 500 题（唯一训练源）+ LoCoMo/PerLTQA OOD；GPT-4.1 判分；
+    代码公开"
+- paper: "2026.acl-long.1306"   # Conflict-Aware Memory (CDRs)
+  name: CDRs
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: partial, c2: not_satisfied, c3: satisfied, c4: partial}
+  note: >
+    具身 agent 记忆库的数据质量管理：库存机器人 100 轮自主探索的原始
+    [Information-Goal] 经验对（单实例快照非轨迹序列，c1 partial）；核心
+    贡献 CDRs 是手工设计的冲突检测一阶规则，非从轨迹提炼（c2 出局）；
+    自述 'rule-based and non-parametric, does not learn from data'。
+    "有记忆复用、无经验提炼"的对照点。
+  evidence:
+  - "c1 | §4.1: 执行成功后经验入库；§5.1: 100 轮自主探索后统一测试；条目
+    为单实例 [Information-Goal] 对 → partial"
+  - "c2 | §4.2: 唯一预处理是图像内容摘要；CDRs 谓词人工定义 →
+    not_satisfied"
+  - "c3 | Table 1: CDRs planner GA +15.25% / IA +14.25% over basic"
+  - "c4 | 4 个场景数据集各自独立，无跨场景经验迁移；复用限同场景内新指令
+    → partial"
+  eval_notes:
+  - "VirtualHome/ALFRED 改造 4 场景各 200 条；GA/IA 指标；代码公开
+    （SHA a0bde81）"
+- paper: "2026.acl-long.1682"   # NexGRPO，c3 边界用例
+  name: NexGRPO
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: not_satisfied, c3: partial,
+    c4: not_satisfied}
+  note: >
+    "轨迹→经验池→后续利用"谱系上训练时梯度更新一端的代表（数学 CoT
+    rollout，非 web agent）。池中存原始轨迹三元组，门控与相似度检索是筛选
+    非提炼（c2 出局）；经验池按 query 索引、回放严格回到来源 query 本身
+    （c4 出局）。c3 partial 是口径界定用例：确有检索（余弦最近邻选
+    boundary failure）且回放影响后续行为，但通道是训练时参数更新而非
+    运行时调用——若 c3 从严要求运行时检索则降 not_satisfied。
+  evidence:
+  - "c1 | §4.2: 每 query 收 K 条 rollout，失败轨迹经置信度门控入负例队列"
+  - "c2 | §4.2: 条目为 ⟨轨迹文本, logprob, 置信度⟩ 三元组，无抽象步骤
+    → not_satisfied"
+  - "c3 | §4.2: boundary failure 余弦最近邻检索 + importance-weighted GRPO
+    回放；Table 1 44.8 vs GRPO 42.5 → partial（训练通道）"
+  - "c4 | §4.2: q ↦ (P_q, N_q) 按 query 索引；OOD 提升是参数更新涌现
+    → not_satisfied"
+  eval_notes:
+  - "9 个数学/推理 benchmark；确定性 verifier 二值奖励，无 LLM judge；
+    无公开代码"
+- paper: "2026.acl-long.1440"   # SAVER，单运行内审计修复
+  name: SAVER
+  in_corpus: true
+  entry_path: keyword
+  judgments: {c1: satisfied, c2: partial, c3: partial, c4: not_satisfied}
+  note: >
+    单次运行内的信念审计与修复：审计器以推理轨迹为操作对象（c1 成立），
+    产物为当次运行的诊断/修复件（c2 partial），repaired belief 同运行内
+    commit（c3 partial），无跨 episode 机制（c4 出局）。与 query 方向相反
+    的设计选择：刻意只存证据事实、排除可泛化模板（'store only the
+    evidence-grounded fact, not the guessing template'）。
+  evidence:
+  - "c1 | §3.1-3.2: belief=(claim, trajectory)，审计器对轨迹逐步
+    stress-test（轨迹为当前运行现场生成）"
+  - "c2 | §3.4: violation instance set / unfaithfulness profile / 修复约束
+    ——单次运行诊断件而非可复用经验条目 → partial"
+  - "c3 | §3.5: repaired belief 同运行内 commit to action；跨 episode
+    检索无任何机制 → partial"
+  - "c4 | §4.1: 六个 benchmark 逐各独立零样本评测，无累积 → not_satisfied"
+  eval_notes:
+  - "6 个 QA benchmark + 附录 4 个扩展；忠实度指标由 SAVER 自身审计协议
+    计算（自评估判分器，非独立判分）"
+
 # —— 外部锚点（已核查 2026-09-13，材料：arXiv/ar5iv HTML，ExpeL 用本地全文）——
 - paper: "arxiv:2409.07429"   # AWM / Agent Workflow Memory
   name: AWM
@@ -484,5 +913,15 @@ candidates:
   - "任务数在 v4 Appendix C、在线 HTML 未渲染 → insufficient_evidence"
 
 # 困难候选在核查中从此清单衍生：同 venue、主题接近、逐项记录不满足的条件。
-# 已确认：WebSynthesis（c2/c3/c4 not_satisfied，困难负例）；
-# Synapse（c2 partial，"存轨迹但不抽象"的边界案例）。
+# 已确认困难候选（按卡点）：
+# - c1 卡：ReX（参数化技能向量，无轨迹输入）、MemBuilder（对话历史非执行轨迹）
+# - c2 卡：ACRM（检索原始轨迹无提炼）、NexGRPO（轨迹三元组+筛选非提炼）、
+#   CDRs（手工规则、明确不学习）、ONEMODEL（参数化内化，显式反对工件）、
+#   ProductResearch（蒸馏终点是 SFT 样本）、JourneyAware-Sim（轨迹原样进训练）、
+#   WebSynthesis（轨迹合成作训练数据）
+# - c2 边界 partial（原样存取+学习/检索）：Synapse、Memento、OxyGent、
+#   MemoPhishAgent、SAVER
+# - c3 边界 partial（训练通道而非运行时调用）：NexGRPO、ProductResearch
+# - c4 卡：RSMeM（instance 绑定、声称-证据落差）、MemoPhishAgent（单任务）、
+#   SOCIA-EVO（同任务迭代复用）、OS-SYMPHONY（同 episode 内）、
+#   SAVER、MemBuilder
