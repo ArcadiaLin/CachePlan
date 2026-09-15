@@ -2,7 +2,7 @@
 
 日期：2026-09-11；KATS 相关内容于 2026-09-12 根据精读更新。
 
-本记录承接 [Papers for Agents 讨论](2026-09-09-paper-for-agents.md)与 [Introduction 中文草稿](../../paper/introduction.zh.md)，整理本轮关于相近工作和方法特色的讨论。文献比较来自定向检索、论文相关章节及作者项目材料，尚未逐项复现。风险等级是研究判断，不是录用概率；下文设计均为候选，尚未确定技术路线、benchmark 或实现计划。
+本记录保留 2026-09-11 至 09-12 的文献比较与方法候选；文中的“当前”指当时讨论。最新设计与活动叙事见 [P4A 算子、skill 与研究活动讨论](2026-09-15-p4a-operators-skills-and-activities.md)，引言见 [Introduction 中文草稿](../../paper/introduction.zh.md)。文献比较来自定向检索、论文相关章节及作者项目材料，尚未逐项复现。风险等级是研究判断，不是录用概率；下文设计均为候选，尚未确定技术路线、benchmark 或实现计划。
 
 本轮两次回复中明确列出的相近工作共 14 篇，论文包位于 [tmps/p4a-related-work-2026-09-11](../../tmps/p4a-related-work-2026-09-11/README.md)。该目录保存 PDF 和下载清单，文献元数据统一登记于 [refs.bib](../../references/refs.bib)。原先已讨论的 ARA 作为背景保留在既有材料中，不重复计入这 14 篇。
 

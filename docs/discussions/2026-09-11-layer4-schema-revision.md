@@ -14,7 +14,7 @@
 依据材料：
 
 - 研究活动框架（A1–A4）：`paper/introduction.zh.md`（2026-09-13 修订）与 `paper/main.tex`
-- 研究方向与初稿使用的 Q1–Q4 框架：[Papers for Agents：讨论与备忘](2026-09-09-paper-for-agents.md)（第 12、13 节）
+- 研究方向与初稿使用的 Q1–Q4 框架：2026-09-09 的《Papers for Agents：讨论与备忘》第 12、13 节（旧稿已从工作树清理，可从 Git 历史查阅）
 - 原始协议：[P4A v1 协议](p4a-v1-protocol.md)（Layer4 与 4-3 过渡契约）
 - 抽取实现：`experiments/p4a/refractor.md`、`experiments/p4a/src/extract/layer4_v2/schemas.py`、
   `experiments/p4a/skill/paper-mineru-resource-extract/SKILL.md`

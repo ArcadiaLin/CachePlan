@@ -161,18 +161,17 @@ Rules:
 
 ## Documentation and Context
 
-Historical documents were substantially removed on 2026-09-09 and remain
-available in Git history. Do not restore or read them in bulk by default.
-The three retained notes under `docs/` are historical reference material:
+Earlier tracked discussion documents were pruned on 2026-09-09 and 2026-09-15
+and remain available in Git history. Do not restore or read them in bulk by
+default. Current design discussion is in
+`docs/discussions/2026-09-15-p4a-operators-skills-and-activities.md`, alongside
+the evolving narrative in `paper/introduction.zh.md`; proposals there remain
+tentative unless agreed with the user.
 
-- `docs/discussions/2026-09-06-literature-maintenance-mini-bench.md`;
-- `docs/discussions/2026-09-07-mini-bench-workflow-design-patterns.md`;
-- `docs/literature/2026-AgenticScholar.md`.
-
-Their old research framing, status declarations, and links to deleted documents
-are not current instructions. Read the relevant parts only when needed for the
-user's task. Do not recreate deleted progress documents or literature indexes
-as a side effect of other work.
+The retained `docs/literature/2026-AgenticScholar.md` and older discussion notes
+contain historical framing and status declarations, not current instructions.
+Read the relevant parts only when needed for the user's task. Do not recreate
+deleted progress documents or literature indexes as a side effect of other work.
 
 When documentation is requested, organize it by purpose under `docs/`:
 `discussions/`, `open-questions/`, `decisions/`, `experiments/`, or `literature/`.

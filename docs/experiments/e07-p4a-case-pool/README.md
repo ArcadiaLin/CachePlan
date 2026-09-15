@@ -2,7 +2,7 @@
 
 状态：2026-09-13 更新。E07 已完成初始语料复制（p0）与 paper–resource 边、引文锚点整理（p1）；资源消歧注册表完成两轮扩充。种子与噪声筛选、扩展、ground truth 核查和案例选择尚未完成。
 
-背景：[Papers for Agents：讨论与备忘](../../discussions/2026-09-09-paper-for-agents.md)。工程入口：[E07 README](../../../experiments/e07-p4a-case-pool/README.md)。
+早期背景为 2026-09-09 的《Papers for Agents：讨论与备忘》（旧稿已从工作树清理，可从 Git 历史查阅）。当前设计见 [P4A 算子、skill 与研究活动讨论](../../discussions/2026-09-15-p4a-operators-skills-and-activities.md)。工程入口：[E07 README](../../../experiments/e07-p4a-case-pool/README.md)。
 
 ## 目标与文档分工
 
