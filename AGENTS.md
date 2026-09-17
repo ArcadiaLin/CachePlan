@@ -5,25 +5,37 @@
 This repository supports an ongoing research project. The tentative publication
 target remains **SIGMOD**.
 
-The current research direction (updated 2026-09-09) is:
+The current research direction (updated 2026-09-17) is:
 
-> **Reasoning-based extraction from research papers and construction of a
-> structured literature resource library (tentative).**
+> **Paper-knowledge memory for research agents and its data-management
+> mechanisms (tentative).**
 
-The project studies how to turn papers and their associated materials into
-structured, evidence-grounded knowledge that supports subsequent research work.
-The literature resource system itself is now the subject of the research.
+The current core question is:
+
+> **How can we build a paper-knowledge database for agents that organizes and
+> manages reading-derived understanding and its complex semantic relationships,
+> supporting continual knowledge accumulation and querying, composition, and
+> reuse in subsequent research tasks?**
+
+The motivating problem is domain-specific Agent Memory: preserving the
+understanding formed by reading papers and associated materials, retaining its
+semantic relationships and evidence, and reusing it across research tasks and
+sessions. Papers are source material; the managed objects are accumulated
+knowledge and its relationships. The database framing concerns their persistent
+representation, organization, querying, and maintenance.
+
 Cache optimization, KV-cache management, and cache-aware scheduling are no
 longer research objectives. The repository name CachePlan is historical; it does
 not constrain the new direction or prescribe an inference backend.
 
 The earlier literature mini-bench contains useful task and data-design ideas.
 Its scope can be developed in greater depth, but its previous role as an
-execution-optimization workload no longer applies. AgenticScholar is a relevant
-reference for scholarly data management; its relevance does not establish this
-project's novelty or effectiveness.
+execution-optimization workload no longer applies. Related-work comparisons
+should prioritize scientific Agent Memory and structured memory architectures.
+AgenticScholar remains a relevant reference for scholarly data management; its
+relevance does not establish this project's novelty or effectiveness.
 
-The precise research question, technical mechanism, task scope, and evaluation
+The specific challenges, technical mechanism, task scope, and evaluation
 protocol remain to be agreed. Do not treat candidate ideas from discussion as
 settled requirements or assume that additional agents or workflow complexity
 constitute a research contribution.
