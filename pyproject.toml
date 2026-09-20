@@ -28,8 +28,6 @@ members = [
 ]
 exclude = [
     "experiments/p4a",             # 历史项目，vllm/mineru 版本与主线冲突，冻结
-    "packages/*",                  # TypeScript
-    "widis/*",                     # WIDI 变体配置，非 Python
 ]
 
 # PEP 735 依赖组：只对开发者生效，**不进入任何实验的 dependencies**。
