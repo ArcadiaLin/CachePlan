@@ -8,6 +8,7 @@ members = [
     "cacheplan-e01",
     "cacheplan-e06",
     "cacheplan-e07",
+    "cacheplan-e08",
 ]
 
 [[package]]
@@ -203,6 +204,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pyyaml", specifier = ">=6" }]
+
+[[package]]
+name = "cacheplan-e08"
+version = "0.1.0"
+source = { editable = "experiments/e08" }
+dependencies = [
+    { name = "beautifulsoup4" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "beautifulsoup4", specifier = ">=4.13,<5" }]
 
 [[package]]
 name = "certifi"

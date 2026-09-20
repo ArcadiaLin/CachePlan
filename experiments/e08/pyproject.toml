@@ -1,0 +1,20 @@
+[project]
+name = "cacheplan-e08"
+version = "0.1.0"
+description = "E08: 面向 schema 设计的小语料——手挑样本 + Semantic Scholar 检索页抓取"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+
+# 解析 S2 检索页的静态 HTML 需要 beautifulsoup4。它此前能 import 纯属巧合：
+# 根 notebook 组的 jupyterlab 经 nbconvert 传递带进了共享 .venv（uv.lock 的
+# nbconvert.dependencies）。那是工具链的实现细节，随时会变，所以 E08 自己声明。
+# pandas 不在这里 —— 它只在 notebook 的切片/展示中用到，属于根 [dependency-groups]
+# 的开发者工具，不是本实验流水线的依赖。
+dependencies = ["beautifulsoup4>=4.13,<5"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/e08"]

@@ -1,0 +1,27 @@
+# 用于 schema 设计的初始样本，不代表 AgenticScholar 的原始语料。
+- 主题: 学习型索引
+  论文: "The Case for Learned Index Structures（SIGMOD 2018）"
+  用来观察什么: 方法、数据分布、查询性能与索引空间之间的关系。
+  s2: https://www.semanticscholar.org/paper/The-Case-for-Learned-Index-Structures-Kraska-Beutel/0539535989147bc7033f4a34931c7b8e17f1c650
+
+- 主题: 学习型索引
+  论文: "ALEX: An Updatable Adaptive Learned Index（SIGMOD 2020）"
+  用来观察什么: 加入动态更新后，读写负载和适用条件如何改变。
+  s2: https://www.semanticscholar.org/paper/ALEX%3A-An-Updatable-Adaptive-Learned-Index-Ding-Minhas/6b2cae9d709731c7ab41400c3286e37820252364
+
+- 主题: 向量搜索
+  论文: "Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs（HNSW，TPAMI 2020）"
+  用来观察什么: 检索参数、召回率与性能的关联。
+  s2: 
+
+- 主题: 向量搜索
+  论文: "DiskANN: Fast Accurate Billion-point Nearest Neighbor Search on a Single Node（NeurIPS 2019）"
+  用来观察什么: 内存、磁盘、数据规模和召回指标的条件差异。
+
+- 主题: 时间序列预测
+  论文: "Are Transformers Effective for Time Series Forecasting?（包含 DLinear，AAAI 2023）"
+  用来观察什么: 线性基线、实验协议与作者结论的支持范围。
+
+- 主题: 时间序列预测
+  论文: "A Time Series is Worth 64 Words: Long-term Forecasting with Transformers（PatchTST，ICLR 2023）"
+  用来观察什么: 不同模型在预测任务中的条件与结果组织。
