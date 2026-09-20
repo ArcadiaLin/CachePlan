@@ -69,3 +69,7 @@ Thumbs.db
 *.tmp
 *.swp
 *~
+
+# notebook 旁的探索产物：只是 notebook 跑出来的中间结果，不是流水线工件
+# （流水线工件在 data/processed/，带 _provenance）。
+experiments/*/notebooks/_scratch/
