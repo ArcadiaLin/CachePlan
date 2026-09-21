@@ -22,11 +22,8 @@ default-groups = ["notebook"]    # 一次 `uv sync` 就得到完整开发环境
 
 [tool.uv.workspace]
 members = [
-    "experiments/e01-p4a-trajectory",
-    "experiments/e06-static-prefix",
     "experiments/e07-p4a-case-pool",
     "experiments/e08",
-    "experiments/utils/mineru",
 ]
 exclude = [
     "experiments/p4a",             # 历史项目，vllm/mineru 版本与主线冲突，冻结
@@ -38,6 +35,10 @@ exclude = [
 # 的 `make verify-stdlib`。
 [dependency-groups]
 notebook = [
+    # notebook 的执行内核。jupyterlab 传递依赖它，但从 VS Code 或外部
+    # Jupyter 连这个 .venv 时不经过 jupyterlab，故显式声明 —— 同 E08
+    # 给 beautifulsoup4 写的理由：不靠工具链的传递依赖。
+    "ipykernel>=6.29,<8",
     "jupyterlab>=4.2,<5",
     "nbstripout>=0.7,<0.9",
     "pandas>=2.2,<3",

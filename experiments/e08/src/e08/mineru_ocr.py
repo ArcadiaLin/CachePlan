@@ -1,16 +1,7 @@
-"""单篇 PDF → Markdown。
-
-给别的实验调用的一个函数：传入一个 PDF，拿回 OCR 出来的 Markdown 字符串。
-不落盘、不批处理、不记账 —— 输出写到哪、怎么记溯源，由调用方按自己的实验决定。
-
-一篇的内部流程：
-  1. `mutool draw` 按 DPI 把整篇渲染成 PNG（临时目录，用完即删）
-  2. MinerUClient 两步抽取（版面检测 + 逐块内容），页间并发由 concurrency 控制
-  3. 每页 json2md，页与页之间用空行拼接
-
-服务地址默认从 experiments/utils/mineru/.env 的 mineru_service 读，见 service.py。
-导入名是 utils.mineru（见 pyproject 里关于命名空间包的说明）。
 """
+使用 vllm 部署的 openai completion 兼容的 mineru 服务进行 ocr
+"""
+
 
 from __future__ import annotations
 
@@ -24,6 +15,10 @@ from pathlib import Path
 
 # mineru_vl_utils 默认把 loguru 开在 DEBUG，逐块抽取会刷屏；导入它之前先压到 INFO。
 from loguru import logger as _loguru_logger
+import os
+
+ENV_KEY = "MINERU_SERVICE"
+PKG_ROOT = Path(__file__).resolve().parents[2]  # experiments/e08
 
 _loguru_logger.remove()
 _loguru_logger.add(lambda m: print(m, file=sys.stderr, flush=True), level="INFO")
@@ -32,12 +27,54 @@ from PIL import Image  # noqa: E402
 from mineru_vl_utils import MinerUClient  # noqa: E402
 from mineru_vl_utils.post_process import json2md  # noqa: E402
 
-from .service import resolve_server_url  # noqa: E402
-
 MODEL = "mineru"
 DEFAULT_DPI = 200
 DEFAULT_CONCURRENCY = 24
 DEFAULT_HTTP_TIMEOUT = 900
+
+def parse_env_file(path: Path) -> dict[str, str]:
+    """极简 KEY=VALUE 解析：跳过空行与 # 注释，剥掉可选引号。"""
+    out: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if not sep:
+            continue
+        out[key.strip()] = value.strip().strip("\"'")
+    return out
+
+
+def env_file_candidates(explicit: Path | None) -> list[Path]:
+    if explicit is not None:
+        return [explicit]
+    return [Path.cwd() / ".env", PKG_ROOT / ".env"]
+
+
+def resolve_server_url(explicit: str | None = None, env_file: Path | None = None) -> tuple[str, str]:
+    """返回 (服务地址, 来源说明)。来源说明进日志，便于事后确认跑的是哪个服务。"""
+    if explicit:
+        return explicit.rstrip("/"), "server_url 参数"
+
+    for key in (ENV_KEY.upper(), ENV_KEY.lower()):
+        if os.environ.get(key):
+            return os.environ[key].rstrip("/"), f"环境变量 {key}"
+
+    for path in env_file_candidates(env_file):
+        if not path.is_file():
+            continue
+        # 键名在文件里不区分大小写：两侧都小写后再比，别让 ENV_KEY 的写法决定成败。
+        values = {k.lower(): v for k, v in parse_env_file(path).items()}
+        if values.get(ENV_KEY.lower()):
+            return values[ENV_KEY.lower()].rstrip("/"), str(path)
+
+    tried = ", ".join(str(p) for p in env_file_candidates(env_file))
+    raise RuntimeError(
+        f"找不到 MinerU 服务地址：server_url= 未给，环境变量 {ENV_KEY} 未设，"
+        f"下列 .env 里也没有 {ENV_KEY}= —— {tried}"
+    )
+
 
 
 @lru_cache(maxsize=8)

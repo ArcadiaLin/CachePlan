@@ -10,7 +10,10 @@ requires-python = ">=3.12,<3.14"
 # nbconvert.dependencies）。那是工具链的实现细节，随时会变，所以 E08 自己声明。
 # pandas 不在这里 —— 它只在 notebook 的切片/展示中用到，属于根 [dependency-groups]
 # 的开发者工具，不是本实验流水线的依赖。
-dependencies = ["beautifulsoup4>=4.13,<5"]
+dependencies = [
+    "beautifulsoup4>=4.13,<5",
+    "mineru-vl-utils>=2.0.5,<3"
+    ]
 
 [build-system]
 requires = ["hatchling"]
