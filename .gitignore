@@ -16,6 +16,9 @@
 /results/
 /tmps/
 
+# Per-config pi conversation history.
+/pi-configs/*/sessions/
+
 # Node.js dependencies, build output, and profiling artifacts.
 node_modules/
 dist/

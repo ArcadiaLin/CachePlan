@@ -28,18 +28,19 @@ description: 开发 pi (pi-coding-agent) 的 extension，或在本项目的 pi-c
 
 ## 加载与测试位置
 
-- 项目级（推荐，跟随本项目）：`projs/CachePlan/.pi/extensions/`
-- 全局（本项目不主动使用）：`~/.pi/agent/extensions/`
-- 快速测试：`pi -e ./path.ts`
-- 自动发现位置的 extension 支持 `/reload` 热重载
+- 本项目的扩展开发位置：`pi-configs/<版本>/extensions/`，可用单文件 `<名称>.ts` 或子目录 `<名称>/index.ts`。
+- 通过 `./pi-configs/<版本>/start.sh` 加载；启动脚本把配置目录作为本地 pi 资源包传给 `--extension`，并用 `--no-extensions` 限定自动加载的扩展集合。
+- 全局 `~/.pi/agent/extensions/` 和项目 `.pi/extensions/` 不会自动加载；额外扩展可显式传入 `-e ./path.ts`。
+- 配置目录内的扩展支持 `/reload`，包括重新发现新增的扩展文件。
 
 ## 与本项目的关系：pi-configs 配置版本
 
 本项目根目录有 `pi-configs/`，用于存放 pi 的启动配置版本（现有 `default/`）。约定见 `pi-configs/README.md`：
 
-- 每个子目录是一套配置版本，含 `start.sh`（启动脚本，保留调用时 cwd，透传额外参数给 pi）和 `SYSTEM.md`（可编辑的静态 system prompt 副本，替换 prompt 主体；AGENTS.md 和 skills 仍由 pi 动态追加）
+- 每个子目录是一套配置版本，含 `start.sh`（保留调用时 cwd，透传额外参数）、`SYSTEM.md`（可编辑的提示词主体）、`extensions/`（该配置的扩展源码）和 `sessions/`（本地会话，Git 忽略）；AGENTS.md 和 skills 仍由 pi 动态追加
 - 从仓库根目录用 `./pi-configs/<版本>/start.sh` 启动
-- 新增配置版本：复制 `default/` 为新目录，修改其中的 `SYSTEM.md` 和 `start.sh`
-- 模型、登录态、工具、扩展和会话配置沿用本机 pi
+- 新增配置版本：复制 `default/` 中的启动脚本、提示词和需要的扩展源码到新目录，不复制 `sessions/` 历史记录
+- 模型、登录态和内置工具配置沿用本机 pi；会话通过 `--session-dir` 保存到对应配置的 `sessions/`，可用同一启动脚本的 `--continue` / `--resume` 恢复
+- 配置目录还可添加 `skills/`、`prompts/`、`themes/`，按 pi 本地资源包约定额外加载；这些类型的全局和项目资源仍按 pi 的规则发现
 
 开发/调试 extension 时，如需隔离环境验证（自定义 system prompt、指定 extension 集合等），就在 `pi-configs/` 下新建一个配置版本来跑，不要改动 `default/` 或全局 `~/.pi/agent/` 的现役配置。
