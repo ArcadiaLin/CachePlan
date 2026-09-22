@@ -19,6 +19,11 @@
 # Per-config pi conversation history.
 /pi-configs/*/sessions/
 
+# Per-config pi agent dir (symlinks to local credentials, generated caches).
+# Each config's own models.json stays tracked.
+/pi-configs/*/agent/*
+!/pi-configs/*/agent/models.json
+
 # Node.js dependencies, build output, and profiling artifacts.
 node_modules/
 dist/

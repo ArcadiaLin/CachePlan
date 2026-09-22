@@ -47,3 +47,16 @@ pi-configs/<版本>/
 新增配置时，创建新目录及其中的 `extensions/`（没有扩展时也保留空目录），
 复制 `default/start.sh`、`default/SYSTEM.md` 和需要的扩展源码；不要复制 `sessions/` 历史记录。
 启动脚本会根据自身位置选择新配置的资源和会话目录。
+
+## no-write-bash
+
+`no-write-bash/` 在通用结构之上做了两处调整：
+
+- 启动脚本加 `--exclude-tools write,bash`，禁用内置的 write 和 bash 工具
+  （保留 read、edit），`SYSTEM.md` 也相应改写，可继续自由编辑。
+- 启动脚本设置 `PI_CODING_AGENT_DIR=<配置目录>/agent`，使模型配置来自该目录下
+  自己的 `models.json`（纳入 Git）。pi 没有单独的 models.json 路径参数，只能整体
+  重定向 agent 目录；因此 `agent/` 下的 `auth.json`、`settings.json`、`trust.json`
+  和 `skills/` 是指向 `~/.pi/agent/` 同名条目的符号链接，登录态、设置和全局 skills
+  仍沿用本机 pi。这些符号链接和 pi 生成的缓存（`models-store.json`、`npm/` 等）
+  被 `.gitignore` 排除，只有 `models.json` 入库。

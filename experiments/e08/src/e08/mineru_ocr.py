@@ -38,7 +38,8 @@ _loguru_logger.add(lambda m: print(m, file=sys.stderr, flush=True), level="INFO"
 
 from PIL import Image  # noqa: E402
 from mineru_vl_utils import MinerUClient  # noqa: E402
-from mineru_vl_utils.post_process import json2md  # noqa: E402
+
+from . import mineru_assemble as assemble  # noqa: E402
 
 MODEL = "mineru"
 DEFAULT_DPI = 200
@@ -50,10 +51,8 @@ DEFAULT_HTTP_TIMEOUT = 900
 # chart → markdown 表、pure_table → HTML、natural_image → caption。
 DEFAULT_IMAGE_ANALYSIS = True
 
-# 落盘裁图的块类型。表格也裁：抽出来的 HTML 可能错，裁图是核对用的证据。
-CROP_TYPES = ("image", "chart", "table")
-# 在 md 里直接插 ![]() 的类型；table 的正文保留 HTML，裁图用注释指路，免得表格被图盖住。
-MD_INLINE_TYPES = ("image", "chart")
+# 裁哪些块、md 怎么插图、caption 怎么配对，全在 mineru_assemble 里（移植自官方
+# mineru 的 block → middle_json → md 那条链）。这里只管服务侧的参数。
 
 def parse_env_file(path: Path) -> dict[str, str]:
     """极简 KEY=VALUE 解析：跳过空行与 # 注释，剥掉可选引号。"""
@@ -163,28 +162,6 @@ def _crop_block(page: Image.Image, bbox: list[float], angle: int | None) -> Imag
     return crop
 
 
-def _blocks_to_md(blocks: list[dict], crops: dict[int, str]) -> str:
-    """把一页的 block 拼成 Markdown。
-
-    不自己实现拼接：改写 content 后交给 mineru_vl_utils 的 `json2md`，这样 `merge_prev`
-    （跨栏续写的段落合并）等行为与只要 md 的路径完全一致。改写在副本上做，
-    `blocks.json` 里保留服务返回的原样。
-    """
-    patched: list[dict] = []
-    for idx, block in enumerate(blocks):
-        block = dict(block)
-        rel = crops.get(idx)
-        if rel is not None:
-            content = block.get("content") or ""
-            if block.get("type") in MD_INLINE_TYPES:
-                alt = block.get("sub_type") or block.get("type") or "image"
-                block["content"] = f"![{alt}]({rel})" + (f"\n\n{content}" if content else "")
-            else:
-                block["content"] = (content + f"\n\n<!-- crop: {rel} -->").strip()
-        patched.append(block)
-    return json2md(patched)
-
-
 async def _aextract_pages(
     pdf: Path,
     workdir: Path,
@@ -237,9 +214,9 @@ async def aocr_pdf(
             pdf, Path(td), url=url, dpi=dpi, concurrency=concurrency,
             http_timeout=http_timeout, image_analysis=image_analysis,
         )
-    # 空页（无 block，或整页只有被丢弃的块）不参与拼接，否则尾部会灌一串空行。
-    parts = [_blocks_to_md(blocks, {}) for blocks in pages_blocks]
-    return "\n\n".join(part for part in parts if part.strip())
+    # 走同一套装配（含 caption 归属、版面附属物分流、标题与公式的规范化），
+    # 只是没有裁图可引用，所以图块只留 <details> 里的描述。
+    return assemble.to_markdown(assemble.assemble(pages_blocks), crop_paths={})
 
 
 def ocr_pdf(pdf: str | Path, **kwargs) -> str:
@@ -270,12 +247,16 @@ async def aocr_bundle(
 ) -> Path:
     """OCR 一篇 PDF，把完整产出写进 `out_root/<pdf 主名>/`，返回该目录。
 
-        <stem>.md      正文；image/chart 处插 ![](images/...)，table 的裁图用注释指路
-        blocks.json    逐页 block 原样（type/bbox/angle/content/sub_type）+ 本页裁图清单
-        images/        image/chart/table 块的裁图（见 CROP_TYPES）
-        pages/         整页渲染，仅当 keep_page_renders=True
-        meta.json      溯源：pdf sha256、页数、dpi、服务地址、模型、版本、耗时、计数
+        <stem>.md          正文：caption 在图旁、模型读图的描述在 <details> 里、
+                           标题带 #、公式用 $ / $$、页眉页脚不在正文
+        blocks.json        服务返回的逐页 block 原样，不做任何改写
+        content_list.json  装配后的扁平清单（官方 content_list 形态）：img_path、
+                           content、*_caption、*_footnote、sub_type、sub_images、bbox
+        images/            每个视觉主体一张裁图（多图容器裁整图，不裁碎片）
+        pages/             整页渲染，仅当 keep_page_renders=True
+        meta.json          溯源：pdf sha256、页数、dpi、服务地址、模型、版本、耗时、计数
 
+    装配逻辑在 `mineru_assemble`，移植自官方 mineru（见该模块 docstring 的参照位置）。
     `crop_dpi` 缺省同 `dpi`；给更大的值会为裁图单独重渲一遍页面（bbox 归一化，与 dpi 无关）。
     目录已存在且非空时抛 `FileExistsError`，除非 `overwrite=True` —— 重跑一篇要花几分钟，
     不默认覆盖。
@@ -295,6 +276,9 @@ async def aocr_bundle(
             http_timeout=http_timeout, image_analysis=image_analysis,
         )
 
+        pages_assembled = assemble.assemble(pages_blocks)
+        plan = assemble.crop_plan(pages_assembled)
+
         # 裁图源：同 dpi 就复用 OCR 用过的页图，否则单独重渲一遍。
         effective_crop_dpi = crop_dpi or dpi
         crop_pages = pages if effective_crop_dpi == dpi else _render_pages(pdf, work / "crop", effective_crop_dpi)
@@ -307,69 +291,59 @@ async def aocr_bundle(
         images_dir = bundle / "images"
         images_dir.mkdir(parents=True, exist_ok=True)
 
-        page_records: list[dict] = []
-        md_parts: list[str] = []
-        type_counts: dict[str, int] = {}
-        crop_count = 0
+        crop_paths: dict[tuple[int, int], str] = {}
+        crop_records: list[dict] = []
+        by_page: dict[int, list[dict]] = {}
+        for entry in plan:
+            by_page.setdefault(entry["page"], []).append(entry)
 
-        for page_no, (blocks, crop_src) in enumerate(zip(pages_blocks, crop_pages), start=1):
-            crops: dict[int, str] = {}
-            crop_records: list[dict] = []
-            visual = [(idx, b) for idx, b in enumerate(blocks) if b.get("type") in CROP_TYPES]
-            if visual:
-                with Image.open(crop_src) as page_img:
-                    page_img = page_img.convert("RGB")
-                    for idx, block in visual:
-                        crop = _crop_block(page_img, block["bbox"], block.get("angle"))
-                        name = f"p{page_no:03d}-b{idx:02d}-{block['type']}.png"
-                        crop.save(images_dir / name)
-                        rel = f"images/{name}"
-                        crops[idx] = rel
-                        crop_records.append({
-                            "block": idx,
-                            "type": block["type"],
-                            "sub_type": block.get("sub_type"),
-                            "bbox": block["bbox"],
-                            "angle": block.get("angle"),
-                            "path": rel,
-                            "size": list(crop.size),
-                        })
-                        crop.close()
-            crop_count += len(crop_records)
-
-            for block in blocks:
-                btype = block.get("type", "unknown")
-                type_counts[btype] = type_counts.get(btype, 0) + 1
-
-            page_records.append({"page": page_no, "blocks": blocks, "crops": crop_records})
-            md_parts.append(_blocks_to_md(blocks, crops))
+        for page_no, entries in sorted(by_page.items()):
+            with Image.open(crop_pages[page_no - 1]) as page_img:
+                page_img = page_img.convert("RGB")
+                for entry in entries:
+                    crop = _crop_block(page_img, entry["bbox"], entry.get("angle"))
+                    crop.save(images_dir / entry["name"])
+                    rel = f"images/{entry['name']}"
+                    crop_paths[(page_no, entry["block"])] = rel
+                    crop_records.append({**{k: entry[k] for k in ("page", "block", "type", "bbox", "angle")},
+                                         "path": rel, "size": list(crop.size)})
+                    crop.close()
 
         if keep_page_renders:
             pages_dir = bundle / "pages"
             pages_dir.mkdir(parents=True, exist_ok=True)
-            for page_no, src in enumerate(crop_pages, start=1):
-                shutil.copyfile(src, pages_dir / f"p{page_no:03d}.png")
+            for page_no, src_path in enumerate(crop_pages, start=1):
+                shutil.copyfile(src_path, pages_dir / f"p{page_no:03d}.png")
 
     md_path = bundle / f"{pdf.stem}.md"
-    md_path.write_text("\n\n".join(part for part in md_parts if part.strip()) + "\n", encoding="utf-8")
+    md_path.write_text(assemble.to_markdown(pages_assembled, crop_paths), encoding="utf-8")
 
+    # 原样：任何清洗都不写回这里，它是回溯用的基准。
     (bundle / "blocks.json").write_text(
-        json.dumps({"pdf": pdf.name, "page_count": len(page_records), "pages": page_records},
+        json.dumps({"pdf": pdf.name, "page_count": len(pages_blocks),
+                    "pages": [{"page": i, "blocks": blocks}
+                              for i, blocks in enumerate(pages_blocks, start=1)],
+                    "crops": crop_records},
                    ensure_ascii=False, indent=1) + "\n",
         encoding="utf-8",
     )
 
+    content_list = assemble.to_content_list(pages_assembled, crop_paths)
+    (bundle / "content_list.json").write_text(
+        json.dumps(content_list, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
+    )
+
+    assembled_counts = assemble.counts(pages_assembled)
     meta = {
         "pdf": {"name": pdf.name, "path": str(pdf.resolve()),
                 "bytes": pdf.stat().st_size, "sha256": _sha256(pdf)},
-        "page_count": len(page_records),
+        "page_count": len(pages_blocks),
         "params": {
             "dpi": dpi,
-            "crop_dpi": crop_dpi or dpi,
+            "crop_dpi": effective_crop_dpi,
             "image_analysis": image_analysis,
             "concurrency": concurrency,
             "http_timeout": http_timeout,
-            "crop_types": list(CROP_TYPES),
             "keep_page_renders": keep_page_renders,
         },
         "service": {"server_url": url, "url_origin": origin, "model": MODEL},
@@ -377,23 +351,38 @@ async def aocr_bundle(
             "mineru_vl_utils": _pkg_version("mineru-vl-utils"),
             "mutool": _mutool_version(),
             "python": platform.python_version(),
+            "assemble_ref": "MinerU 3.4.0 (references/repos/MinerU)",
         },
         "run": {"started_at": started_at,
                 "finished_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 "elapsed_s": round(time.monotonic() - started, 1)},
-        "counts": {"blocks": sum(len(r["blocks"]) for r in page_records),
-                   "by_type": dict(sorted(type_counts.items())),
-                   "crops": crop_count},
+        "counts": {
+            "raw_blocks": sum(len(b) for b in pages_blocks),
+            "raw_by_type": _count_types(pages_blocks),
+            "crops": len(crop_records),
+            **assembled_counts,
+        },
         "outputs": {"md": md_path.name, "md_sha256": _sha256(md_path),
-                    "blocks": "blocks.json", "images": crop_count,
+                    "blocks": "blocks.json", "content_list": "content_list.json",
+                    "images": len(crop_records),
                     "pages": "pages/" if keep_page_renders else None},
-        # 口径：OCR 结果是机器抽取的文本，不是事实；图的描述同理。核对要回 PDF 原文。
-        "caveat": "machine-extracted; verify numbers against the PDF",
+        # 口径：OCR 结果是机器抽取的文本，不是事实；<details> 里的图表描述更是模型读图的
+        # 产物，不可当实验数据引用。核对要回 PDF 原文。
+        "caveat": "machine-extracted; figure/chart descriptions are model readings of the image",
     }
     (bundle / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=1) + "\n", encoding="utf-8"
     )
     return bundle
+
+
+def _count_types(pages_blocks: list[list[dict]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for blocks in pages_blocks:
+        for block in blocks:
+            btype = block.get("type", "unknown")
+            counts[btype] = counts.get(btype, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def ocr_bundle(pdf: str | Path, out_root: str | Path, **kwargs) -> Path:
