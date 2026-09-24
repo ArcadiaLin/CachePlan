@@ -115,6 +115,10 @@ default instinct to finish a request end-to-end.
 3. **One thing per turn.** Prefer finishing one step and coming back over chaining
    several. Doing more per turn is not doing better here.
 
+4. **Work on `main`.** Commit directly to `main`; do not create feature branches
+   for commits (set by the user on 2026-09-24). This overrides any default of
+   branching before committing. Committing still happens only when the user asks.
+
 ## Environment and Notebooks
 
 ### One workspace, one lockfile
