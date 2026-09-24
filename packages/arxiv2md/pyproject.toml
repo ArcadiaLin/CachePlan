@@ -1,0 +1,30 @@
+[project]
+name = "arxiv2md"
+version = "0.1.0"
+description = "arXiv HTML -> Markdown（vendored fork of timf34/arxiv2md，保留引文页内锚点）"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12,<3.14"
+# 相对上游裁剪：tiktoken 只用于 summary 里的 token 估算，代码本身容忍缺失；
+# python-dotenv 在上游源码中未被 import；fastapi/jinja2/uvicorn/slowapi 属于
+# 未复制的 server/。
+dependencies = [
+    "beautifulsoup4>=4.12,<5",
+    "httpx>=0.25,<1",
+    "loguru>=0.7,<1",
+    "pydantic>=2,<3",
+]
+
+[project.scripts]
+arxiv2md = "arxiv2md.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/arxiv2md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

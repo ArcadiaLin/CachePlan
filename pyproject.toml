@@ -18,12 +18,13 @@ dependencies = []
 
 [tool.uv]
 package = false                  # 根只是锚点，不构建、不安装
-default-groups = ["notebook"]    # 一次 `uv sync` 就得到完整开发环境
+default-groups = ["notebook", "test"]    # 一次 `uv sync` 就得到完整开发环境
 
 [tool.uv.workspace]
 members = [
     "experiments/e07-p4a-case-pool",
     "experiments/e08",
+    "packages/arxiv2md",
 ]
 exclude = [
     "experiments/p4a",             # 历史项目，vllm/mineru 版本与主线冲突，冻结
@@ -44,4 +45,9 @@ notebook = [
     "pandas>=2.2,<3",
     "pyarrow>=17,<22",
     "plotly>=5.24,<7",
+]
+test = [
+    # 成员的单元测试（packages/arxiv2md/tests）。按仓库约定，开发者工具
+    # 只出现在根的依赖组里，不进入任何成员的 dependencies。
+    "pytest>=8,<9",
 ]
