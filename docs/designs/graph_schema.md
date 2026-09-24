@@ -1,6 +1,6 @@
 # 论文理解经验 Graph Model
 
-本稿以已有抽取内容为起点，保留**论文（Paper）、自述贡献（Contribution）、方法（Method）、主张（Claim）、实验（Experiment）和资源（Resource）**之间的联系。
+本稿设计一个面向研究 Agent 的论文知识图：保存阅读后形成的理解，通过论文引用、共享方法、资源和命题连接不同论文，让后续研究能够查找、比较和复用已有经验。
 
 采用 Neo4j 的 Labeled Property Graph 模型，统一使用 `Node`、`Relationship`、`Label`、`Type`、`Property` 描述。概念依据见 [Neo4j 图模型](https://neo4j.com/docs/getting-started/appendix/graphdb-concepts/)。
 
@@ -21,556 +21,490 @@ Graph Model
      └── Path query
 ```
 
-设计草案，尚未实施。抽取内容依据 [Layer4 v3](../discussions/2026-09-13-layer4-schema-proposal.yml)，实验范围沿用 [实验抽取设计](experiments.md)。
-下文 Node 和 Relationship 使用 Cypher pattern 展示结构，Query 使用完整查询语句；所有取值仅为示意，空字符串、空列表与示例布尔值均不是默认值。
+以下为概念设计，Cypher 仅用于展示结构与查询意图，尚未实施。
+
+## 设计思路
+
+- **保留研究对象及其关系。** 论文中的贡献、主张、方法、实验和依据，以及跨论文联系，共同构成可复用的理解。
+- **简化 Property。** 节点保留必要名称、Agent 描述和原文锚点；不以减少节点或关系类型作为精简目标。
+- **用 Agent 撰写的描述保存理解。** 图中保留元数据和加工后的理解；已获取的原文整理成 Markdown，摘要、正文和表格等原始内容通过工具按需读取。
+- **从论文及其引用逐步入图。** 被引文献尚未获取全文时，可以先凭已知标题建立 Paper 和引用关系，后续再补充材料与理解。
+- **围绕跨论文联系组织图。** 同一方法、资源或命题可以连接多篇论文；各论文中的具体说法和使用经验分别保留。
+- **按需展开篇内内容。** 不要求每篇论文建立完整内部子图，也不要求抽齐所有节点类型。
+
+Node 按其表达的内容分为：
+
+- 论文与研究内容：`Paper`、`Contribution`、`Method`、`MethodConcept`、`Claim`、`ClaimConcept`。
+- 实验与评测：`Experiment`、`Metric`、`Condition`。
+- 资源与使用经验：`Resource`、`ResourceRecord`。
+- 原文依据：`ContentUnit`。
+
+## Property 的共同约定
+
+每个 Node 有一个 `id` 用于引用，Paper 示例显式列出，其余示例省略。内容属性主要是：
+
+- `text` / `description`：Agent 整理后的主张或描述，可以概括和改写，保留影响含义的条件、版本和局限；Agent 自己的推断在文字中说明。
+- `anchor`：指向已处理 Markdown 的原文位置，统一采用 `<文件路径::章节::start:end>`。区间沿用 Markdown 读取工具的定位口径；多处依据可列出多个锚点，示例统一用列表表示。
+
+原文的文字、表格和图片所在位置均使用同一种锚点。来源可沿已连接节点回溯时，不必重复存放。示例文字仅展示表达方式，不代表已有研究结论。
+
+抽取模型、提示词、运行记录等需要复现时保存在实验日志中，本图暂不展开这些工程字段。
 
 ## Node
 
-Node 表示对象或记录，Label 描述其类别，Property 描述其属性。例如 `(:Paper {title: "", abstract: ""})` 中，`Paper` 是 Label，`title` 和 `abstract` 是 Property。
-
-- 研究撰写相关：`Paper`、`Contribution`、`Method`、`Claim`。
-- 实验描述相关：`Experiment`、`Metric`、`Condition`。
-- 使用资源相关：`Resource`、`ResourceRecord`。
-- 原文内容相关：`ContentUnit`。
-
 ### Paper
 
-一篇论文在某次抽取中的记录，也是访问该次论文理解结果的入口。`paper_id` 标识论文，`id` 区分抽取修订。
+一篇论文在图中的入口，可以先只有已知元数据，再随材料获取和阅读补充理解。阅读概述由 Agent 撰写，可包含研究问题、贡献和重要局限。
 
 ```cypher
 (:Paper {
-    id: "<record_set_id>::<paper_id>",
-    paper_id: "<paper_id>",
-    source_type: "paper",
-    title: "",
-    authors: ["<author>"],
-    year: "2025",                         // STRING，沿用抽取格式
-    venue: "",
-    abstract: "",
-    arxiv_id: "",
-    acl_id: "",
-    doi: "",
-    url: "",
-    ss_id: "",                            // 可选，有外部来源时填写
-
-    paper_type: "benchmark",
-    research_problem: "",
-    target_domain: ["<domain>"],
-    limitations_json: "[]",               // 保留条目与各自证据
-    future_work_json: "[]",
-
-    section_outline_json: "[]",
-    has_appendix: true,
-    has_supplementary_material: false,
-    citation_context_json: "[]",           // 原始逐上下文标注
-    unresolved_references_json: "[]",      // 库外或尚未解析的引文
-    cites_references_total: 61,
-    cites_anchored: 22,
-    cites_resolved_in_corpus: 1,
-
-    input_format: "pdf",                  // pdf / latex / html
-    pdf_path: "<path>/paper.pdf",
-    markdown_path: "<path>/paper.md",      // MinerU 生成的原文定位基准
-    markdown_sha256: "<sha256>",          // 固定这份 Markdown 的内容版本
-    content_list_path: "<path>/content_list.json",
-    source_artifacts_json: "{}",           // 元数据及材料下载记录
-    extracted_from: ["<paper_id>"],
-    last_checked: "<ISO 8601>"
+    id: "<paper_id>",
+    title: "<论文标题>",
+    year: 2026,
+    s2_id: "<Semantic Scholar ID>",
+    paper_type: "method",
+    description: "<Agent 对论文的概述>",
+    markdown_path: "<文件路径>",
+    anchor: ["<文件路径::引言::start:end>"],
+    arxiv_id: ""
 })
 ```
+
+`id` 是图内论文标识，不依赖是否已获取全文、S2 或 arXiv 记录。`s2_id`、`arxiv_id` 等元数据已知时填写；`paper_type` 可先使用 method / dataset / benchmark / empirical / survey / other。概述中需要核对的内容可通过 `anchor` 定位。
+
+从引用条目中仅获得标题时，也可以先建立节点：
+
+```cypher
+(:Paper {
+    id: "<paper_id>",
+    title: "<引用条目中的论文标题>"
+})
+```
+
+此时不要求填写 `description`、`markdown_path` 或其他未知属性，也不据标题生成全文阅读结论。标题用于发现和匹配文献，不直接作为唯一 ID；后续确认对应文献并获得材料时，在同一节点上补充信息，保持 `id` 不变。
 
 ### Contribution
 
-作者明确声明的一项贡献，来自摘要、引言、结论等位置。保存作者说法，不由抽取器补写贡献，也不将新颖性声明视为已验证事实。
+论文声明的一项贡献，由 Agent 整理其内容与意义，并连接它涉及的方法、资源、实验和具体主张。
 
 ```cypher
 (:Contribution {
-    id: "<record_set_id>::atomic_extracts.contributions[0]",
-    text: "We introduce ...",
-    position: 0                           // INTEGER，原列表顺序，从 0 开始
+    text: "<Agent 整理后的贡献描述>",
+    anchor: ["<文件路径::引言::start:end>"]
 })
 ```
 
-Contribution 回答“作者声明了什么贡献”；Claim 承接需要关联支持依据的主张。二者可以语义重叠，分别保留抽取条目；不因文字相似合并，也不要求每项贡献关联实验。
+Contribution 回答“这篇论文贡献了什么”；Claim 表达其中可以单独讨论或检查依据的具体主张。例如，“提出方法 M 并改善任务表现”可以连接方法 M，以及描述其效果的 Claim。一项贡献不必同时关联所有类型，也不要求一定有实验支持。
 
 ### Method
 
-论文中描述的一项具名方法，保持篇内记录粒度。
+可以被提出、沿用、扩展或比较的具体方法方案或明确变体。描述保存其主要思想和机制；某篇论文如何使用它，由该论文与方法的关系说明。
 
 ```cypher
 (:Method {
-    id: "<record_set_id>::<method_id>",
-    method_id: "<paper_id>::method::1",
-    name: "<method name>",
-    aliases: ["<alias>"]
+    name: "<方法名称>",
+    description: "<Agent 对方法机制与用途的描述>",
+    anchor: ["<文件路径::方法::start:end>"]
 })
 ```
 
-同名方法不自动跨论文合并；本文提出、沿用或比较该方法，由 `HAS_METHOD.role` 表达。
+确认指向同一方法时，跨论文共用节点；有实质变化的方法可另建节点并关联其来源。方法方案与可下载的模型、代码资源分别表示，后者属于 Resource。
+
+### MethodConcept
+
+跨论文共享的方法类别，描述一类方法的共同机制和范围。具体 Method 通过 `INSTANCE_OF` 连接到类别，类别之间通过关系表达层级或重叠。
+
+```cypher
+(:MethodConcept {
+    name: "<方法类别名称>",
+    description: "<该类别的共同机制、适用范围与区分边界>"
+})
+```
+
+例如，“检索增强生成”和“基于图索引的检索增强生成”可作为 MethodConcept；某篇论文提出的具体 RAG 或 GraphRAG 方案属于 Method。类别归属由定义与方法内容确定，可以有多个类别，不要求组织成单一树形。
+
+MethodConcept 的类别层级与 Method 的沿用谱系分别表达：属于同类不自动表示直接改进自另一方法。方法类别和共同命题也有不同含义：
+
+| 具体内容 | 归一化概念 | 两层之间的关系 |
+|---|---|---|
+| `Method`：具体方案或变体，多篇论文可沿用同一方案 | `MethodConcept`：具有定义的方法类别 | `INSTANCE_OF`：方案属于该类别 |
+| `Claim`：某篇论文的具体主张，保留条件和依据 | `ClaimConcept`：跨论文共同表达的完整命题 | `EXPRESSES`：具体说法表达该命题 |
 
 ### Claim
 
-论文的一条主张，来源定位与支持实验分别保存。
+Agent 根据一篇论文整理的一条具体主张，保留其适用条件与原文依据。它可以被后续论文的主张参照，也可以连接所讨论的方法、资源及支持实验。
 
 ```cypher
 (:Claim {
-    id: "<record_set_id>::<claim_id>",
-    claim_id: "<paper_id>::claim::1",
-    text: "<claim text>",
-    support_strength: "partial"           // direct / partial / claimed_only
+    text: "在本文考察的多跳检索任务中，结构化记忆改善了回答质量。",
+    anchor: ["<文件路径::实验结果::start:end>"]
 })
 ```
 
-`support_strength` 是整条主张的总体判断，判断来源保留在 `field_status_json`；不能复制到每条 `SUPPORTED_BY` 并解释为逐实验评分。
+每篇论文的具体说法分别保存；只有论文的发布声明或作者判断时，在 text 中明确写出。原文锚点支持回看，不单独代表主张已被验证。
 
-### Experiment
+### ClaimConcept
 
-论文报告的一项实验活动，将资源、指标、条件和结果位置组织到同一实验范围内。
+跨论文共享的归一化命题，用来关联表达同一命题的 Claim。其 text 由 Agent 归纳，依据通过关联的 Claim 回溯。
 
 ```cypher
-(:Experiment {
-    id: "<record_set_id>::<experiment_id>",
-    experiment_id: "<paper_id>::exp::1",
-    task: "<experimental task>",
-    subjects_json: "[]",                  // 被测模型、系统或方法的原始描述
-    baselines_json: "[]"                  // 对照对象的原始描述
+(:ClaimConcept {
+    text: "<保留必要适用范围的共同命题>"
 })
 ```
 
-`20 prominent LLMs` 这样的集合表述保持原文，不据此生成 20 个 Node。具名被测对象完成对齐后的 Relationship 另行定义。
+归并要求命题含义与适用范围相容，不能通过删掉关键条件来制造一致性。仅仅讨论相同主题，不足以连接到同一个 ClaimConcept；无法确认时先保留独立 Claim。
+
+本稿先按“共同命题”设计。若后续需要聚合对同一问题给出不同答案的主张，再讨论 Question / Issue 的表示。
 
 ### Resource
 
-可供跨论文连接的资源身份；具体画像与观察存入 ResourceRecord。
+可被多篇论文共同使用或讨论的资源，如数据集、基准、代码、模型和工具。
 
 ```cypher
 (:Resource {
-    id: "<resolved_resource_id>",
-    resource_id: "<resolved_resource_id>",
-    name: "<display name>"                // 可选显示名
+    name: "<资源名称>",
+    kind: "dataset",
+    url: "<资源地址>",
+    description: "<Agent 对资源用途的简要描述>"
 })
 ```
 
-未完成对齐时使用带论文／记录集作用域的局部 ID。名称、规范名或仓库 URL 相同均不足以单独判定同一资源；同一仓库可能同时提供数据、代码和工具。
+`kind` 可使用 dataset / benchmark / code / model / tool。确认是同一资源时共用节点；同名或共用仓库 URL 不自动视为同一资源。
 
 ### ResourceRecord
 
-某次抽取或观察对资源的描述，经 `DESCRIBES` 连接 Resource。同一资源可以有来自不同论文、仓库快照或观察时间的多份记录。
+某篇论文对一个资源的具体描述或使用经验。它将论文中的说法连接到共同资源，保留不同论文对该资源的用法和认识。
 
 ```cypher
 (:ResourceRecord {
-    id: "<record_set_id>::resource_records[0]",
-    resource_id_raw: "<resource_id from extraction>",
-    name: "<name in source>",
-    name_normalized: "<normalized name>",
-    aliases: ["<alias>"],
-    kind: "dataset",                      // dataset / benchmark / code / model / tool
-    description: "",
-
-    anchor_github: "<owner>/<repo>",
-    anchor_huggingface: "<type>/<org>/<name>",
-    anchor_doi: "",
-    anchor_url: "",
-
-    profile_task: "",
-    profile_domain: ["<domain>"],
-    profile_languages: ["en"],
-    profile_scale: "<scale in source>",
-    profile_splits_json: '[{"name":"test","size":100}]',
-    profile_evaluation_metrics: ["<metric name>"],
-    profile_scoring: "program",           // program / llm_judge / human / mixed / unknown
-    profile_prerequisites: ["<prerequisite>"],
-
-    access_type: "public",                // public / request_only / restricted / missing / unknown
-    access_url: "",
-    access_license: "",
-
-    material_repo_exists: true,
-    material_repo_non_empty: true,
-    material_has_readme: true,
-    material_has_dependency_manifest: true,
-    material_has_entrypoint: true,
-    material_declared_license: "",
-    material_last_commit_at: "<ISO 8601>",
-    material_observed_by: "github_api",
-    material_observed_at: "<ISO 8601>",
-    material_notes: "",
-
-    availability_status: "available",     // available / partial / missing / broken / empty / unknown
-    availability_source: "external_observation", // paper_claim / external_observation / inferred
-    availability_observed_by: "github_api",
-    availability_observed_at: "<ISO 8601>",
-    availability_notes: "",
-
-    extracted_from: ["<paper_id>"],
-    registry_entry: "<registry entry>",
-    registry_status: "matched",           // matched / split_by_spelling / needs_context / unregistered
-    last_checked: "<ISO 8601>"
+    url: "<本记录对应的资源链接>",
+    description: "<本文如何介绍、处理或使用该资源，以及相关发现或局限>",
+    anchor: ["<文件路径::数据与设置::start:end>"]
 })
 ```
 
-`profile_splits_json` 描述资源有哪些切分；本次实验用了哪个切分、子集和版本，属于 `USES` 的 Property。ResourceRecord 不等同于资源版本。
+`url` 保留该记录中出现或使用的资源地址，可以是论文给出的仓库、版本或数据下载链接；Resource 的 `url` 保存资源的通用入口，两者可以相同，也可以不同。
 
-`access_license` 与 `material_declared_license` 分别保留论文／获取信息与仓库声明。材料检查和可获得性各自保留来源、观察者与时间；发现仓库或入口不表示成功执行或复现。
+影响理解的版本、切分和修改写在 description 中。论文声称资源公开时，按声明保存；外部检查或实际运行得到的结论需在描述中说明其依据。
+
+### Experiment
+
+论文报告的一项实验，连接被测对象、资源、条件、指标和结果，并作为相关主张的依据。描述概括实验目的、设置、主要发现和局限。
+
+```cypher
+(:Experiment {
+    description: "<Agent 对实验设置、主要发现及其边界的总结>",
+    anchor: [
+        "<文件路径::实验设置::start:end>",
+        "<文件路径::实验结果::start:end>"
+    ]
+})
+```
+
+实验的条件、指标和结果可以单独连接，也可在 description 中概括。不同实验能否比较，需要结合被测对象、条件和指标定义判断。
 
 ### Metric
 
-实验或资源画像使用的指标身份；同名指标须确认定义和口径一致后才能共享。
+实验或资源评测使用的指标。共享指标可以帮助查找采用相同评测口径的工作。
 
 ```cypher
 (:Metric {
-    id: "<resolved_or_scoped_metric_id>",
-    name: "<metric name>",
-    aliases: ["<alias>"]
+    name: "<指标名称>",
+    description: "<指标衡量什么及其计算口径>",
+    anchor: ["<文件路径::评测指标::start:end>"]
 })
 ```
+
+同名且定义、口径一致时才共用节点；具体实验如何使用指标可在关系描述中说明。
 
 ### Condition
 
-具体实验的一项自由名值条件，保留独立来源定位。
+一项实验的具体条件，用来保留结果的适用范围。
 
 ```cypher
 (:Condition {
-    id: "<record_set_id>::<experiment_id>::conditions[0]",
     dimension: "context_length",
-    values: "4k / 8k / 16k / 32k / 64k / 128k" // STRING，保留原文
+    description: "<Agent 整理的条件取值及含义>",
+    anchor: ["<文件路径::实验设置::start:end>"]
 })
 ```
 
-不同实验的同名条件分别保存；不建立全局维度实体，也不拆分 `8 × A100` 等自由取值。
+Condition 属于具体实验；同名条件不必跨实验合并。
 
 ### ContentUnit
 
-实验结果所指向的原文表或图。`label` Property 是论文中的表图编号，与 Node 的 Label 不同。
+被引用的原文表、图或段落，是结果和依据的可访问位置。
 
 ```cypher
 (:ContentUnit {
-    id: "<record_set_id>::<table_id>",
-    unit_id: "<table_id>",
     kind: "table",
     label: "Table 2",
-    caption: "<caption>",
-    section_id: "sec-4",
-    paragraph_index: 58,
-    parsed: true,                         // 仅表示表体已解析为行列
-    body_kind: "html",                    // html / markdown / image
-    md_span: [412, 455]                    // v3 的 Markdown 行区间，非字符区间
-})
-
-(:ContentUnit {
-    id: "<record_set_id>::<figure_id>",
-    unit_id: "<figure_id>",
-    kind: "figure",
-    label: "Figure 1",
-    caption: "<caption>",
-    section_id: "sec-1",
-    paragraph_index: 12,
-    parsed: false,                        // 当前只登记图题与路径
-    image_path: "<path>/images/fig1.jpg"
+    description: "<Agent 对该内容及其用途的简要说明>",
+    anchor: ["<文件路径::实验结果::start:end>"]
 })
 ```
 
-初版不预建数值 Result；`RESULT_AT` 指向表图，按需抽取数值的回写方式待定。
-
-### 公共 Property：身份与抽取记录
-
-所有 Node 都有非空字符串 `id`。除可共享的 Resource、Metric 外，上述 Node 均属于具体 `record_set_id`，并具有以下公共 Property；各 Label 示例不再重复列出。
-
-```cypher
-(n {
-    id: "<record_set_id>::<local id or item path>",
-    record_set_id: "<immutable record set id>",
-    schema_version: "<extraction schema version>",
-    pipeline_run_id: "<run id>",
-    extraction_path: "<path in extraction output>",
-    model: "<extraction model>",
-    prompt_version: "<prompt version>",
-    inputs_digest: "sha256:<digest>",
-    record_written_at: "<ISO 8601>",
-    observed_at: "<ISO 8601>",
-    source_version_at: "<ISO 8601>",
-    unresolved_refs_json: "[]"             // 尚未解析的非引文引用：字段路径与原值
-})
-```
-
-`n` 是变量，不是新增 Label。`record_set_id` 区分输入快照、运行和修订；同一输入的不同抽取不能共用记录 ID。刷新追加记录，旧记录不覆盖；不使用 Neo4j 内部 ID 作业务引用。
-
-时间沿用 ISO 8601 字符串，比较时解析；观察时间、来源版本时间、写入时间分别填写，未知时省略。`model` 与 `prompt_version` 不代替材料观察者。
-
-### 公共 Property：原文定位与状态
-
-论文抽取出的记录及语义 Relationship 使用相同的来源 Property。下面以 Claim 展示；结构性归属由 `record_set_id` 和 `extraction_path` 回溯。
-
-```cypher
-(:Claim {
-    evidence_origin: "paper",              // paper / repository / model_card / dataset_card / external_page
-    evidence_source_uri: "<path>/paper.md",
-    evidence_source_version: "<OCR artifact version>",
-    evidence_source_digest: "sha256:<markdown sha256>",
-    evidence_section_id: "sec-4",
-    evidence_paragraph_index: 55,
-    evidence_char_span: [88, 332],          // v3 原有的段内字符区间
-    evidence_md_span: [1200, 1444],         // 补充：最终 Markdown 全文字符区间
-    evidence_quote: "<verbatim source text>",
-    evidence_locator: "<external locator, when applicable>",
-    evidence_refs_json: "[]"               // 多证据项；各自保留适用字段、来源、版本、定位和时间
-})
-```
-
-`evidence_md_span` 约定为最终 Markdown 解码文本的 Unicode 码点区间，从 0 开始、左闭右开；不得直接复制 v3 的段内 `char_span` 或表体行区间。定位须绑定文档摘要，OCR 重建后重新对齐；该全文偏移映射尚待实现。
-
-Resource 的论文来源通过 ResourceRecord 回溯；外部观察指向实际材料快照。ResourceRecord 的画像来源使用以下 Property，与论文角色 Relationship 的正文依据分别保存：
-
-```cypher
-(:ResourceRecord {
-    profile_evidence_origin: "repository",
-    profile_evidence_source_uri: "<repository snapshot URI>",
-    profile_evidence_source_version: "<commit>",
-    profile_evidence_source_digest: "sha256:<digest>",
-    profile_evidence_locator: "README.md#L12-L30",
-    profile_evidence_quote: "<verbatim source text>",
-    profile_evidence_source_version_at: "<ISO 8601>",
-    profile_evidence_refs_json: "[]"
-})
-```
-
-画像来自论文时，同样使用 `profile_evidence_section_id`、`profile_evidence_paragraph_index`、`profile_evidence_char_span`、`profile_evidence_md_span` 定位。
-
-Paper 与 ResourceRecord 完整保留原始字段状态；子 Node 与 Relationship 通过 `extraction_path` 回查。
-
-```cypher
-(:Paper {
-    field_status_json: '{"metadata.doi":{"absence":"not_found","observed_by":"arxiv_api"}}'
-})
-
-(:ResourceRecord {
-    field_status_json: '{"availability.status":{"source":"external_observation","observed_by":"github_api"}}'
-})
-```
-
-`source` 沿用 `paper_claim / external_observation / inferred`；`absence` 沿用 `not_checked / not_found / not_applicable`。缺值省略 Property 并保留状态，`false + not_applicable` 也省略布尔值；`not_found` 仅表示在已声明范围内未找到。
-
-Property 使用标量或同类型简单值列表；嵌套结构展开为 Property、转换为 Node／Relationship，或存入 `*_json` 字符串。JSON 内容不作为普通图查询谓词；类型限制见 [Neo4j Property 类型](https://neo4j.com/docs/cypher-manual/current/values-and-types/property-structural-constructed/)。
+`kind` 可使用 table / figure / paragraph。ContentUnit 支持多项实验指向同一份结果材料，具体内容通过 Markdown 锚点读取，无需保存表体格式或解析状态。
 
 ## Relationship
 
-Relationship 连接两个 Node，具有方向、一个 Type，以及描述本次联系的 Property。
+Relationship 表达对象间的联系。需要解释关系含义时使用 `description`；需要原文依据时使用 `anchor`，与 Node 沿用相同约定。简单归属关系不必重复附加描述和锚点。
 
-```cypher
-// 格式示意：CITES 是 Type，context、section 是 Property。
-(:Paper {title: "BERT"})
-    -[:CITES {
-        context: "<citation context>",
-        section: "introduction"
-    }]->
-(:Paper {title: "Attention Is All You Need"})
-```
-
-### 论文、贡献与方法
+### 论文、贡献与具体内容
 
 ```cypher
 (:Paper)-[:HAS_CONTRIBUTION]->(:Contribution)
+(:Contribution)-[:ABOUT]->(:Method)
+(:Contribution)-[:ABOUT]->(:Resource)
+(:Contribution)-[:ABOUT]->(:Experiment)
+(:Contribution)-[:HAS_CLAIM]->(:Claim)
+```
 
+`ABOUT` 说明贡献涉及哪个对象：例如提出方法、发布数据集或开展一项实验研究。`HAS_CLAIM` 连接该贡献包含的具体主张，进一步可沿 Claim 查看实验依据。
+
+这些联系由贡献内容及原文依据确定，不因出现在同一篇论文中就自动建立；Contribution 与 Claim 也不要求一一对应。
+
+### 论文与主张
+
+```cypher
+(:Paper)-[:HAS_CLAIM]->(:Claim)
+(:Claim)-[:EXPRESSES]->(:ClaimConcept)
+(:Claim)-[:ABOUT]->(:Method)
+(:Claim)-[:ABOUT]->(:Resource)
+```
+
+`EXPRESSES` 将具体说法关联到共同命题；`ABOUT` 标明主张讨论的对象。共享 ClaimConcept 提供跨论文查找入口，各 Claim 的条件和依据仍需分别阅读。
+
+### 论文与方法
+
+```cypher
 (:Paper)
     -[:HAS_METHOD {
-        role: "proposed"                  // proposed / reused / extended / compared
+        role: "reused",
+        description: "<本文如何使用或修改该方法>",
+        anchor: ["<文件路径::方法::start:end>"]
     }]->
 (:Method)
 
 (:Method)-[:DERIVED_FROM]->(:Method)
 (:Method)-[:DERIVED_FROM]->(:Resource)
 (:Method)-[:PRODUCES]->(:Resource)
+(:Method)-[:INSTANCE_OF]->(:MethodConcept)
 ```
 
-`DERIVED_FROM` 仅连接显式来源；`PRODUCES` 对应方法的资源产物，不表示已检查可用。Contribution 不自动推导到 Method 或 Resource 的语义 Relationship。
+`HAS_METHOD.role` 可使用 proposed / reused / extended / compared。`DERIVED_FROM` 表达有依据的来源或沿用，`PRODUCES` 表达方法的资源产物，`INSTANCE_OF` 表达具体方案的类别归属；具体联系通过关系描述与锚点解释。
 
-### 主张、实验与结果
-
-```cypher
-(:Paper)-[:HAS_CLAIM]->(:Claim)
-(:Paper)-[:REPORTS]->(:Experiment)
-(:Claim)-[:SUPPORTED_BY]->(:Experiment)
-
-(:Experiment)
-    -[:HAS_CONDITION {
-        position: 0
-    }]->
-(:Condition)
-
-(:Experiment)
-    -[:MEASURED_BY {
-        name_raw: "<metric name in source>",
-        scoring: "program"                // program / llm_judge / human / mixed / unknown
-    }]->
-(:Metric)
-
-(:Experiment)-[:RESULT_AT]->(:ContentUnit)
-(:Paper)-[:HAS_CONTENT]->(:ContentUnit)
-```
-
-`SUPPORTED_BY` 保留抽取记录中的支持判断及其来源；结构连通不代表支持关系已核实。`MEASURED_BY.scoring` 属于本次实验。
-
-### 实验使用资源
-
-```cypher
-(:Experiment)
-    -[:USES {
-        role: "evaluation_target",        // training_data / evaluation_target / analysis_input / tooling / unknown
-        split: "test",
-        subset: "<subset in source>",
-        version: "<version used>",
-        resource_record_id: "<resource record id>", // 存在对应描述记录时填写
-        mapping_origin: "resources_used"
-    }]->
-(:Resource)
-```
-
-同一实验可以以不同角色、切分或版本多次使用同一 Resource，分别保存 Relationship。版本未知时省略，不填“最新版”；仓库检查时观察到的 commit 不自动成为实验使用版本。
-
-当前沿用 v3 的角色词表；`evaluation_target` 不单独判定资源是评测输入还是被测对象，细分 `EVALUATED_ON`／`EVALUATES` 仍待确定。
-
-### 资源身份、描述与论文角色
+### 论文与资源经验
 
 ```cypher
 (:Paper)-[:HAS_RESOURCE_RECORD]->(:ResourceRecord)
 (:ResourceRecord)-[:DESCRIBES]->(:Resource)
-
-(:ResourceRecord)
-    -[:HAS_METRIC {
-        name_raw: "<metric name in profile>"
-    }]->
-(:Metric)
+(:ResourceRecord)-[:HAS_METRIC]->(:Metric)
 
 (:Paper)
     -[:RELATES_TO {
-        role: "introduced",               // introduced / used / evaluated / cited_only / unknown
-        split: "<split in paper>",
-        subset: "<subset in paper>",
-        version: "<version in paper>",
-        modification: "<modification in source>",
-        citation_context_ids: ["<context_id>"],
-        resource_record_id: "<resource record id>"
+        role: "used",
+        description: "<本文与该资源的联系>",
+        anchor: ["<文件路径::数据与设置::start:end>"]
     }]->
 (:Resource)
 ```
 
-`RELATES_TO` 保存论文级联系，`USES` 保存实验级使用；不将论文级角色和条件直接复制到实验。由 `used_in_experiments` 补出的 `USES` 使用 `mapping_origin: "paper_relation"`，角色缺失时为 `unknown`。
+`RELATES_TO.role` 可使用 introduced / used / evaluated / cited_only，表示论文与资源的直接联系；ResourceRecord 保存具体描述和使用经验。多篇论文的记录可以指向同一 Resource，从而并列查看不同认识。
 
-以下两份记录描述同一资源，分别保留论文声明与外部观察；它们不是两个资源版本。
+`HAS_METRIC` 连接资源所采用的评测指标；某次实验实际使用的指标则由该 Experiment 的 `MEASURED_BY` 表达。
+
+### 实验与依据
 
 ```cypher
-(:ResourceRecord {id: "rr-paper", availability_source: "paper_claim"})
-    -[:DESCRIBES]->
-(r:Resource {id: "res-D", resource_id: "res-D"})
-    <-[:DESCRIBES]-
-(:ResourceRecord {id: "rr-repository", availability_source: "external_observation"})
+(:Paper)-[:REPORTS]->(:Experiment)
+(:Claim)-[:SUPPORTED_BY]->(:Experiment)
+(:Experiment)-[:HAS_CONDITION]->(:Condition)
+(:Experiment)-[:MEASURED_BY]->(:Metric)
+(:Experiment)-[:RESULT_AT]->(:ContentUnit)
+(:Paper)-[:HAS_CONTENT]->(:ContentUnit)
+
+(:Experiment)-[:EVALUATES {role: "target"}]->(:Method)
+(:Experiment)-[:EVALUATES {role: "baseline"}]->(:Method)
+(:Experiment)-[:EVALUATES {role: "target"}]->(:Resource)
+(:Experiment)-[:EVALUATES {role: "baseline"}]->(:Resource)
+
+(:Experiment)-[:USES {role: "evaluation_data"}]->(:Resource)
 ```
 
-### 论文引用
+`EVALUATES` 连接被测方法或模型等资源，区分 target / baseline；`USES` 连接所用数据、工具等，role 可使用 training_data / evaluation_data / analysis_input / tooling。
+
+`HAS_CONDITION` 和 `MEASURED_BY` 表达实验采用的条件和指标；`RESULT_AT` 指向报告结果的具体内容，`HAS_CONTENT` 保留内容所属论文。Experiment 的 anchor 可以定位实验整体，ContentUnit 的 anchor 定位具体表、图或段落。
+
+`SUPPORTED_BY` 表达 Agent 对支持关系的理解；若只支持部分内容，在关系 description 中说明，并给出对应 anchor。论文级资源角色不直接推作实验中的使用角色。
+
+### 论文互相参照
 
 ```cypher
 (:Paper)
     -[:CITES {
-        reference_index: 12,
-        anchor_type: "arxiv",              // arxiv / doi / url / none
-        anchor: "<resolved external identifier>",
-        context_ids: ["<context_id>"],
-        roles: ["benchmark_source"],       // 多个引用上下文的角色汇总
-        context: "<citation context>",     // 单一上下文时可展开
-        section: "<section title>"         // 单一上下文时可展开
+        description: "沿用该论文的评测任务，并增加跨领域测试。",
+        anchor: ["<引用方文件路径::实验设置::start:end>"]
     }]->
 (:Paper)
 ```
 
-`CITES` 只连接已解析的库内目标记录；库外引用保留在 `unresolved_references_json`。多上下文的文本、位置与角色配对保留在 `citation_context_json`，不能拼成单一 `context` 或将一个锚点广播给上下文内所有参考文献。
+`CITES` 保留引用事实，description 解释引用方如何使用被引工作。引用本身不自动推出主张支持或方法沿用关系。
 
-目标追加修订时，旧 `CITES` 不静默改指。反向遍历即可查询谁引用了本文，无需另存反向 Relationship。
+尚无全文的 Paper 也可以作为 `CITES` 的终点。关系的 `anchor` 指向引用方 Markdown 中的引用上下文或参考文献条目；只有引用条目时，先保留引用和定位，待有足够依据后再补充关系描述。
 
-### 公共 Property：关系身份与来源
+### 同类 Node 之间的关系
 
-每条 Relationship 都有非空 `id`、`record_set_id` 和产生它的 `extraction_path`；语义 Relationship 还携带原文定位 Property。以下使用 `USES` 示意公共字段：
+同类节点可以直接表达沿用、组成、支持、限制、差异和层级关系。下表列出关系的端点、方向及需要在 description 与依据中表达清楚的内容。
+
+| 同类节点 | Relationship Type | 方向 | 需要表达清楚的内容 |
+|---|---|---|---|
+| `Paper` | `CITES` | 引用方 → 被引论文 | 如何引用和使用被引工作 |
+| `Method` | `DERIVED_FROM` | 派生方法 → 来源方法 | 改进或沿用的来源，以及继承、修改了哪些机制 |
+| `Method` | `USES_COMPONENT` | 整体方法 → 组件方法 | 使用了哪个方法作为组件，以及组件承担什么作用 |
+| `Method` | `DIFFERS_FROM` | 语义对称 | 具体差异维度及两方做法，例如索引结构、检索方式或构建成本 |
+| `MethodConcept` | `SUBTYPE_OF` | 子类 → 上位类别 | 类别包含关系：子类保留哪些共同特征，又增加了哪些限定 |
+| `MethodConcept` | `OVERLAPS_WITH` | 语义对称 | 类别的共同部分与各自范围，部分重叠不等于包含 |
+| `Claim` | `SUPPORTS` | 提供支持的主张 → 得到支持的主张 | 哪些发现或理由提供支持，以及支持到什么范围 |
+| `Claim` | `CHALLENGES` | 提出质疑的主张 → 被质疑的主张 | 反例、不支持的结果或质疑针对什么内容，是否涉及条件差异 |
+| `Claim` | `QUALIFIES` | 提供限定的主张 → 被限定的主张 | 补充了哪些适用条件、例外或边界 |
+| `ClaimConcept` | `REFINES` | 细化后的命题 → 较概括的命题 | 命题增加了哪些具体条件、对象或区分；细化不自动表示逻辑蕴含 |
+| `ClaimConcept` | `IMPLIES` | 前提命题 → 被蕴含命题 | 在什么共同前提下，前者成立足以推出后者 |
+| `ClaimConcept` | `CONTRADICTS` | 语义对称 | 同一对象、条件和口径下，两条命题为何不能同时成立 |
+| `Resource` | `DERIVED_FROM` | 派生资源 → 来源资源 | 数据、代码或模型的派生来源，以及筛选、修改或加工方式 |
+| `Resource` | `PART_OF` | 组成资源 → 整体资源 | 资源的组成关系及该部分在整体中的作用 |
+| `Contribution` | `EXTENDS` | 后续贡献 → 被扩展的贡献 | 后续工作具体扩展了前作的哪项贡献，以及新增内容 |
+
+语义对称的关系不赋予起点、终点主次含义，读取时可双向遍历。其余关系按表中方向理解，不把类别包含、组件组成和命题蕴含统一成一种“包含”。
+
+关系沿用简洁的 `description + anchor`。description 说明适用范围，并区分作者明示与 Agent 归纳；跨论文判断的依据可以包含两篇论文的锚点。
+
+方法的类别归属与直接沿用需要分别判断，不要求为每条关系计算相似度分数。性能差异通过具体 Claim、Experiment 和条件说明，不建立脱离设置的普遍优劣判断。
+
+Claim 之间的证据支持也不自动升级为 ClaimConcept 之间的逻辑蕴含。例如，“多跳任务中观察到改善”不能直接推出“所有任务都改善”；不同条件下的结果差异也不直接构成 `CONTRADICTS`。
+
+### Agent 扩展关系
+
+Agent 优先使用已有关系类型。遇到确有用途、但尚未归入上述类型的新语义时，可先用 `RELATED_TO` 保存，并通过 `kind` 给出关系名称：
 
 ```cypher
-(:Experiment)
-    -[:USES {
-        id: "<record_set_id>::<relationship item path>",
-        record_set_id: "<record_set_id>",
-        extraction_path: "atomic_extracts.experiments[0].resources_used[0]",
-        extraction_paths: ["<path 1>", "<path 2>"], // 多入口对应同一条联系时保留
-        evidence_origin: "paper",
-        evidence_source_uri: "<path>/paper.md",
-        evidence_source_version: "<OCR artifact version>",
-        evidence_source_digest: "sha256:<markdown sha256>",
-        evidence_section_id: "sec-4",
-        evidence_paragraph_index: 55,
-        evidence_char_span: [88, 332],
-        evidence_md_span: [1200, 1444],
-        evidence_quote: "<verbatim source text>",
-        evidence_refs_json: "[]"
+(a:Method)
+    -[:RELATED_TO {
+        kind: "design_tradeoff",
+        description: "<二者在哪个设计维度形成取舍、适用范围及判断依据>",
+        anchor: [
+            "<论文A文件路径::方法::start:end>",
+            "<论文B文件路径::方法::start:end>"
+        ]
     }]->
-(:Resource)
+(b:Method)
 ```
 
-同一产物重复导入按记录 ID 保持幂等，不仅按起点、Type、终点覆盖。篇级资源列表与 `paper_relation` 内容一致时合并入口并保留路径；有冲突时保留差异。实验显式使用条目存在时，不再通过论文级引用重复补建。
+扩展关系可用于其他有明确关联的节点，description 同时说明两端角色和方向含义。相同含义复用同一个 kind；反复出现且含义稳定后，再统一为专门的 Relationship Type。`RELATED_TO` 用于扩展语义关系，已有 `RELATES_TO` 仍表示论文与资源的角色联系。
 
-来源缺口要补足或登记待补；`extraction_path` 不能代替原文依据。未解析目标留在 `unresolved_refs_json`，不猜测端点；新 Type 需明确端点、方向、语义及依据，不自动生成相似或矛盾关系。
+不要求所有同类节点两两相连，也不预先给每种节点配齐同类关系。Condition、ContentUnit 等仍以所属实验、论文及已有引用关系组织，每条新增关系应提供具体的可复用理解。
+
+## 图的组织方式
+
+篇内保留贡献、具体主张及其依据之间的联系。下图是可能存在的一条路径，不要求每项贡献都具备所有后续节点。
+
+```mermaid
+graph LR
+    P[Paper] -->|HAS_CONTRIBUTION| C[Contribution]
+    C -->|ABOUT| M[Method]
+    C -->|HAS_CLAIM| CL[Claim]
+    CL -->|ABOUT| M
+    CL -->|SUPPORTED_BY| E[Experiment]
+    E -->|EVALUATES| M
+    E -->|HAS_CONDITION| CO[Condition]
+    E -->|MEASURED_BY| ME[Metric]
+    E -->|RESULT_AT| CU[ContentUnit]
+```
+
+下图展示两篇论文如何通过共同命题和资源相连，节点之间的路径用于寻找相关经验。
+
+```mermaid
+graph LR
+    PA[Paper A] -->|HAS_CLAIM| CA[Claim A]
+    PB[Paper B] -->|HAS_CLAIM| CB[Claim B]
+    CA -->|EXPRESSES| CC[ClaimConcept]
+    CB -->|EXPRESSES| CC
+    PA -->|HAS_RESOURCE_RECORD| RA[ResourceRecord A]
+    PB -->|HAS_RESOURCE_RECORD| RB[ResourceRecord B]
+    RA -->|DESCRIBES| R[Resource]
+    RB -->|DESCRIBES| R
+    PB -->|CITES| PA
+```
+
+具体方法与方法类别分别组织。以下以 RAG 为例展示本模型的分类方式：2020 年论文提出的具体 RAG 模型与 Microsoft 2024 年的 GraphRAG 方案是 Method；“检索增强生成”及其图索引子类是 MethodConcept。方案来源见 [RAG 原始论文](https://arxiv.org/abs/2005.11401)与 [GraphRAG 原始论文](https://arxiv.org/abs/2404.16130)。
+
+```mermaid
+graph BT
+    M1[Method：2020 RAG 方案] -->|INSTANCE_OF| C1[MethodConcept：检索增强生成]
+    M2[Method：Microsoft 2024 GraphRAG 方案] -->|INSTANCE_OF| C2[MethodConcept：基于图索引的检索增强生成]
+    C2 -->|SUBTYPE_OF| C1
+```
+
+该图仅表达类别归属，不据此推导两个具体方案之间的 `DERIVED_FROM`。复用时可通过共同对象或同类节点关系找到相关记录，再阅读 Agent 描述，必要时沿锚点核对原文。
 
 ## Query
 
-查询使用参数选择论文记录／记录集；跨修订统计论文数量时按 `paper_id` 去重。以下为读取模式示例，尚未在数据库执行。
+以下查询展示模型希望支持的读取方式，尚未在数据库执行。
 
-### Pattern matching：读取论文自述贡献
+### 从贡献查看具体主张及其结果依据
 
 ```cypher
-MATCH (:Paper {id: $paper_record_id})-[:HAS_CONTRIBUTION]->(c:Contribution)
+MATCH (:Paper {id: $paper_id})-[:HAS_CONTRIBUTION]->(c:Contribution)
+OPTIONAL MATCH (c)-[:HAS_CLAIM]->(cl:Claim)
+OPTIONAL MATCH (cl)-[:SUPPORTED_BY]->(e:Experiment)
+OPTIONAL MATCH (e)-[:RESULT_AT]->(content:ContentUnit)
 RETURN c.text AS contribution,
-       c.evidence_source_uri AS source,
-       c.evidence_md_span AS span,
-       c.evidence_quote AS quote
-ORDER BY c.position
+       c.anchor AS contribution_anchor,
+       cl.text AS claim,
+       cl.anchor AS claim_anchor,
+       e.description AS experiment,
+       e.anchor AS experiment_anchor,
+       content.description AS result_description,
+       content.anchor AS result_anchor
 ```
 
-### Traversal：沿共享资源找到其他论文的实验
+### 找到表达共同命题的其他论文
 
 ```cypher
-MATCH (p1:Paper {id: $paper_record_id})-[:REPORTS]->(e1:Experiment)
-      -[u1:USES]->(r:Resource)<-[u2:USES]-(e2:Experiment)
-      <-[:REPORTS]-(p2:Paper)
-WHERE p1.paper_id <> p2.paper_id
-  AND p2.record_set_id IN $record_set_ids
-RETURN DISTINCT p2.paper_id AS paper,
-       e2.task AS task,
-       r.resource_id AS resource,
-       u1.role AS source_role, u2.role AS other_role,
-       u1.version AS source_version, u2.version AS other_version,
-       u1.split AS source_split, u2.split AS other_split,
-       u1.subset AS source_subset, u2.subset AS other_subset
+MATCH (p1:Paper {id: $paper_id})-[:HAS_CLAIM]->(c1:Claim)
+      -[:EXPRESSES]->(concept:ClaimConcept)
+      <-[:EXPRESSES]-(c2:Claim)<-[:HAS_CLAIM]-(p2:Paper)
+WHERE p1.id <> p2.id
+RETURN concept.text AS common_claim,
+       c1.text AS source_claim,
+       p2.title AS related_paper,
+       c2.text AS related_claim,
+       c1.anchor AS source_anchor,
+       c2.anchor AS related_anchor
 ```
 
-共享资源提供关联入口，实验是否可比还需结合角色、版本、切分和条件判断。
-
-### Path query：返回主张到结果位置的完整路径
+### 沿共同资源查找其他论文的使用经验
 
 ```cypher
-MATCH (:Paper {id: $paper_record_id})-[:HAS_CLAIM]->(c:Claim)
-MATCH path = (c)-[:SUPPORTED_BY]->(:Experiment)-[:RESULT_AT]->(:ContentUnit)
-RETURN c.text AS claim, path
+MATCH (p1:Paper {id: $paper_id})-[:HAS_RESOURCE_RECORD]->(r1:ResourceRecord)
+      -[:DESCRIBES]->(r:Resource)
+      <-[:DESCRIBES]-(r2:ResourceRecord)
+      <-[:HAS_RESOURCE_RECORD]-(p2:Paper)
+WHERE p1.id <> p2.id
+RETURN r.name AS resource,
+       r1.description AS source_experience,
+       p2.title AS related_paper,
+       r2.description AS related_experience,
+       r2.anchor AS related_anchor
 ```
 
-沿引用关系查询一至三跳路径，限定允许经过的记录集：
+论文与资源的角色也可直接查询：
 
 ```cypher
-MATCH path = (p:Paper {id: $paper_record_id})-[:CITES*1..3]->(cited:Paper)
-WHERE all(n IN nodes(path) WHERE n.record_set_id IN $record_set_ids)
-RETURN cited.paper_id AS cited_paper, length(path) AS hops, path
+MATCH (p:Paper)-[rel:RELATES_TO]->(r:Resource {id: $resource_id})
+RETURN p.title AS paper, rel.role AS role,
+       rel.description AS relation, rel.anchor AS anchor
 ```
 
-有界路径语法见 [Neo4j Variable-length paths](https://neo4j.com/docs/cypher-manual/current/patterns/variable-length-paths/)。引用可达不表示主张支持或方法沿用。
-
-### 待确定的模型部分
-
-- 发布活动是否需要独立 Release Node，以及 `RELEASES`、`EVALUATES`、`EVALUATED_ON` 的具体语义。
-- 资源与指标身份对齐历史、多证据的结构化查询，以及按需数值结果的表示。
-- 记录替代、失效与 as-of 选择规则；Neo4j 约束、索引及导入实现。
-
-v3 的示例定位、悬空引用和字段状态下标仍需核对，不能直接作为完整入图测试数据；原文定位存在也不等于抽取语义正确。
+这些路径用于发现值得一起阅读和比较的经验。主张归并是否正确、资源是否对齐、关系是否有依据，以及它们是否帮助后续研究，是本模型需要检验的研究问题。
