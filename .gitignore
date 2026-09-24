@@ -10,6 +10,8 @@
 /models/
 /checkpoints/
 /cache/
+# packages/arxiv2md 抓取的 arXiv HTML 缓存（默认 cwd 下，可用 ARXIV2MD_CACHE_PATH 改）
+.arxiv2md_cache/
 
 # Generated experiment output. Keep experiment code and configs under experiments/ tracked.
 /runs/
@@ -81,3 +83,9 @@ Thumbs.db
 # notebook 旁的探索产物：只是 notebook 跑出来的中间结果，不是流水线工件
 # （流水线工件在 data/processed/，带 _provenance）。
 experiments/*/notebooks/_scratch/
+
+# neo4j infra
+
+infra/neo4j/data/
+infra/neo4j/logs/
+infra/neo4j/plugins/

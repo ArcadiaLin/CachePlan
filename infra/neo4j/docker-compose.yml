@@ -1,0 +1,19 @@
+services:
+  neo4j:
+    image: neo4j:ubi10
+    container_name: neo4j
+
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc"]'
+
+    volumes:
+      - ./data:/data
+      - ./logs:/logs
+      - ./plugins:/plugins
+
+    restart: unless-stopped
