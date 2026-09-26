@@ -12,8 +12,12 @@ requires-python = ">=3.12,<3.14"
 # 的开发者工具，不是本实验流水线的依赖。
 dependencies = [
     "beautifulsoup4>=4.13,<5",
-    "mineru-vl-utils>=2.0.5,<3"
-    ]
+    "mineru-vl-utils>=2.0.5,<3",
+    # 论文知识图入库（notebooks/04_neo4j）：官方驱动 + 读取 yml 批次。pyyaml 此前
+    # 同样靠传递依赖进的 .venv，理由同上，显式声明。
+    "neo4j>=5.28,<7",
+    "pyyaml>=6,<7",
+]
 
 [build-system]
 requires = ["hatchling"]
