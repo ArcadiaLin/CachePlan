@@ -35,6 +35,7 @@ Graph Model
 Node 按其表达的内容分为：
 
 - 论文与研究内容：`Paper`、`Contribution`、`Method`、`MethodConcept`、`Claim`、`ClaimConcept`。
+- 任务与问题：`Task`、`Issue`。
 - 实验与评测：`Experiment`、`Metric`、`Condition`。
 - 资源与使用经验：`Resource`、`ResourceRecord`。Resource 另带一个次级 Label 区分种类。
 - 原文依据：`ContentUnit`。
@@ -50,13 +51,13 @@ Node 按其表达的内容分为：
 
 原文的文字、表格和图片所在位置均使用同一种锚点。来源可沿已连接节点回溯时，不必重复存放。示例文字仅展示表达方式，不代表已有研究结论。
 
-跨论文共享、需要按称呼查找的 Node 另有 `aliases`：`Paper`、`Method`、`MethodConcept`、`Resource`、`Metric`。
+跨论文共享、需要按称呼查找的 Node 另有 `aliases`：`Paper`、`Method`、`MethodConcept`、`Task`、`Resource`、`Metric`。
 
 - `aliases`：字符串列表，保存已确认指向同一对象的其他称呼，如缩写、写法变体、标题变体；不重复主名称 `name` / `title`，查找时二者一并检索。
 - alias 不是唯一键，同一个称呼可以出现在多个节点上，命中后仍需按定义、来源和版本消歧。检索时临时生成的扩展词不写入 aliases。
 - 确认为同一对象后才追加，只追加并去重，不覆盖已有值。每个 alias 的出处（所在论文、anchor、判断理由）记录在抽取增量中，不作为图属性展开。
 
-`ClaimConcept` 与论文局部的 Node 不设 aliases：命题的不同说法通过 `EXPRESSES` 连接的 Claim 保存，并保留各自的条件和依据。
+`ClaimConcept`、`Issue` 与论文局部的 Node 不设 aliases：命题或问题的不同说法通过 `EXPRESSES` / `RESPONDS_TO` 连接的 Claim 保存，并保留各自的条件和依据。
 
 抽取模型、提示词、运行记录等需要复现时保存在实验日志中，本图暂不展开这些工程字段。
 
@@ -134,7 +135,7 @@ Contribution 回答“这篇论文贡献了什么”；Claim 表达其中可以�
 })
 ```
 
-例如，“检索增强生成”和“基于图索引的检索增强生成”可作为 MethodConcept；某篇论文提出的具体 RAG 或 GraphRAG 方案属于 Method。类别归属由定义与方法内容确定，可以有多个类别，不要求组织成单一树形。
+例如，“检索增强生成”和“基于图索引的检索增强生成”可作为 MethodConcept；某篇论文提出的具体 RAG 或 GraphRAG 方案属于 Method。评测方法同样按方法类别表示，例如“基于 LLM 的成对比较评测”。方法所针对的任务不作为 MethodConcept，由 `Task` 表示。类别归属由定义与方法内容确定，可以有多个类别，不要求组织成单一树形。
 
 MethodConcept 的类别层级与 Method 的沿用谱系分别表达：属于同类不自动表示直接改进自另一方法。方法类别和共同命题也有不同含义：
 
@@ -142,6 +143,22 @@ MethodConcept 的类别层级与 Method 的沿用谱系分别表达：属于同�
 |---|---|---|
 | `Method`：具体方案或变体，多篇论文可沿用同一方案 | `MethodConcept`：具有定义的方法类别 | `INSTANCE_OF`：方案属于该类别 |
 | `Claim`：某篇论文的具体主张，保留条件和依据 | `ClaimConcept`：跨论文共同表达的完整命题 | `EXPRESSES`：具体说法表达该命题 |
+
+### Task
+
+跨论文共享的研究任务，即方法要解决、实验要评测的问题类型。任务之间可以有包含关系。
+
+```cypher
+(:Task {
+    name: "<任务名称>",
+    aliases: ["<其他称呼>"],
+    description: "<任务的输入输出、目标与评测方式的共同约定>"
+})
+```
+
+例如“时序预测”与其子类“长期时序预测”，“问答”与其子类“多跳问答”。Task 回答“解决什么问题”，MethodConcept 回答“用哪一类做法”：长期时序预测是 Task，季节—趋势分解是 MethodConcept。同一批数据可以服务于不同任务，例如用于预测，也用于表示学习后的迁移，因此任务不从数据集推出，而由方法、实验和资源分别连接。
+
+Task 不另设论文级记录。某篇论文对任务的具体设定分两处保存：实验层面的取值（如回看窗口、预测长度）由 Experiment 与 Condition 表达；论文如何表述该任务写在 `ADDRESSES`、`ON_TASK` 关系的 description 与 anchor 中。论文提出的新任务提法被后续工作沿用时，建立为子 Task，并通过 `SUBTYPE_OF` 连接上位任务。
 
 ### Claim
 
@@ -168,7 +185,22 @@ Agent 根据一篇论文整理的一条具体主张，保留其适用条件与�
 
 归并要求命题含义与适用范围相容，不能通过删掉关键条件来制造一致性。仅仅讨论相同主题，不足以连接到同一个 ClaimConcept；无法确认时先保留独立 Claim。
 
-本稿先按“共同命题”设计。若后续需要聚合对同一问题给出不同答案的主张，再讨论 Question / Issue 的表示。
+本稿中 ClaimConcept 表示“共同命题”；对同一问题给出不同回答的主张，通过 Issue 聚合。
+
+### Issue
+
+跨论文共享的研究问题或有争议的论点。多篇论文可以回应同一个 Issue，回答可以不同甚至相反。
+
+```cypher
+(:Issue {
+    text: "Transformer 架构对长期时序预测是否有效？",
+    description: "<问题的范围、争议所在及判断时需要注意的条件>"
+})
+```
+
+Issue 是问题，ClaimConcept 是命题：前者聚合回应同一问题的主张，回答可以相反；后者聚合表达同一命题的主张，含义必须相容。同一条 Claim 可以既表达某个 ClaimConcept，又回应某个 Issue。
+
+只有论文明确提出某个问题，或两篇以上论文的主张确实在回答同一问题时，才建立 Issue；仅仅讨论相同主题不足以建立。text 的措辞保持中立，不预设答案，并保留范围限定。条件不同的回答仍连接到同一 Issue，条件差异在各自 Claim 与关系描述中说明。
 
 ### Resource
 
@@ -302,6 +334,42 @@ Relationship 表达对象间的联系。需要解释关系含义时使用 `descr
 
 `EXPRESSES` 将具体说法关联到共同命题；`ABOUT` 标明主张讨论的对象。共享 ClaimConcept 提供跨论文查找入口，各 Claim 的条件和依据仍需分别阅读。
 
+### 任务与问题
+
+```cypher
+(:Method)
+    -[:ADDRESSES {
+        description: "<本文如何表述该方法针对的任务>",
+        anchor: ["<文件路径::引言::start:end>"]
+    }]->
+(:Task)
+(:Experiment)-[:ON_TASK]->(:Task)
+(:Resource)-[:FOR_TASK]->(:Task)
+
+(:Paper)
+    -[:RAISES {
+        description: "<本文如何提出或重新表述该问题>",
+        anchor: ["<文件路径::引言::start:end>"]
+    }]->
+(:Issue)
+(:Claim)
+    -[:RESPONDS_TO {
+        stance: "no",
+        description: "<该主张如何回应问题，以及回答成立的条件>",
+        anchor: ["<文件路径::实验结果::start:end>"]
+    }]->
+(:Issue)
+(:Issue)-[:ABOUT]->(:Task)
+(:Issue)-[:ABOUT]->(:MethodConcept)
+(:Issue)-[:ABOUT]->(:Method)
+```
+
+`ADDRESSES` 表示方法针对的任务，`ON_TASK` 表示实验评测的任务，`FOR_TASK` 表示数据集或基准服务于哪个任务；三者分别判断，不相互推出。
+
+Task 与 Issue 是共享概念，节点本身不带 anchor；依据放在连接它们的关系上。`RAISES`、`RESPONDS_TO`、`ADDRESSES` 需要 anchor；`ON_TASK` 仅在任务设定需要单独说明时附加，否则沿 Experiment 的 anchor 回溯；`FOR_TASK` 来自论文时附 anchor，来自预置种子时出处记录在种子增量中；`Issue -[:ABOUT]->` 与 `Task -[:SUBTYPE_OF]->` 属于概念之间的关系，不附 anchor。
+
+`RAISES` 表示论文明确提出或重新表述了该问题。`RESPONDS_TO.stance` 可使用 yes / no / partial / reframes，reframes 表示认为问题本身的提法需要修正；“如何做到某事”这类无法以是否回答的问题不填 stance，只写 description。
+
 ### 论文与方法
 
 ```cypher
@@ -392,12 +460,14 @@ Relationship 表达对象间的联系。需要解释关系含义时使用 `descr
 | `Method` | `DIFFERS_FROM` | 语义对称 | 具体差异维度及两方做法，例如索引结构、检索方式或构建成本 |
 | `MethodConcept` | `SUBTYPE_OF` | 子类 → 上位类别 | 类别包含关系：子类保留哪些共同特征，又增加了哪些限定 |
 | `MethodConcept` | `OVERLAPS_WITH` | 语义对称 | 类别的共同部分与各自范围，部分重叠不等于包含 |
+| `Task` | `SUBTYPE_OF` | 子任务 → 上位任务 | 子任务增加了哪些限定，例如预测长度或推理跳数 |
 | `Claim` | `SUPPORTS` | 提供支持的主张 → 得到支持的主张 | 哪些发现或理由提供支持，以及支持到什么范围 |
 | `Claim` | `CHALLENGES` | 提出质疑的主张 → 被质疑的主张 | 反例、不支持的结果或质疑针对什么内容，是否涉及条件差异 |
 | `Claim` | `QUALIFIES` | 提供限定的主张 → 被限定的主张 | 补充了哪些适用条件、例外或边界 |
 | `ClaimConcept` | `REFINES` | 细化后的命题 → 较概括的命题 | 命题增加了哪些具体条件、对象或区分；细化不自动表示逻辑蕴含 |
 | `ClaimConcept` | `IMPLIES` | 前提命题 → 被蕴含命题 | 在什么共同前提下，前者成立足以推出后者 |
 | `ClaimConcept` | `CONTRADICTS` | 语义对称 | 同一对象、条件和口径下，两条命题为何不能同时成立 |
+| `Issue` | `REFINES` | 更具体的问题 → 较概括的问题 | 子问题限定了哪些对象、条件或范围 |
 | `Resource` | `DERIVED_FROM` | 派生资源 → 来源资源 | 数据、代码或模型的派生来源，以及筛选、修改或加工方式 |
 | `Resource` | `PART_OF` | 组成资源 → 整体资源 | 资源的组成关系及该部分在整体中的作用 |
 | `Contribution` | `EXTENDS` | 后续贡献 → 被扩展的贡献 | 后续工作具体扩展了前作的哪项贡献，以及新增内容 |

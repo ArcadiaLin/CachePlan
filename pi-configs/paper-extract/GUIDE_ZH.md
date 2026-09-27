@@ -1,6 +1,6 @@
 <!--
 面向抽取 Agent 的数据模型指南，由启动脚本以 --append-system-prompt 追加到 SYSTEM.md 之后。
-定义以 docs/designs/graph_model.md 为准（本稿对应 3fa3daf，2026-09-27）；该文档修改后需同步本指南。
+定义以 docs/designs/graph_model.md 为准（本稿对应 3fa3daf 加 2026-09-27 新增的 Task、Issue）；该文档修改后需同步本指南。
 anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 更新，graph_model.md 仍是旧的行区间写法。
 示例只取样例图谱（BERT、RAG、GraphRAG），不使用待抽取的真实论文。
 -->
@@ -34,10 +34,10 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 
 节点分两类：
 
-- **共享节点**：跨论文复用，添加前必须先在图中检索。包括 `Paper`、`Method`、`MethodConcept`、`ClaimConcept`、`Resource`、`Metric`。
+- **共享节点**：跨论文复用，添加前必须先在图中检索。包括 `Paper`、`Method`、`MethodConcept`、`Task`、`ClaimConcept`、`Issue`、`Resource`、`Metric`。
 - **论文局部节点**：只属于当前论文，总是新建，不检索、不复用。包括 `Contribution`、`Claim`、`ResourceRecord`、`Experiment`、`Condition`、`ContentUnit`。
 
-`id` 由写入工具分配，不要自己编造。称呼放在 `name` / `title`；已确认指向同一对象的其他称呼放在 `aliases`（仅 Paper、Method、MethodConcept、Resource、Metric 有 aliases）。`aliases` 不重复主名称，也不放检索时临时想到的扩展词。
+`id` 由写入工具分配，不要自己编造。称呼放在 `name` / `title`；已确认指向同一对象的其他称呼放在 `aliases`（仅 Paper、Method、MethodConcept、Task、Resource、Metric 有 aliases）。`aliases` 不重复主名称，也不放检索时临时想到的扩展词。
 
 ### Paper
 
@@ -72,6 +72,15 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 - 只有命题含义和适用范围确实相容时，才通过 `EXPRESSES` 连到同一个 ClaimConcept。不能为了归并而删掉关键条件；只是讨论相同主题不够。
 - 无法确认时，只保留独立的 Claim，不要建立 ClaimConcept。
 
+### Issue
+
+跨论文共享的研究问题或有争议的论点。多篇论文可以回应同一个 Issue，回答可以不同甚至相反。
+
+- 字段：`text`（问题本身，用疑问句，措辞中立，不预设答案，保留范围限定）、`description`（范围、争议所在、判断时要注意的条件）。节点没有 anchor，也没有 aliases；依据放在 `RAISES` 和 `RESPONDS_TO` 关系上。
+- 论文通过 `RAISES` 表示它明确提出或重新表述了这个问题；Claim 通过 `RESPONDS_TO {stance}` 回应问题。
+- 只在两种情况下建立 Issue：论文明确提出了这个问题；或者本文的主张确实在回答图中已有的某个问题。**不要为每个研究主题建一个 Issue。**
+- 例：BERT 论文提出并回答了"预训练语言表示是否需要利用双向上下文？"，它的主张以 `stance: yes` 回应这个问题。
+
 ### Method
 
 可以被提出、沿用、扩展或比较的具体方法方案，或其明确变体。
@@ -88,6 +97,17 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 - 字段：`name`、`aliases`、`description`（共同机制、适用范围、区分边界）。
 - 具体 Method 通过 `INSTANCE_OF` 归入类别，一个方法可以属于多个类别。类别之间用 `SUBTYPE_OF`（包含）或 `OVERLAPS_WITH`（部分重叠）连接。
 - 例："掩码语言模型预训练"、"检索增强生成"、"基于图索引的检索增强生成"是 MethodConcept。
+- 评测方法也是 MethodConcept，例如"基于 LLM 的成对比较评测"。方法所针对的任务不是 MethodConcept，用 Task 表示。
+
+### Task
+
+跨论文共享的研究任务：方法要解决、实验要评测的问题类型。
+
+- 字段：`name`、`aliases`、`description`（输入输出、目标与评测方式的共同约定）。没有 anchor。
+- 任务之间用 `SUBTYPE_OF` 表示包含，例如"抽取式问答"是"问答"的子任务。
+- 方法通过 `ADDRESSES`、实验通过 `ON_TASK`、数据集或基准通过 `FOR_TASK` 连接到任务，三者分别判断。同一批数据可以服务于不同任务，不要从数据集推出任务。
+- 本文对任务的具体设定不写进 Task：回看窗口、预测长度等取值用 Experiment 和 Condition 表达，本文如何表述该任务写在 `ADDRESSES` / `ON_TASK` 的 description 和 anchor 中。本文提出了新的任务提法、且图中已有论文沿用它时，才建立子 Task。
+- 例：BERT 论文评测了"自然语言理解"下的多项任务，其中 SQuAD 对应"抽取式问答"。
 
 ### Resource
 
@@ -159,6 +179,10 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 
 **Claim 与 ClaimConcept。** Claim 属于一篇论文，保留该文的条件和依据；ClaimConcept 是跨论文的共同命题。先有 Claim，只有当另一篇论文表达了同一命题时，才需要 ClaimConcept。条件不同的结论不是同一命题；不同条件下结果不一致，也不是 `CONTRADICTS`。
 
+**Task 与 MethodConcept。** Task 回答"解决什么问题"，MethodConcept 回答"用哪一类做法"。"抽取式问答"是 Task，"掩码语言模型预训练"是 MethodConcept。方法用 `ADDRESSES` 连到任务，用 `INSTANCE_OF` 连到方法类别，两者不要混用。
+
+**Issue 与 ClaimConcept。** Issue 是问题，ClaimConcept 是命题。回应同一问题的主张可以给出相反的回答，都连到同一个 Issue；表达同一命题的主张含义必须相容，才连到同一个 ClaimConcept。同一条 Claim 可以既 `EXPRESSES` 某个 ClaimConcept，又 `RESPONDS_TO` 某个 Issue。条件不同的回答照样连到同一个 Issue，条件差异写在 Claim 和关系的 description 里。
+
 **Resource 与 ResourceRecord。** Resource 是共享的资源本身，description 写"它是什么"；ResourceRecord 是本文对它的使用和认识，description 写"本文怎么用、发现了什么"。本文特有的版本、切分、修改写进 ResourceRecord，不要写进共享的 Resource。
 
 **Dataset 与 Benchmark。** 只提供数据的是 Dataset；带有任务定义和评测协议、用于比较方法的是 Benchmark。例如 GLUE 是 Benchmark。一个 Benchmark 由哪些 Dataset 组成，用 `PART_OF` 或 `DERIVED_FROM` 表达，前提是有依据。
@@ -224,6 +248,17 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 | `Experiment -[:RESULT_AT]-> ContentUnit` | 结果所在的表、图或段落 |
 | `Paper -[:HAS_CONTENT]-> ContentUnit` | 内容所属论文 |
 
+### 任务与问题
+
+| 关系 | 含义 |
+|---|---|
+| `Method -[:ADDRESSES]-> Task` | 方法针对的任务。**需要 anchor**，description 写本文如何表述该任务 |
+| `Experiment -[:ON_TASK]-> Task` | 实验评测的任务。任务设定需要单独说明时才写 description 和 anchor |
+| `Resource -[:FOR_TASK]-> Task` | 数据集或基准服务于该任务。依据来自本文时附 anchor |
+| `Paper -[:RAISES]-> Issue` | 论文明确提出或重新表述了该问题。**需要 anchor**，指向提出问题的位置 |
+| `Claim -[:RESPONDS_TO {stance}]-> Issue` | 主张回应该问题，**需要 anchor**；`stance` 为 `yes` / `no` / `partial` / `reframes`（认为问题的提法需要修正）。"如何做到某事"这类无法以是否回答的问题不填 stance。description 写回答成立的条件 |
+| `Issue -[:ABOUT]-> Task / MethodConcept / Method` | 问题涉及的对象 |
+
 ### 论文之间与同类节点之间
 
 | 关系 | 方向 | 需要写清楚 |
@@ -231,12 +266,14 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 | `Paper -[:CITES]-> Paper` | 引用方 → 被引方 | 本文如何使用被引工作；只有参考文献条目时可以先只留 anchor |
 | `MethodConcept -[:SUBTYPE_OF]-> MethodConcept` | 子类 → 上位类别 | 子类增加了哪些限定 |
 | `MethodConcept -[:OVERLAPS_WITH]- MethodConcept` | 对称 | 共同部分与各自范围 |
+| `Task -[:SUBTYPE_OF]-> Task` | 子任务 → 上位任务 | 子任务增加了哪些限定 |
 | `Claim -[:SUPPORTS]-> Claim` | 支持方 → 被支持方 | 哪些发现提供支持，支持到什么范围 |
 | `Claim -[:CHALLENGES]-> Claim` | 质疑方 → 被质疑方 | 反例或不支持的结果针对什么，是否涉及条件差异 |
 | `Claim -[:QUALIFIES]-> Claim` | 限定方 → 被限定方 | 补充了哪些条件、例外或边界 |
 | `ClaimConcept -[:REFINES]-> ClaimConcept` | 细化 → 概括 | 增加了哪些条件或区分 |
 | `ClaimConcept -[:IMPLIES]-> ClaimConcept` | 前提 → 结论 | 在什么共同前提下能推出 |
 | `ClaimConcept -[:CONTRADICTS]- ClaimConcept` | 对称 | 同一对象、条件和口径下为何不能同时成立 |
+| `Issue -[:REFINES]-> Issue` | 具体问题 → 概括问题 | 子问题限定了哪些对象、条件或范围 |
 | `Contribution -[:EXTENDS]-> Contribution` | 后续 → 前作 | 扩展了前作的哪项贡献，新增了什么 |
 
 引用本身不推出方法沿用或主张支持；这些关系需要各自的依据。Claim 之间的证据支持也不自动升级为 ClaimConcept 之间的 `IMPLIES`。
@@ -259,6 +296,8 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 
 ## 6. 常见错误
 
+- 为每个研究主题都建一个 Issue，或把 Issue 写成预设答案的问题（"为什么 X 优于 Y？"）。
+- 把任务建成 MethodConcept，或从使用的数据集推出任务。
 - 把实验中的具体数值写成 Claim，或把 Claim 写成脱离条件的普遍结论（"方法 X 优于 Y"）。
 - 把代码仓库或模型权重建成 Method，或把方法方案建成 Resource。
 - 把本文的数据切分、版本、预处理写进共享 Resource 的 description。
