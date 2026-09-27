@@ -60,3 +60,18 @@ pi-configs/<版本>/
   和 `skills/` 是指向 `~/.pi/agent/` 同名条目的符号链接，登录态、设置和全局 skills
   仍沿用本机 pi。这些符号链接和 pi 生成的缓存（`models-store.json`、`npm/` 等）
   被 `.gitignore` 排除，只有 `models.json` 入库。
+
+## paper-extract
+
+`paper-extract/` 是 e08 论文抽取 Agent 的专用配置，设计见
+[extraction-plan](../docs/experiments/e08/extraction-plan.md) 第 3 节。与通用结构相比：
+
+- 启动脚本加 `--no-builtin-tools`，禁用全部内置工具（read、bash、edit、write、grep、find、ls）；
+  Agent 只能使用 `extensions/` 中注册的专用抽取工具。
+- 加 `--no-context-files --no-skills --no-prompt-templates`，不加载仓库 `AGENTS.md`、
+  全局 skills 和 prompt 模板，避免把面向编码的指令带进抽取会话。
+- `agent/` 的做法与 `no-write-bash/` 相同：自带 `models.json`，其余条目为指向 `~/.pi/agent/`
+  的符号链接。
+- `SYSTEM.md` 是初稿，工具列表待工具实现后补上。
+- `GUIDE_ZH.md` 是面向 Agent 的数据模型指南，经 `--append-system-prompt` 追加在 `SYSTEM.md` 之后；
+  定义以 `docs/designs/graph_model.md` 为准，文件头注明对应版本，数据模型修改后需同步。
