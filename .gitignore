@@ -4,7 +4,12 @@
 /references/datasets/
 
 # External data, model weights, and caches. Keep manifests and small fixtures tracked.
-/data/raw/
+/data/raw/*
+# 例外：e08 的种子概念是手写的实验输入，需要随版本管理。
+# 父目录被整体忽略时无法重新包含子路径，所以逐级放开再忽略。
+!/data/raw/e08-paper-knowledge/
+/data/raw/e08-paper-knowledge/*
+!/data/raw/e08-paper-knowledge/seeds/
 /data/processed/
 /data/cache/
 /models/
@@ -89,3 +94,6 @@ experiments/*/notebooks/_scratch/
 infra/neo4j/data/
 infra/neo4j/logs/
 infra/neo4j/plugins/
+infra/neo4j-e08/data/
+infra/neo4j-e08/logs/
+infra/neo4j-e08/plugins/

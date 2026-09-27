@@ -1,0 +1,21 @@
+# e08 真实数据图谱：种子概念与论文抽取结果写入这里。
+# 样例图谱仍在 infra/neo4j/（bolt 7687）；两者端口不同，避免连错库。
+services:
+  neo4j-e08:
+    image: neo4j:ubi10
+    container_name: neo4j-e08
+
+    ports:
+      - "7475:7474"
+      - "7688:7687"
+
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc"]'
+
+    volumes:
+      - ./data:/data
+      - ./logs:/logs
+      - ./plugins:/plugins
+
+    restart: unless-stopped
