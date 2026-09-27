@@ -1,6 +1,6 @@
 <!--
 面向抽取 Agent 的数据模型指南，由启动脚本以 --append-system-prompt 追加到 SYSTEM.md 之后。
-定义以 docs/designs/graph_model.md 为准（本稿对应 09f05ad 加 2026-09-27 新增的 note、Observation 与 Claim ABOUT 扩展）；该文档修改后需同步本指南。
+定义以 docs/designs/graph_model.md 为准（本稿对应 1dd6352 加删除 Condition、ContentUnit 的修改）；该文档修改后需同步本指南。
 anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 更新，graph_model.md 仍是旧的行区间写法。
 示例只取样例图谱（BERT、RAG、GraphRAG），不使用待抽取的真实论文。
 -->
@@ -35,7 +35,7 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 节点分两类：
 
 - **共享节点**：跨论文复用，添加前必须先在图中检索。包括 `Paper`、`Method`、`MethodConcept`、`Task`、`ClaimConcept`、`Issue`、`Resource`、`Metric`。
-- **论文局部节点**：只属于当前论文，总是新建，不检索、不复用。包括 `Contribution`、`Claim`、`ResourceRecord`、`Experiment`、`Condition`、`ContentUnit`。
+- **论文局部节点**：只属于当前论文，总是新建，不检索、不复用。包括 `Contribution`、`Claim`、`ResourceRecord`、`Experiment`。
 
 `id` 由写入工具分配，不要自己编造。称呼放在 `name` / `title`；已确认指向同一对象的其他称呼放在 `aliases`（仅 Paper、Method、MethodConcept、Task、Resource、Metric 有 aliases）。`aliases` 不重复主名称，也不放检索时临时想到的扩展词。
 
@@ -66,7 +66,7 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 - 字段：`text`、`anchor`。
 - text 必须保留适用条件：在什么任务、数据、规模、设置下成立。只是作者判断或发布声明时，在 text 中写明，例如"作者称……"。
 - 一条 Claim 只说一件事。"方法更快且更准"若分别有依据，拆成两条。
-- 实验得到的数字本身不是 Claim。Claim 是作者据此得出的结论，数字所在的表或图用 ContentUnit 表示。
+- 实验得到的数字本身不是 Claim。Claim 是作者据此得出的结论，数字留在原文，用 anchor 指向所在的表或图。
 
 ### ClaimConcept
 
@@ -110,7 +110,7 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 - 字段：`name`、`aliases`、`description`（输入输出、目标与评测方式的共同约定）。没有 anchor。
 - 任务之间用 `SUBTYPE_OF` 表示包含，例如"抽取式问答"是"问答"的子任务。
 - 方法通过 `ADDRESSES`、实验通过 `ON_TASK`、数据集或基准通过 `FOR_TASK` 连接到任务，三者分别判断。同一批数据可以服务于不同任务，不要从数据集推出任务。
-- 本文对任务的具体设定不写进 Task：回看窗口、预测长度等取值用 Experiment 和 Condition 表达，本文如何表述该任务写在 `ADDRESSES` / `ON_TASK` 的 description 和 anchor 中。本文提出了新的任务提法、且图中已有论文沿用它时，才建立子 Task。
+- 本文对任务的具体设定不写进 Task：回看窗口、预测长度等取值写在 Experiment 的 description 中，本文如何表述该任务写在 `ADDRESSES` / `ON_TASK` 的 description 和 anchor 中。本文提出了新的任务提法、且图中已有论文沿用它时，才建立子 Task。
 - 例：BERT 论文评测了"自然语言理解"下的多项任务，其中 SQuAD 对应"抽取式问答"。
 
 ### Resource
@@ -141,8 +141,10 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 
 论文报告的一项实验。
 
-- 字段：`description`（实验目的、设置、主要发现及其边界）、`anchor`（可同时指向实验设置和结果）。
-- 通过关系连接被测对象、所用资源、条件、指标和结果位置；也可以在 description 中概括，不必全部拆成节点。
+- 字段：`description`（实验目的、设置、主要发现及其边界）、`anchor`（列出实验设置所在的块，以及报告结果的表、图，如 `#S4.T1`）。
+- description 必须写明影响可比性的设置：所用数据集及其版本或切分、主要超参数（如输入长度、预测长度、模型规模）、是否标准化、所用模型或检索器等。以后比较不同论文的结果时，只能依靠这些描述判断是否可比。
+- 具体数值不写进图，留在原文，由 anchor 指向。
+- 通过关系连接被测对象（`EVALUATES`）、所用资源（`USES`）和指标（`MEASURED_BY`）。
 - 一张表中若是同一设置下的一组对比，通常算一项实验；目的或设置明显不同的对比，分为不同实验。
 
 ### Metric
@@ -151,20 +153,6 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 
 - 字段：`name`、`aliases`、`description`（衡量什么、计算口径）、`anchor`。
 - 只有名称相同且定义、口径一致时才共用节点。名字相同但计算方式不同（例如不同的平均方式、归一化）要分开。
-
-### Condition
-
-一项实验的具体条件，用于保留结果的适用范围。
-
-- 字段：`dimension`（条件维度，如 `model_size`、`context_length`）、`description`（取值及含义）、`anchor`。
-- 属于具体实验，同名条件不跨实验合并。只记录影响结果解读的条件。
-
-### ContentUnit
-
-被引用的原文表、图或段落，是结果和依据的具体位置。
-
-- 字段：`kind`（table / figure / paragraph）、`label`（如 "Table 2"）、`description`（内容及用途）、`anchor`。
-- 不保存表格内容本身，需要时沿 anchor 读原文。多项实验可以指向同一个 ContentUnit。
 
 ## 3. 容易混淆的几组
 
@@ -190,8 +178,6 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 **Resource 与 ResourceRecord。** Resource 是共享的资源本身，description 写"它是什么"；ResourceRecord 是本文对它的使用和认识，description 写"本文怎么用、发现了什么"。本文特有的版本、切分、修改写进 ResourceRecord，不要写进共享的 Resource。
 
 **Dataset 与 Benchmark。** 只提供数据的是 Dataset；带有任务定义和评测协议、用于比较方法的是 Benchmark。例如 GLUE 是 Benchmark。一个 Benchmark 由哪些 Dataset 组成，用 `PART_OF` 或 `DERIVED_FROM` 表达，前提是有依据。
-
-**Experiment、Condition 与 ContentUnit。** Experiment 是"做了一项什么实验"；Condition 是这项实验的某个设置取值（如模型规模 Base / Large）；ContentUnit 是报告结果的那张表或图。数字留在原文中，用 `RESULT_AT` 指过去。
 
 **论文级资源角色与实验中的使用角色。** `Paper -[:RELATES_TO {role}]-> Resource` 说明论文与资源的总体联系；`Experiment -[:USES {role}]-> Resource` 说明某次实验如何使用资源。二者分别判断，不从一个推出另一个。
 
@@ -247,10 +233,7 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 | `Paper -[:REPORTS]-> Experiment` | 论文报告该实验 |
 | `Experiment -[:EVALUATES {role}]-> Method / Resource` | 被测对象，`role` 为 `target`（主要被测）或 `baseline`（对照） |
 | `Experiment -[:USES {role}]-> Resource` | 所用资源，`role` 为 `training_data` / `evaluation_data` / `analysis_input` / `tooling` |
-| `Experiment -[:HAS_CONDITION]-> Condition` | 实验条件 |
 | `Experiment -[:MEASURED_BY]-> Metric` | 实验实际使用的指标 |
-| `Experiment -[:RESULT_AT]-> ContentUnit` | 结果所在的表、图或段落 |
-| `Paper -[:HAS_CONTENT]-> ContentUnit` | 内容所属论文 |
 
 ### 任务与问题
 

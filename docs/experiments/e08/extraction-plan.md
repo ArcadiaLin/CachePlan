@@ -57,17 +57,15 @@
 | `ResourceRecord` | LLM 整理本文如何介绍、处理或使用资源 | 保留论文与使用情境，不跨论文合并 |
 | `Experiment` | LLM 整理目的、设置和结果；Agent 联读正文、表格及附录 | 属于具体论文，按可独立解释的实验组织 |
 | `Metric` | LLM 提取名称与定义；Agent 核对计算口径 | 设 `aliases`；同名但口径不同不直接复用 |
-| `Condition` | LLM 提取条件；Agent 补齐影响结论的限定 | 属于具体实验，不按条件名称全局合并 |
-| `ContentUnit` | 程序定位表、图、段落；LLM 补充用途说明 | 按论文版本及原文位置复用 |
 
 关系的生成职责如下；简单归属边也必须以已确认的所属关系为前提，不能仅凭同篇共现创建。
 
 | Relationship | 生成与核对方式 |
 | --- | --- |
 | `CITES` | S2 提供候选；Agent 按需选取并核对正文条目和上下文。未核对时保留 S2 来源，不伪造正文 anchor 或引用意图 |
-| `HAS_CONTRIBUTION`、`HAS_CLAIM`、`HAS_RESOURCE_RECORD`、`REPORTS`、`HAS_CONTENT`、`HAS_CONDITION` | 抽取结果明确所属对象后，由程序连接 |
+| `HAS_CONTRIBUTION`、`HAS_CLAIM`、`HAS_RESOURCE_RECORD`、`REPORTS` | 抽取结果明确所属对象后，由程序连接 |
 | `ABOUT`、`DESCRIBES`、`HAS_METHOD`、`RELATES_TO` | LLM 判断对象及角色；Agent 完成端点消歧 |
-| `EVALUATES`、`USES`、`HAS_METRIC`、`MEASURED_BY`、`RESULT_AT` | 从实验或资源说明中提取；Agent 核对设置、结果位置与角色 |
+| `EVALUATES`、`USES`、`HAS_METRIC`、`MEASURED_BY` | 从实验或资源说明中提取；Agent 核对设置与角色 |
 | `SUPPORTED_BY` | Agent 判断实验支持主张的具体范围，不因二者同处结果章节就连接 |
 | `DERIVED_FROM`、`USES_COMPONENT`、`PRODUCES`、`PART_OF`、`EXTENDS` | LLM 提出候选；Agent 核查来源、组成或产出依据，引用本身不推出这些关系 |
 | `INSTANCE_OF`、`SUBTYPE_OF`、`OVERLAPS_WITH` | Agent 比较具体机制与类别定义 |
@@ -87,7 +85,7 @@
 4. Agent 决定复用、另建或暂不确定，记录判断依据；新增 ID 由工具分配，后续名称变化不改变身份。
 5. 确认同一对象后追加 alias，出处（论文、anchor、判断理由）写入本次增量记录；字段约定见 Graph Model。
 
-这一流程只用于共享节点（Method、MethodConcept、Resource、Metric、ClaimConcept 及被引 Paper）。Contribution、Claim、Experiment、Condition、ContentUnit、ResourceRecord 属于当前论文，总是新建，不做相似检索。
+这一流程只用于共享节点（Method、MethodConcept、Resource、Metric、ClaimConcept 及被引 Paper）。Contribution、Claim、Experiment、ResourceRecord 属于当前论文，总是新建，不做相似检索。
 
 alias 不是唯一键，同一缩写可以命中多个对象。搜索时生成的扩展词也不自动成为 alias。未消歧的提及可先留在抽取暂存记录中，不把不确定性隐藏在共享节点里。同一 benchmark 的不同切分通常需要分别保存使用记录和实验条件；是否属于不同 Resource，则根据资源身份判断。
 
@@ -248,7 +246,7 @@ Agent 不编写 Cypher，也不接触文件路径，只表达读哪里、是什�
 第二篇沿用同一读取与写入流程，重点观察以下行为：
 
 - 对遇到的既有方法、资源和指标，先检索再决定复用；记录复用理由和未匹配到的候选。
-- 论文特有的 Claim、Experiment、Condition 和 ResourceRecord 分别保存，不因名称相同而合并。
+- 论文特有的 Claim、Experiment 和 ResourceRecord 分别保存，不因名称相同而合并。
 - 比较结果前，核对版本、数据切分、输入或预测设置、指标口径及基线配置；差异依据来自实际原文。
 - 若建立 `DIFFERS_FROM`、`QUALIFIES`、`CHALLENGES` 等跨论文关系，明确双方主张、条件和依据，不预设两篇之间一定存在某种关系。
 - 将前面仅有元数据的 Paper 补成已读论文时保留同一 ID，并检查既有引用和实体联系仍然可用。

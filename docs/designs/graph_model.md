@@ -37,9 +37,8 @@ Node 按其表达的内容分为：
 - 论文与研究内容：`Paper`、`Contribution`、`Method`、`MethodConcept`、`Claim`、`ClaimConcept`。
 - 任务与问题：`Task`、`Issue`。
 - 第一手检查：`Observation`。
-- 实验与评测：`Experiment`、`Metric`、`Condition`。
+- 实验与评测：`Experiment`、`Metric`。
 - 资源与使用经验：`Resource`、`ResourceRecord`。Resource 另带一个次级 Label 区分种类。
-- 原文依据：`ContentUnit`。
 
 ## Property 的共同约定
 
@@ -171,7 +170,7 @@ MethodConcept 的类别层级与 Method 的沿用谱系分别表达：属于同�
 
 例如“时序预测”与其子类“长期时序预测”，“问答”与其子类“多跳问答”。Task 回答“解决什么问题”，MethodConcept 回答“用哪一类做法”：长期时序预测是 Task，季节—趋势分解是 MethodConcept。同一批数据可以服务于不同任务，例如用于预测，也用于表示学习后的迁移，因此任务不从数据集推出，而由方法、实验和资源分别连接。
 
-Task 不另设论文级记录。某篇论文对任务的具体设定分两处保存：实验层面的取值（如回看窗口、预测长度）由 Experiment 与 Condition 表达；论文如何表述该任务写在 `ADDRESSES`、`ON_TASK` 关系的 description 与 anchor 中。论文提出的新任务提法被后续工作沿用时，建立为子 Task，并通过 `SUBTYPE_OF` 连接上位任务。
+Task 不另设论文级记录。某篇论文对任务的具体设定分两处保存：实验层面的取值（如回看窗口、预测长度）写在 Experiment 的 description 中；论文如何表述该任务写在 `ADDRESSES`、`ON_TASK` 关系的 description 与 anchor 中。论文提出的新任务提法被后续工作沿用时，建立为子 Task，并通过 `SUBTYPE_OF` 连接上位任务。
 
 ### Claim
 
@@ -260,7 +259,7 @@ Resource 与 Method 分别表示：名为 BERT 的方法方案是 Method，其�
 
 ### Experiment
 
-论文报告的一项实验，连接被测对象、资源、条件、指标和结果，并作为相关主张的依据。描述概括实验目的、设置、主要发现和局限。
+论文报告的一项实验，连接被测对象、所用资源和指标，并作为相关主张的依据。描述概括实验目的、设置、主要发现和局限。
 
 ```cypher
 (:Experiment {
@@ -272,7 +271,9 @@ Resource 与 Method 分别表示：名为 BERT 的方法方案是 Method，其�
 })
 ```
 
-实验的条件、指标和结果可以单独连接，也可在 description 中概括。不同实验能否比较，需要结合被测对象、条件和指标定义判断。
+实验设置不单独建节点，写在 description 中，且必须写明影响可比性的设置：所用数据集及其版本或切分、主要超参数（如回看窗口、预测长度）、是否标准化、所用模型或检索器等。不同论文的实验能否比较，由 Agent 读各自的 description 判断；这类判断本身是经验，写成 Claim。
+
+结果所在的表、图直接用块级 anchor 引用（如某篇论文的表 2），不单独建节点；具体数值按需沿 anchor 读取原文，不写入图中。
 
 ### Metric
 
@@ -288,35 +289,6 @@ Resource 与 Method 分别表示：名为 BERT 的方法方案是 Method，其�
 ```
 
 同名且定义、口径一致时才共用节点；具体实验如何使用指标可在关系描述中说明。
-
-### Condition
-
-一项实验的具体条件，用来保留结果的适用范围。
-
-```cypher
-(:Condition {
-    dimension: "context_length",
-    description: "<Agent 整理的条件取值及含义>",
-    anchor: ["<文件路径::实验设置::start:end>"]
-})
-```
-
-Condition 属于具体实验；同名条件不必跨实验合并。
-
-### ContentUnit
-
-被引用的原文表、图或段落，是结果和依据的可访问位置。
-
-```cypher
-(:ContentUnit {
-    kind: "table",
-    label: "Table 2",
-    description: "<Agent 对该内容及其用途的简要说明>",
-    anchor: ["<文件路径::实验结果::start:end>"]
-})
-```
-
-`kind` 可使用 table / figure / paragraph。ContentUnit 支持多项实验指向同一份结果材料，具体内容通过 Markdown 锚点读取，无需保存表体格式或解析状态。
 
 ### Observation
 
@@ -448,10 +420,7 @@ Task 与 Issue 是共享概念，节点本身不带 anchor；依据放在连接�
 ```cypher
 (:Paper)-[:REPORTS]->(:Experiment)
 (:Claim)-[:SUPPORTED_BY]->(:Experiment)
-(:Experiment)-[:HAS_CONDITION]->(:Condition)
 (:Experiment)-[:MEASURED_BY]->(:Metric)
-(:Experiment)-[:RESULT_AT]->(:ContentUnit)
-(:Paper)-[:HAS_CONTENT]->(:ContentUnit)
 
 (:Experiment)-[:EVALUATES {role: "target"}]->(:Method)
 (:Experiment)-[:EVALUATES {role: "baseline"}]->(:Method)
@@ -463,7 +432,7 @@ Task 与 Issue 是共享概念，节点本身不带 anchor；依据放在连接�
 
 `EVALUATES` 连接被测方法或模型等资源，区分 target / baseline；`USES` 连接所用数据、工具等，role 可使用 training_data / evaluation_data / analysis_input / tooling。
 
-`HAS_CONDITION` 和 `MEASURED_BY` 表达实验采用的条件和指标；`RESULT_AT` 指向报告结果的具体内容，`HAS_CONTENT` 保留内容所属论文。Experiment 的 anchor 可以定位实验整体，ContentUnit 的 anchor 定位具体表、图或段落。
+`MEASURED_BY` 表达实验采用的指标。Experiment 的 anchor 同时列出实验设置与报告结果的表、图所在的块。
 
 `SUPPORTED_BY` 表达 Agent 对支持关系的理解；若只支持部分内容，在关系 description 中说明，并给出对应 anchor。论文级资源角色不直接推作实验中的使用角色。
 
@@ -548,7 +517,7 @@ Agent 优先使用已有关系类型。遇到确有用途、但尚未归入上�
 
 扩展关系可用于其他有明确关联的节点，description 同时说明两端角色和方向含义。相同含义复用同一个 kind；反复出现且含义稳定后，再统一为专门的 Relationship Type。`RELATED_TO` 用于扩展语义关系，已有 `RELATES_TO` 仍表示论文与资源的角色联系。
 
-不要求所有同类节点两两相连，也不预先给每种节点配齐同类关系。Condition、ContentUnit 等仍以所属实验、论文及已有引用关系组织，每条新增关系应提供具体的可复用理解。
+不要求所有同类节点两两相连，也不预先给每种节点配齐同类关系。每条新增关系应提供具体的可复用理解。
 
 ## 图的组织方式
 
@@ -562,9 +531,7 @@ graph LR
     CL -->|ABOUT| M
     CL -->|SUPPORTED_BY| E[Experiment]
     E -->|EVALUATES| M
-    E -->|HAS_CONDITION| CO[Condition]
     E -->|MEASURED_BY| ME[Metric]
-    E -->|RESULT_AT| CU[ContentUnit]
 ```
 
 下图展示两篇论文如何通过共同命题和资源相连，节点之间的路径用于寻找相关经验。
@@ -633,15 +600,12 @@ ORDER BY score DESC LIMIT 10
 MATCH (:Paper {id: $paper_id})-[:HAS_CONTRIBUTION]->(c:Contribution)
 OPTIONAL MATCH (c)-[:HAS_CLAIM]->(cl:Claim)
 OPTIONAL MATCH (cl)-[:SUPPORTED_BY]->(e:Experiment)
-OPTIONAL MATCH (e)-[:RESULT_AT]->(content:ContentUnit)
 RETURN c.text AS contribution,
        c.anchor AS contribution_anchor,
        cl.text AS claim,
        cl.anchor AS claim_anchor,
        e.description AS experiment,
-       e.anchor AS experiment_anchor,
-       content.description AS result_description,
-       content.anchor AS result_anchor
+       e.anchor AS experiment_anchor
 ```
 
 ### 找到表达共同命题的其他论文
