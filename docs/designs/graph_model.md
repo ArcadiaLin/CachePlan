@@ -48,6 +48,14 @@ Node 按其表达的内容分为：
 
 原文的文字、表格和图片所在位置均使用同一种锚点。来源可沿已连接节点回溯时，不必重复存放。示例文字仅展示表达方式，不代表已有研究结论。
 
+跨论文共享、需要按称呼查找的 Node 另有 `aliases`：`Paper`、`Method`、`MethodConcept`、`Resource`、`Metric`。
+
+- `aliases`：字符串列表，保存已确认指向同一对象的其他称呼，如缩写、写法变体、标题变体；不重复主名称 `name` / `title`，查找时二者一并检索。
+- alias 不是唯一键，同一个称呼可以出现在多个节点上，命中后仍需按定义、来源和版本消歧。检索时临时生成的扩展词不写入 aliases。
+- 确认为同一对象后才追加，只追加并去重，不覆盖已有值。每个 alias 的出处（所在论文、anchor、判断理由）记录在抽取增量中，不作为图属性展开。
+
+`ClaimConcept` 与论文局部的 Node 不设 aliases：命题的不同说法通过 `EXPRESSES` 连接的 Claim 保存，并保留各自的条件和依据。
+
 抽取模型、提示词、运行记录等需要复现时保存在实验日志中，本图暂不展开这些工程字段。
 
 ## Node
@@ -60,6 +68,7 @@ Node 按其表达的内容分为：
 (:Paper {
     id: "<paper_id>",
     title: "<论文标题>",
+    aliases: ["<标题变体>"],
     year: 2026,
     s2_id: "<Semantic Scholar ID>",
     paper_type: "method",
@@ -81,7 +90,7 @@ Node 按其表达的内容分为：
 })
 ```
 
-此时不要求填写 `description`、`markdown_path` 或其他未知属性，也不据标题生成全文阅读结论。标题用于发现和匹配文献，不直接作为唯一 ID；后续确认对应文献并获得材料时，在同一节点上补充信息，保持 `id` 不变。
+此时不要求填写 `description`、`markdown_path` 或其他未知属性，也不据标题生成全文阅读结论。标题用于发现和匹配文献，不直接作为唯一 ID；后续确认对应文献并获得材料时，在同一节点上补充信息，保持 `id` 不变。引用条目、S2 与正式版本中的标题写法不一致时，保留一个 `title`，其余写法作为 aliases 追加。
 
 ### Contribution
 
@@ -103,6 +112,7 @@ Contribution 回答“这篇论文贡献了什么”；Claim 表达其中可以�
 ```cypher
 (:Method {
     name: "<方法名称>",
+    aliases: ["<缩写或其他称呼>"],
     description: "<Agent 对方法机制与用途的描述>",
     anchor: ["<文件路径::方法::start:end>"]
 })
@@ -117,6 +127,7 @@ Contribution 回答“这篇论文贡献了什么”；Claim 表达其中可以�
 ```cypher
 (:MethodConcept {
     name: "<方法类别名称>",
+    aliases: ["<其他称呼>"],
     description: "<该类别的共同机制、适用范围与区分边界>"
 })
 ```
@@ -164,6 +175,7 @@ Agent 根据一篇论文整理的一条具体主张，保留其适用条件与�
 ```cypher
 (:Resource {
     name: "<资源名称>",
+    aliases: ["<其他称呼>"],
     kind: "dataset",
     url: "<资源地址>",
     description: "<Agent 对资源用途的简要描述>"
@@ -211,6 +223,7 @@ Agent 根据一篇论文整理的一条具体主张，保留其适用条件与�
 ```cypher
 (:Metric {
     name: "<指标名称>",
+    aliases: ["<其他称呼>"],
     description: "<指标衡量什么及其计算口径>",
     anchor: ["<文件路径::评测指标::start:end>"]
 })
@@ -451,6 +464,36 @@ graph BT
 ## Query
 
 以下查询展示模型希望支持的读取方式，尚未在数据库执行。
+
+### 按名称与 aliases 查找候选实体
+
+抽取时先按名称和 aliases 做归一化的精确匹配，并返回命中字段，供 Agent 判断是否复用：
+
+```cypher
+WITH toLower(trim($q)) AS q
+MATCH (n:Paper|Method|MethodConcept|Resource|Metric)
+WHERE toLower(coalesce(n.name, n.title)) = q
+   OR ANY(a IN coalesce(n.aliases, []) WHERE toLower(trim(a)) = q)
+RETURN n.id AS id, labels(n) AS labels,
+       coalesce(n.name, n.title) AS name, n.aliases AS aliases,
+       CASE WHEN toLower(coalesce(n.name, n.title)) = q
+            THEN 'name' ELSE 'alias' END AS hit
+```
+
+精确匹配未命中或需要召回写法相近的候选时，使用覆盖名称、标题和 aliases 的全文索引：
+
+```cypher
+CREATE FULLTEXT INDEX entity_names IF NOT EXISTS
+FOR (n:Paper|Method|MethodConcept|Resource|Metric)
+ON EACH [n.name, n.title, n.aliases];
+
+CALL db.index.fulltext.queryNodes('entity_names', $q) YIELD node, score
+RETURN node.id AS id, labels(node) AS labels,
+       coalesce(node.name, node.title) AS name, node.aliases AS aliases, score
+ORDER BY score DESC LIMIT 10
+```
+
+两种查询只返回候选；是否为同一对象仍由 Agent 结合定义、来源和版本判断。全文索引对列表属性的支持需在所用 Neo4j 版本上确认，不支持时可改为索引由名称与 aliases 拼接的派生字段。
 
 ### 从贡献查看具体主张及其结果依据
 

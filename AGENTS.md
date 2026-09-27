@@ -111,6 +111,7 @@ default instinct to finish a request end-to-end.
    documents themselves and adds their own notes; unrequested "while I'm here" syncing
    collides with their edits and turns a discussion into a large diff nobody asked to
    review. Findings belong in the reply, not in a doc, until asked.
+   `docs/progress.md` is stricter still: agents never edit it (rule 5).
 
 3. **One thing per turn.** Prefer finishing one step and coming back over chaining
    several. Doing more per turn is not doing better here.
@@ -118,6 +119,13 @@ default instinct to finish a request end-to-end.
 4. **Work on `main`.** Commit directly to `main`; do not create feature branches
    for commits (set by the user on 2026-09-24). This overrides any default of
    branching before committing. Committing still happens only when the user asks.
+
+5. **Never edit `docs/progress.md`.** The user writes this file themselves; agents
+   must not create, modify, or reformat it, even when asked to update other docs
+   (set by the user on 2026-09-27). After finishing a meaningful piece of work,
+   end the reply with a short suggested progress entry the user can paste or
+   adapt: what was done, key results or artifacts (with paths), open issues, and
+   the next step. Keep it a suggestion in the reply, not a file change.
 
 ## Environment and Notebooks
 
