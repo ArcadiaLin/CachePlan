@@ -36,12 +36,14 @@ Node 按其表达的内容分为：
 
 - 论文与研究内容：`Paper`、`Contribution`、`Method`、`MethodConcept`、`Claim`、`ClaimConcept`。
 - 实验与评测：`Experiment`、`Metric`、`Condition`。
-- 资源与使用经验：`Resource`、`ResourceRecord`。
+- 资源与使用经验：`Resource`、`ResourceRecord`。Resource 另带一个次级 Label 区分种类。
 - 原文依据：`ContentUnit`。
 
 ## Property 的共同约定
 
-每个 Node 有一个 `id` 用于引用，Paper 示例显式列出，其余示例省略。内容属性主要是：
+每个 Node 有一个 `id` 用于引用，Paper 示例显式列出，其余示例省略。`id` 由写入工具分配，是不带语义的图内标识，例如 `res_0005`；前缀仅便于阅读日志，不参与身份判断。对象的称呼、种类和来源分别由 `name` / `aliases`、Label 与内容属性表达，不编码进 `id`；名称修改或判断修订时 `id` 保持不变。
+
+内容属性主要是：
 
 - `text` / `description`：Agent 整理后的主张或描述，可以概括和改写，保留影响含义的条件、版本和局限；Agent 自己的推断在文字中说明。
 - `anchor`：指向已处理 Markdown 的原文位置，统一采用 `<文件路径::章节::start:end>`。区间沿用 Markdown 读取工具的定位口径；多处依据可列出多个锚点，示例统一用列表表示。
@@ -118,7 +120,7 @@ Contribution 回答“这篇论文贡献了什么”；Claim 表达其中可以�
 })
 ```
 
-确认指向同一方法时，跨论文共用节点；有实质变化的方法可另建节点并关联其来源。方法方案与可下载的模型、代码资源分别表示，后者属于 Resource。
+确认指向同一方法时，跨论文共用节点；有实质变化的方法可另建节点并关联其来源。方法方案与可下载的模型权重、代码仓库分别表示，后者属于 Resource（`Model`、`CodeRepo`）。
 
 ### MethodConcept
 
@@ -170,19 +172,30 @@ Agent 根据一篇论文整理的一条具体主张，保留其适用条件与�
 
 ### Resource
 
-可被多篇论文共同使用或讨论的资源，如数据集、基准、代码、模型和工具。
+可被多篇论文共同使用或讨论的资源。每个 Resource 除 `Resource` 外恰好带一个次级 Label，表示资源种类：
 
 ```cypher
-(:Resource {
+(:Resource:Benchmark {
     name: "<资源名称>",
     aliases: ["<其他称呼>"],
-    kind: "dataset",
     url: "<资源地址>",
-    description: "<Agent 对资源用途的简要描述>"
+    description: "<Agent 对资源内容与用途的简要描述>"
 })
 ```
 
-`kind` 可使用 dataset / benchmark / code / model / tool。确认是同一资源时共用节点；同名或共用仓库 URL 不自动视为同一资源。
+| 次级 Label | 含义与边界 |
+|---|---|
+| `Dataset` | 数据本身，可被训练、评测或多个 Benchmark 使用 |
+| `Benchmark` | 数据加上任务定义与评测协议，用于比较方法 |
+| `Model` | 可加载的模型权重或 checkpoint |
+| `CodeRepo` | 代码仓库 |
+| `Tool` | 实验中使用的软件、库或服务 API |
+
+种类属于资源身份的一部分，不设其他按种类区分的属性；任务、规模、切分、评分方式等信息写在 description 中。一个对象兼有多种身份时拆成多个 Resource，例如同一仓库发布的代码与模型权重分别建立 `CodeRepo` 与 `Model`，按需用关系连接。
+
+Resource 与 Method 分别表示：名为 BERT 的方法方案是 Method，其预训练权重是 `Resource:Model`，`google-research/bert` 仓库是 `Resource:CodeRepo`。同名对象通过 Label 与描述区分。
+
+确认是同一资源时共用节点；同名或共用仓库 URL 不自动视为同一资源。
 
 ### ResourceRecord
 
@@ -493,7 +506,7 @@ RETURN node.id AS id, labels(node) AS labels,
 ORDER BY score DESC LIMIT 10
 ```
 
-两种查询只返回候选；是否为同一对象仍由 Agent 结合定义、来源和版本判断。全文索引对列表属性的支持需在所用 Neo4j 版本上确认，不支持时可改为索引由名称与 aliases 拼接的派生字段。
+两种查询只返回候选；是否为同一对象仍由 Agent 结合定义、来源和版本判断。二者已在样例图谱上执行（`experiments/e08/notebooks/04_neo4j.ipynb` step9），本地 Neo4j 2026.09 的全文索引可直接索引 aliases 这类字符串列表。
 
 ### 从贡献查看具体主张及其结果依据
 
@@ -540,6 +553,16 @@ RETURN r.name AS resource,
        p2.title AS related_paper,
        r2.description AS related_experience,
        r2.anchor AS related_anchor
+```
+
+按次级 Label 限定资源种类，例如查找两篇论文共同评测过的 Benchmark：
+
+```cypher
+MATCH (p1:Paper {id: $paper_id})-[:REPORTS]->(:Experiment)
+      -[:USES]->(b:Resource:Benchmark)
+      <-[:USES]-(:Experiment)<-[:REPORTS]-(p2:Paper)
+WHERE p1.id <> p2.id
+RETURN b.name AS benchmark, collect(DISTINCT p2.title) AS other_papers
 ```
 
 论文与资源的角色也可直接查询：
