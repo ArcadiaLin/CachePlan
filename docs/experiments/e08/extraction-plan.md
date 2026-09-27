@@ -43,7 +43,7 @@
 
 程序负责读取材料、定位原文、查询候选、验证结构和执行事务。LLM 在给定片段中提出带依据的理解。Agent 负责选择继续阅读的位置、检索已有图谱、核对候选身份，并综合多个片段或多篇论文作判断。
 
-首轮拟由一个 pi Agent 完成阅读和工具调用，不要求另建多 Agent 流程。片段抽取可先由该 Agent 完成；任务边界稳定后，再决定哪些部分值得包装为独立的 LLM 调用。
+首轮由一个 pi Agent 完成阅读、判断和工具调用，不另建多 Agent 流程；下表中“LLM”的工作也由该 Agent 在阅读时完成。工具内部不引入无状态 LLM 调用：需要判断的交给 Agent，可机械完成的交给脚本，避免在工具中隐藏一次模型推理，导致无法区分效果来自 Agent 推理、工具内模型还是检索。用另一模型核查主张与原文是否相符属于复核层，不作为抽取工具。
 
 | Node | 形成依据与主要职责 | 复用范围与 aliases |
 | --- | --- | --- |
@@ -87,6 +87,8 @@
 4. Agent 决定复用、另建或暂不确定，记录判断依据；新增 ID 由工具分配，后续名称变化不改变身份。
 5. 确认同一对象后追加 alias，出处（论文、anchor、判断理由）写入本次增量记录；字段约定见 Graph Model。
 
+这一流程只用于共享节点（Method、MethodConcept、Resource、Metric、ClaimConcept 及被引 Paper）。Contribution、Claim、Experiment、Condition、ContentUnit、ResourceRecord 属于当前论文，总是新建，不做相似检索。
+
 alias 不是唯一键，同一缩写可以命中多个对象。搜索时生成的扩展词也不自动成为 alias。未消歧的提及可先留在抽取暂存记录中，不把不确定性隐藏在共享节点里。同一 benchmark 的不同切分通常需要分别保存使用记录和实验条件；是否属于不同 Resource，则根据资源身份判断。
 
 ### 2.3 原文锚点与增量更新
@@ -96,7 +98,7 @@ anchor 由读取工具返回，Agent 不自行猜测区间。首轮实施前固�
 [04_neo4j.ipynb](../../../experiments/e08/notebooks/04_neo4j.ipynb) 已演示 `plan_batch → apply_plan → 复核`，但真实抽取前需处理以下差别：
 
 - 现有 `SET +=` 会整体替换给定属性值；aliases 和依据列表需要追加去重，不能误覆盖旧值。
-- 现有关系统一按 `(from, type, to)` 识别；同端点的多个角色、不同 `RELATED_TO.kind` 如何共存，需要先明确表示方式。
+- 现有关系统一按 `(from, type, to)` 识别。已确定同端点的每个角色各为一条关系，分别带 description 和 anchor：带 `role` 的关系按 `(from, type, to, role)` 识别，`RELATED_TO` 按 `(from, type, to, kind)` 识别。例如论文发布并评测同一数据集，是两条 `RELATES_TO`，而非一条带角色列表的关系。
 - 共享描述的修订需要保存修改前后内容与依据；各论文独立的 Claim、ResourceRecord 不因后读论文而被覆盖。
 - 写入前核对 label、关系端点、角色、原文位置和已引用 ID；同一增量重放不产生重复节点或关系，事务失败不留下半块子图。
 
@@ -106,19 +108,109 @@ anchor 由读取工具返回，Agent 不自行猜测区间。首轮实施前固�
 
 拟在 `pi-configs/` 下新增专用配置，例如 `paper-extract/`，沿用 [现有配置约定](../../../pi-configs/README.md)。目录名、模型与调用预算在实施时确定，并记录到每次运行中。图谱使用与人工示例可区分的独立运行范围，避免伪造 anchor 或示例知识被当成已验证经验。
 
-工具先围绕以下能力实现，名称暂定，不预设需要拆成多少个 API：
+### 3.1 工具划分
 
-| 工具能力 | 输入与返回内容 |
-| --- | --- |
-| 获取当前论文材料 | 根据材料 key 返回元数据、版本、目录、参考文献入口和准备状态；默认读取已有 YAML 快照 |
-| 阅读原文与证据 | 按章节、区间或 anchor 返回文本与准确位置；能查看对应表格和本地图片 |
-| 查找已有实体 | 按类型、标识符、名称、aliases 与上下文返回候选及匹配原因 |
-| 查看已有经验 | 返回节点、相关论文、使用记录和关系，按需解析 anchor 获取原文 |
-| 提交增量与修订 | 接收新建节点、复用 ID、alias 追加、关系和修订；生成变更计划、校验、事务写入并返回回执 |
+抽取过程以论文为中心：Agent 先用工具建立或找回当前 Paper，再阅读原文，围绕它逐块添加有依据的节点和关系；添加共享节点前先检索图谱中是否已有同一对象。
 
-查询工具在内部组合 Cypher、alias 检索和文件读取，Agent 无需自己拼接全部底层操作。系统提示词说明各节点及关系的含义、身份判断规则和证据要求；工具负责可机械检查的约束，不能只靠提示词保证。
+该配置禁用 pi 内置的 `bash`、`grep`、`find`、`ls`、`read`、`write`、`edit`，只保留下列专用工具。读取只经工具进行，保证 anchor 由工具生成；写入只有 `submit` 一个入口，保证每次修改都经过校验并留下记录。名称为暂定。
 
-材料虽然全部在本地，单篇抽取仍只以当前论文与此前已形成的图谱为主要上下文。若需要追读其他论文，显式记录阅读动作与顺序。拟为每篇开启新的 pi session，以观察跨篇理解是否通过图谱复用，而非依赖保留全部前文的对话上下文；工具不默认注入尚未阅读论文的全文或抽取结果。
+| 工具 | 作用 | 返回 |
+| --- | --- | --- |
+| `open_paper(key)` | 核对材料 `ready` 与哈希；按 `s2_id`、`arxiv_id`、title/aliases 找回已有 Paper（含早先作为被引文献建立的占位节点）并补全元数据，找不到才新建；开启本篇运行记录 | Paper ID、元数据、带 anchor 的章节目录、图表清单、参考文献概况 |
+| `read_paper(section \| anchor)` | 按章节或 anchor 读取原文；指向图片时返回本地图片 | 带精确 anchor 的文本片段或图片 |
+| `search_paper(query)` | 在当前论文内按关键词定位，代替 grep；也用于查参考文献条目及对应的 S2 候选 | 命中片段及 anchor |
+| `find_entities(mention, label?, context?)` | 身份检索：名称/aliases 精确匹配，未命中再全文召回 | 候选 ID、Label、名称、aliases、描述、相连论文、命中原因 |
+| `inspect_node(id)` | 查看节点周围的已有经验：属性、关系、相连的 Claim、ResourceRecord、Experiment；可选择解析 anchor 为原文 | 节点邻域摘要 |
+| `submit(subgraph)` | 提交一次增量：新建、复用、追加 alias、新建关系、修改属性、登记暂不确定项 | 成功返回回执；失败返回逐条错误，不写入任何内容 |
+| `finish_paper(summary)` | 结束本篇，记录覆盖范围与未解决问题，快照图谱状态 | 本篇新增、复用、修订的对象统计 |
+
+跨论文的关联检索暂不单设工具：例如读到后一篇在某数据集上的结果时，先用 `find_entities` 找到该 Resource，再用 `inspect_node` 查看此前论文在其上的使用记录、实验和主张。若首轮发现不经共享实体相连的主张被遗漏，再考虑增加 Claim 文本检索。
+
+材料虽然全部在本地，单篇抽取仍只以当前论文（阅读类工具只作用于 `open_paper` 打开的论文）与此前已形成的图谱为主要上下文。若需要追读其他论文，显式记录阅读动作与顺序。拟为每篇开启新的 pi session，以观察跨篇理解是否通过图谱复用，而非依赖保留全部前文的对话上下文；工具不默认注入尚未阅读论文的全文或抽取结果。
+
+### 3.2 `submit` 的参数结构
+
+参数是一块以当前论文为中心的小子图，由 Agent 按 JSON Schema 填写对象，工具将其保存为运行记录中的 YAML 后执行入库。除 `paper`、`intent` 外各部分均可省略。
+
+```ts
+{
+  paper:  string,        // 当前论文 ID，须与 open_paper 返回的一致
+  intent: string,        // 一句话说明本次提交的内容
+  new_nodes:     NewNode[],
+  reuse:         Reuse[],
+  relationships: Rel[],
+  updates:       Update[],
+  pending:       Pending[]
+}
+
+NewNode = {
+  ref: "$m1",                        // 临时引用，本次提交内唯一；ID 由工具分配
+  label: "Method",                   // 12 种主 Label 之一
+  resource_kind?: "Dataset",         // 仅 Resource 必填：Dataset / Benchmark / Model / CodeRepo / Tool
+  properties: {...},                 // 允许与必填的键按 Label 校验；不得写 id
+  decision?: {                       // 共享节点必填
+    candidates: string[],            // 看过但不复用的候选，须为本会话 find_entities 返回过的 ID，可为空
+    reason: string
+  }
+}
+
+Reuse = { id: string, reason: string, add_aliases?: string[] }
+
+Rel = {
+  from: "$ref" | "<id>", type: string, to: "$ref" | "<id>",
+  properties?: { role?, kind?, description?, anchor? }
+}
+
+Update = { id: string, set: {...}, reason: string, anchor?: string[] }
+
+Pending = { mention: string, label_guess?: string, anchor: string[],
+            candidates?: string[], question: string }
+```
+
+各部分的约定：
+
+- **`reuse`**：关系中引用的已有节点须在此声明并说明为何是同一对象；当前 Paper 及本篇已建的局部节点除外。`add_aliases` 追加去重，不覆盖已有值。
+- **`relationships`**：端点 Label 按 Graph Model 的端点表校验，`role`、`kind` 按枚举校验。关系身份见 2.3；重复提交完全相同的关系不产生变化，身份相同而描述不同则报错，须改用 `updates`。
+- **`updates`**：只允许修改 `description`、`text`、`name` 及 Paper 元数据；anchor 只能追加，aliases 只经 `add_aliases` 修改。工具自动记录修改前的值：原值为空视为补全，原值非空视为修订，须说明理由。
+- **`pending`**：只写入运行记录，不进图，供后续确认时找回原始问题。
+- **规模**：不设硬上限，单次超过约 20 个节点时给出提示。
+
+例如提交 DLinear 的主方法：
+
+```json
+{
+  "paper": "pap_0001",
+  "intent": "DLinear 主方法、贡献及类别归属",
+  "new_nodes": [
+    {"ref": "$m1", "label": "Method",
+     "properties": {"name": "DLinear", "description": "先做趋势—季节分解，再各用一层线性层……", "anchor": ["<anchor>"]},
+     "decision": {"candidates": [], "reason": "find_entities('DLinear') 无命中"}},
+    {"ref": "$c1", "label": "Contribution",
+     "properties": {"text": "提出极简线性基线 DLinear，质疑 Transformer 在长时预测上的有效性", "anchor": ["<anchor>"]}}
+  ],
+  "reuse": [{"id": "mcp_0006", "reason": "已有类别的定义覆盖本方法"}],
+  "relationships": [
+    {"from": "pap_0001", "type": "HAS_METHOD", "to": "$m1", "properties": {"role": "proposed", "anchor": ["<anchor>"]}},
+    {"from": "pap_0001", "type": "HAS_CONTRIBUTION", "to": "$c1"},
+    {"from": "$c1", "type": "ABOUT", "to": "$m1"},
+    {"from": "$m1", "type": "INSTANCE_OF", "to": "mcp_0006"}
+  ]
+}
+```
+
+示例中的 ID、类别与描述仅为示意。成功时回执给出增量编号、临时引用到正式 ID 的映射（如 `{"$m1": "mth_0010"}`），以及新建、复用、修改和追加 alias 的清单。失败时整次提交不写入，逐条返回带位置的错误，例如 `relationships[3]: INSTANCE_OF 的终点须为 MethodConcept，实际为 Method`，Agent 修正后重新提交。
+
+### 3.3 脚本承担的复杂度
+
+Agent 不编写 Cypher，也不接触文件路径，只表达读哪里、是什么、与谁有何关系以及判断理由。以下由固定脚本负责：
+
+- **Cypher**：全部为参数化模板，包括 Label 与关系类型白名单、含 `role`/`kind` 的 MERGE 身份、列表字段追加去重、事务和写后复核。
+- **ID 与幂等**：工具分配 ID；对增量计算哈希，重放同一增量不产生重复内容。
+- **anchor**：由读取工具生成；`submit` 将 anchor 解析回原文确认存在，并要求它在本会话中被读取过。
+- **可机械检查的约束**：关系端点与角色、Resource 恰有一个次级 Label、论文局部节点只挂在当前论文下、新建共享节点附带检索决策且候选确由本会话检索返回（对照会话日志检查，而非只靠提示词）。
+- **记录**：材料哈希、读取动作、检索结果、增量与回执自动写入运行目录（见第 7 节）。
+
+系统提示词说明各节点及关系的含义、身份判断规则和证据要求；以上约束由工具强制，不只依赖提示词。结构校验通过不代表语义正确，语义仍由复核检查。
 
 ## 4. 第三步：用 DLinear 完成首篇试抽
 
@@ -193,11 +285,10 @@ DLinear → PatchTST → LightRAG → GraphRAG → HippoRAG 2 → HippoRAG
 
 首轮优先复核核心主张及其支持链、实体合并、alias 追加和共享节点修订。记录节点或关系数量用于观察过程，不把数量、Schema 合法性或 anchor 存在本身作为质量结论。正式质量指标、对照方法和预算比较留待 benchmark 讨论，不由本计划预设。
 
-实施前先确定四项内容：
+`aliases` 字段约定、同端点多角色关系的表示方式、工具划分与 `submit` 参数结构已确定（见 Graph Model、2.3 与第 3 节）。实施前还需确定三项内容：
 
 1. 首篇覆盖范围、模型和调用预算。
-2. 同端点多角色关系的表示方式（`aliases` 字段约定已定）。
-3. anchor 的精确区间口径与最小工具输入输出。
-4. 真实数据的图谱运行范围、抽取产物位置与首两篇复核方式。
+2. anchor 的精确区间口径，以及 `read_paper`、`find_entities`、`inspect_node` 等工具的具体返回格式。
+3. 真实数据的图谱运行范围、抽取产物位置与首两篇复核方式。
 
 下一步先落实这些约定和最小工具，再完成 DLinear 的一次有记录的试抽；检查结果后继续 PatchTST，不直接批量运行六篇的抽取。

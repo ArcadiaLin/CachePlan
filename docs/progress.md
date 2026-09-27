@@ -1,6 +1,6 @@
 # 手动进展汇总
 
-## 2026/09/27
+## 2026/09/27 之前
 
 已有进度：构建 bert、graphrag、rag 三篇作为example 进入 graph 中，结论是当前的数据模型的确能够满足网络构建的需求。
 
@@ -10,12 +10,14 @@
 2、无法体现真实数据的复杂性，例如实体消歧
 3、直接生成了最终可入库的文件，但是真实工作流中，抽取数据到入库，还有很多复杂的步骤准备
 
-## 正在进行的工作
+## 2026/09/27
 
 准备了6篇真实的论文，data/raw/e08-paper-knowledge，来进行模拟真实数据抽取、入库
 
 但是这个抽取工作目前不进入我们论文的叙事，因此我们可以比较“方便”而不体系地推进，例如先准备好数据，然后做抽取套件，之后方案固定了，在真实地规范好一个 agent 使用我们设计方案时如何更新图谱
 
-为 Paper、Method、MethodConcept、Resource、Metric 加上了 aliases property，帮助新数据入库时，agent 进行检索兜底，获取到相似的 node，然后将数据补充或更新到图谱中已有的 node 中，防止新造实体，充当实体消歧，检索兜底的作用。ClaimConcept 不设
+更新了 datamodel 为 Paper、Method、MethodConcept、Resource、Metric 加上了 aliases property，帮助新数据入库时，agent 进行检索兜底，获取到相似的 node，然后将数据补充或更新到图谱中已有的 node 中，防止新造实体，充当实体消歧，检索兜底的作用。alias 字段进行验证后能够有效的进行检索和兜底保障
 
-下一步演练一下 alias 在 neo4j 查询中的发挥作用，在 experiments/e08/notebooks/04_neo4j.ipynb 中演示
+## 正在进行的工作
+
+抽取 Agent 设计，需要给 pi 禁用原本工具，然后提供一组专门负责抽取的 agent 工具
