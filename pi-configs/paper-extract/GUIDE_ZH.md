@@ -1,6 +1,6 @@
 <!--
 面向抽取 Agent 的数据模型指南，由启动脚本以 --append-system-prompt 追加到 SYSTEM.md 之后。
-定义以 docs/designs/graph_model.md 为准（本稿对应 3fa3daf 加 2026-09-27 新增的 Task、Issue）；该文档修改后需同步本指南。
+定义以 docs/designs/graph_model.md 为准（本稿对应 09f05ad 加 2026-09-27 新增的 note、Observation 与 Claim ABOUT 扩展）；该文档修改后需同步本指南。
 anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 更新，graph_model.md 仍是旧的行区间写法。
 示例只取样例图谱（BERT、RAG、GraphRAG），不使用待抽取的真实论文。
 -->
@@ -38,6 +38,10 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 - **论文局部节点**：只属于当前论文，总是新建，不检索、不复用。包括 `Contribution`、`Claim`、`ResourceRecord`、`Experiment`、`Condition`、`ContentUnit`。
 
 `id` 由写入工具分配，不要自己编造。称呼放在 `name` / `title`；已确认指向同一对象的其他称呼放在 `aliases`（仅 Paper、Method、MethodConcept、Task、Resource、Metric 有 aliases）。`aliases` 不重复主名称，也不放检索时临时想到的扩展词。
+
+任何节点都可以带一个可选的 `note`：简短的使用提醒、消歧线索，或来源之间的分歧，例如"比较结果时需确认数据是否标准化"、"与同名的 X 不是同一对象"。note 不写定义，也不写经验判断——"某类方法在什么条件下更准"、"A 优于 B"这类可以被支持或质疑的判断，写成 Claim 并用 `ABOUT` 连到它讨论的对象（可以是方法类别、任务、资源或指标）。修改已有节点的 note 时，在提交中说明依据和理由。
+
+`Observation`（对资源的第一手检查、运行或复现）由专门的核查活动建立，阅读论文时不要建立。
 
 ### Paper
 
@@ -203,7 +207,7 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 | `Contribution -[:ABOUT]-> Method / Resource / Experiment` | 贡献涉及的对象，如提出的方法、发布的数据集 |
 | `Contribution -[:HAS_CLAIM]-> Claim` | 贡献包含的具体主张 |
 | `Paper -[:HAS_CLAIM]-> Claim` | 论文的主张 |
-| `Claim -[:ABOUT]-> Method / Resource` | 主张讨论的对象 |
+| `Claim -[:ABOUT]-> Method / MethodConcept / Task / Resource / Metric` | 主张讨论的对象；关于一类方法、某个任务或指标的判断也挂在这里 |
 | `Claim -[:EXPRESSES]-> ClaimConcept` | 具体主张表达该共同命题 |
 | `Claim -[:SUPPORTED_BY]-> Experiment` | 你判断该实验支持该主张；只支持部分时在 description 中说明范围 |
 

@@ -36,6 +36,7 @@ Node 按其表达的内容分为：
 
 - 论文与研究内容：`Paper`、`Contribution`、`Method`、`MethodConcept`、`Claim`、`ClaimConcept`。
 - 任务与问题：`Task`、`Issue`。
+- 第一手检查：`Observation`。
 - 实验与评测：`Experiment`、`Metric`、`Condition`。
 - 资源与使用经验：`Resource`、`ResourceRecord`。Resource 另带一个次级 Label 区分种类。
 - 原文依据：`ContentUnit`。
@@ -58,6 +59,18 @@ Node 按其表达的内容分为：
 - 确认为同一对象后才追加，只追加并去重，不覆盖已有值。每个 alias 的出处（所在论文、anchor、判断理由）记录在抽取增量中，不作为图属性展开。
 
 `ClaimConcept`、`Issue` 与论文局部的 Node 不设 aliases：命题或问题的不同说法通过 `EXPRESSES` / `RESPONDS_TO` 连接的 Claim 保存，并保留各自的条件和依据。
+
+所有 Node 可带可选的 `note`：一段简短文字，保存读到或使用该节点时值得一并看到的提醒。note 与其他内容的分工：
+
+| 内容 | 位置 |
+|---|---|
+| 对象是什么（定义、身份、机制） | `description` / `text` |
+| 使用提醒、消歧线索、核对中发现的来源分歧 | `note` |
+| 某篇论文如何描述、使用该对象 | 关系、`ResourceRecord` 等论文局部节点 |
+| 经验判断与效果结论（何时更准、谁优于谁） | `Claim` / `ClaimConcept`，经 `ABOUT` 连到所讨论的对象 |
+| 第一手检查、运行、复现的结果 | `Observation` |
+
+note 不写定义，也不承载需要追溯来源、可被支持或质疑的判断；这类判断即使需要随节点一并读到，也由查询沿 `ABOUT` 取回相关 Claim。note 的每次写入和修改记录在增量中（原内容、依据、理由），不在节点属性中展开来源。
 
 抽取模型、提示词、运行记录等需要复现时保存在实验日志中，本图暂不展开这些工程字段。
 
@@ -243,7 +256,7 @@ Resource 与 Method 分别表示：名为 BERT 的方法方案是 Method，其�
 
 `url` 保留该记录中出现或使用的资源地址，可以是论文给出的仓库、版本或数据下载链接；Resource 的 `url` 保存资源的通用入口，两者可以相同，也可以不同。
 
-影响理解的版本、切分和修改写在 description 中。论文声称资源公开时，按声明保存；外部检查或实际运行得到的结论需在描述中说明其依据。
+影响理解的版本、切分和修改写在 description 中。论文声称资源公开时，按声明保存；对资源的外部检查或实际运行结果不写入 ResourceRecord，而由 Observation 记录并与之对照。
 
 ### Experiment
 
@@ -305,6 +318,24 @@ Condition 属于具体实验；同名条件不必跨实验合并。
 
 `kind` 可使用 table / figure / paragraph。ContentUnit 支持多项实验指向同一份结果材料，具体内容通过 Markdown 锚点读取，无需保存表体格式或解析状态。
 
+### Observation
+
+对资源或论文说法的一次第一手检查，例如查看代码仓库内容、实际运行代码、复现实验结果。它的依据来自检查本身而非论文，因此与论文的发布声明、使用记录分开保存。
+
+```cypher
+(:Observation {
+    kind: "repo_inspection",
+    description: "<检查了什么、看到了什么、结论及局限>",
+    observed_at: "2026-09-27",
+    target: "https://github.com/<owner>/<repo>@<commit>",
+    evidence: ["<检查日志或产物路径>"]
+})
+```
+
+`kind` 可使用 repo_inspection / execution / reproduction，分别对应查看内容、成功运行与复现实验结果这三种不同强度的发现。`target` 记录被检查对象的具体版本，`evidence` 指向检查日志或产物，作用相当于论文依据的 anchor。
+
+Observation 具有时效：同一资源再次检查时新建 Observation，保留此前的记录，维护状况等随时间变化的情况由此体现。
+
 ## Relationship
 
 Relationship 表达对象间的联系。需要解释关系含义时使用 `description`；需要原文依据时使用 `anchor`，与 Node 沿用相同约定。简单归属关系不必重复附加描述和锚点。
@@ -329,10 +360,13 @@ Relationship 表达对象间的联系。需要解释关系含义时使用 `descr
 (:Paper)-[:HAS_CLAIM]->(:Claim)
 (:Claim)-[:EXPRESSES]->(:ClaimConcept)
 (:Claim)-[:ABOUT]->(:Method)
+(:Claim)-[:ABOUT]->(:MethodConcept)
+(:Claim)-[:ABOUT]->(:Task)
 (:Claim)-[:ABOUT]->(:Resource)
+(:Claim)-[:ABOUT]->(:Metric)
 ```
 
-`EXPRESSES` 将具体说法关联到共同命题；`ABOUT` 标明主张讨论的对象。共享 ClaimConcept 提供跨论文查找入口，各 Claim 的条件和依据仍需分别阅读。
+`EXPRESSES` 将具体说法关联到共同命题；`ABOUT` 标明主张讨论的对象，可以是具体方法、方法类别、任务、资源或指标。关于一类方法或某项指标的经验判断由此挂到对应节点，查看该节点时一并取回。共享 ClaimConcept 提供跨论文查找入口，各 Claim 的条件和依据仍需分别阅读。
 
 ### 任务与问题
 
@@ -432,6 +466,21 @@ Task 与 Issue 是共享概念，节点本身不带 anchor；依据放在连接�
 `HAS_CONDITION` 和 `MEASURED_BY` 表达实验采用的条件和指标；`RESULT_AT` 指向报告结果的具体内容，`HAS_CONTENT` 保留内容所属论文。Experiment 的 anchor 可以定位实验整体，ContentUnit 的 anchor 定位具体表、图或段落。
 
 `SUPPORTED_BY` 表达 Agent 对支持关系的理解；若只支持部分内容，在关系 description 中说明，并给出对应 anchor。论文级资源角色不直接推作实验中的使用角色。
+
+### 第一手检查
+
+```cypher
+(:Observation)-[:OBSERVES]->(:Resource)
+(:Observation)
+    -[:CHECKS {
+        verdict: "inconsistent",
+        description: "<对照论文说法后的一致之处与差异>"
+    }]->
+(:ResourceRecord)
+(:Observation)-[:CHECKS {verdict: "partial"}]->(:Claim)
+```
+
+`OBSERVES` 连接被检查的资源。`CHECKS` 把检查结果与论文的说法对照，`verdict` 可使用 consistent / inconsistent / partial / inconclusive。例如论文声称代码仓库实现了所提方法，检查发现仓库内容与论文不符且长期未维护：ResourceRecord 保留论文的声明，Observation 记录检查时间、版本与所见，并以 `verdict: inconsistent` 连到该 ResourceRecord。
 
 ### 论文互相参照
 
