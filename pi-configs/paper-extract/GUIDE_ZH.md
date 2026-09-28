@@ -121,9 +121,9 @@ anchor 已改为块级标签（<论文 key>#<块 id>），先于 graph_model.md 
 |---|---|
 | `Dataset` | 数据本身，可用于训练、评测，或被多个 Benchmark 使用 |
 | `Benchmark` | 数据加上任务定义和评测协议，用于比较方法 |
-| `Model` | 可加载的模型权重或 checkpoint |
+| `Model` | 模型：可加载的权重或 checkpoint，或只通过服务 API 提供的模型（如 API 模型族）。实际使用的具体型号或快照写在使用关系或 ResourceRecord 中 |
 | `CodeRepo` | 代码仓库 |
-| `Tool` | 实验中使用的软件、库或服务 API |
+| `Tool` | 实验中使用的软件、库或非模型的服务 API（如检索或向量数据库服务）；通过 API 提供的模型属于 `Model` |
 
 - 字段：`name`、`aliases`、`url`（资源的通用入口）、`description`。任务、规模、切分、评分方式等写进 description，不另设字段。
 - 一个对象兼有多种身份时拆成多个 Resource。同一仓库发布的代码和模型权重，分别建 `CodeRepo` 和 `Model`。

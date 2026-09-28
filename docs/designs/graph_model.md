@@ -231,9 +231,9 @@ Issue 是问题，ClaimConcept 是命题：前者聚合回应同一问题的主�
 |---|---|
 | `Dataset` | 数据本身，可被训练、评测或多个 Benchmark 使用 |
 | `Benchmark` | 数据加上任务定义与评测协议，用于比较方法 |
-| `Model` | 可加载的模型权重或 checkpoint |
+| `Model` | 模型：可加载的权重或 checkpoint，或只通过服务 API 提供的模型；模型族（如某系列的多个规模或快照）可作为入口节点 |
 | `CodeRepo` | 代码仓库 |
-| `Tool` | 实验中使用的软件、库或服务 API |
+| `Tool` | 实验中使用的软件、库或非模型的服务 API（如检索或向量数据库服务）；通过 API 提供的模型属于 `Model` |
 
 种类属于资源身份的一部分，不设其他按种类区分的属性；任务、规模、切分、评分方式等信息写在 description 中。一个对象兼有多种身份时拆成多个 Resource，例如同一仓库发布的代码与模型权重分别建立 `CodeRepo` 与 `Model`，按需用关系连接。
 
@@ -570,7 +570,7 @@ graph BT
 
 ```cypher
 WITH toLower(trim($q)) AS q
-MATCH (n:Paper|Method|MethodConcept|Resource|Metric)
+MATCH (n:Paper|Method|MethodConcept|Task|Resource|Metric)
 WHERE toLower(coalesce(n.name, n.title)) = q
    OR ANY(a IN coalesce(n.aliases, []) WHERE toLower(trim(a)) = q)
 RETURN n.id AS id, labels(n) AS labels,
@@ -583,7 +583,7 @@ RETURN n.id AS id, labels(n) AS labels,
 
 ```cypher
 CREATE FULLTEXT INDEX entity_names IF NOT EXISTS
-FOR (n:Paper|Method|MethodConcept|Resource|Metric)
+FOR (n:Paper|Method|MethodConcept|Task|Resource|Metric)
 ON EACH [n.name, n.title, n.aliases];
 
 CALL db.index.fulltext.queryNodes('entity_names', $q) YIELD node, score
@@ -592,7 +592,19 @@ RETURN node.id AS id, labels(node) AS labels,
 ORDER BY score DESC LIMIT 10
 ```
 
-两种查询只返回候选；是否为同一对象仍由 Agent 结合定义、来源和版本判断。二者已在样例图谱上执行（`experiments/e08/notebooks/04_neo4j.ipynb` step9），本地 Neo4j 2026.09 的全文索引可直接索引 aliases 这类字符串列表。
+ClaimConcept 与 Issue 没有名称，按陈述文本检索；共享节点的 description 与 note 另建一个索引，用于名称未命中时按内容召回：
+
+```cypher
+CREATE FULLTEXT INDEX statement_texts IF NOT EXISTS
+FOR (n:ClaimConcept|Issue)
+ON EACH [n.text, n.description, n.note];
+
+CREATE FULLTEXT INDEX entity_texts IF NOT EXISTS
+FOR (n:Paper|Method|MethodConcept|Task|Resource|Metric)
+ON EACH [n.description, n.note];
+```
+
+以上查询只返回候选；是否为同一对象仍由 Agent 结合定义、来源和版本判断。名称的精确匹配与 `entity_names` 已在样例图谱上执行（`experiments/e08/notebooks/04_neo4j.ipynb` step9），本地 Neo4j 2026.09 的全文索引可直接索引 aliases 这类字符串列表。
 
 ### 从贡献查看具体主张及其结果依据
 

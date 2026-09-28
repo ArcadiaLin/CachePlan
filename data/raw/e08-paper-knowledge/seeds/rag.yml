@@ -220,12 +220,15 @@ nodes:
     labels: [Resource, Dataset]
     properties:
       name: 2WikiMultiHopQA
-      aliases: [2WikiMQA]
+      aliases: [2WikiMQA, 2Wiki]
       url: https://github.com/Alab-NII/2wikimultihop
       description: >
         Multi-hop QA dataset built from Wikipedia paragraphs and Wikidata (Ho et al., COLING
         2020); each question has evidence triples and supporting facts. Question types are
         comparison, inference, compositional and bridge-comparison.
+      note: >
+        Treat 2Wiki as a candidate match; confirm the dataset identity from the surrounding
+        context or citation before reusing this node.
     sources: [https://github.com/Alab-NII/2wikimultihop]
     verified: true
 
@@ -490,11 +493,14 @@ nodes:
     labels: [Metric]
     properties:
       name: Answer F1
-      aliases: [token-level F1]
+      aliases: [token-level F1, F1]
       description: >
         F1 over the tokens shared by the normalized prediction and a reference answer, taking
         the maximum over references and averaging over questions.
-      note: Normalization details depend on the evaluation script; record which script was used.
+      note: >
+        F1 is ambiguous; confirm that it measures answer-token overlap rather than
+        supporting-fact prediction or classification before reusing this node. Normalization
+        details depend on the evaluation script; record which script was used.
 
   - ref: met_recall_at_k
     labels: [Metric]
