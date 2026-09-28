@@ -40,13 +40,44 @@
 
 - 新增 infra/neo4j-e08/（端口 7688/7475），与样例库隔离。
 
+## 2026/09/28
+
+### 种子概念重新入图
+
+- id 由全局分配器按“前缀 + 序号”分配（如 task_0001）；按“主 Label + name”判断节点是否已存在，已存在就跳过。
+- 重跑时全部跳过，id 保持不变。
+- 语义检索支持：用 Qwen3-Embedding-8B（vLLM，部署在 192.168.163.112:8002，4096 维）给节点算向量，并建了 entity_vectors 和 statement_vectors 两个向量索引。
+  - sync_embeddings() 按“模型名 + 文本”的哈希只补算缺失或过期的向量，写入图谱后调用一次即可。
+
+### 查询算子
+
+- `find_entities(mention, description, entity_type)`：
+  - Stage 1 标识解析：原样匹配和去标点后匹配，命中的固定置顶，不参与排序；
+  - Stage 2 三路召回：名称 BM25（带前缀和模糊匹配）、定义 BM25、语义向量，按 RRF（k = 10）融合；
+  - 返回前 5 个候选，附各通道的证据、定义、note 和一跳邻接关系，不给置信度。
+- `find_statements(text, description, kind)`：在 ClaimConcept、Issue、Claim 上做两路召回并融合。Claim 只查不复用，结果附所属论文。用临时节点做冒烟测试通过。
+- 索引调整：
+  - 定义和陈述两个全文索引改用 english 分词，名称索引保留默认分词；
+  - note 不进索引也不进向量，只随候选返回；
+  - Issue 的向量改为用 text + description 计算；
+  - ensure_schema() 发现索引的 Label、字段或分词方式与声明不一致时，自动重建。
+- 示例效果：
+  - ETTh1 能带出 ETT；
+  - RevIN 加一句 description 后能命中 Instance normalization；
+  - 图里没有的 PatchTST，前 5 名都是它可能要连边的相关概念。
+
+### 基础设施
+
+- 部署 Qwen3-Embedding-8B
+- neo4j 索引完善
+
+### 论文草稿
+
+- codex 撰写了一版论文全文雏形已提交；核心机制与评测方案待细化，下一步审阅第 2、4 节
+  - 本次因 find_entities 与命题检索的区分，重新审视了数据模型的设计依据及其在研究中的地位。讨论明确：当前模型是面向 Agent 长期研究活动的 semantic data model，其设计由 **研究 intent 中的知识复用需求** ，以及 **科学知识表示的既有研究** 共同支撑，可以构成研究贡献的一部分。
+  - 为固定这些理解、锚定研究主线，提前将 paper/introduction.zh.md 扩展为全文草稿，串联“研究活动 → 复用挑战 → 模型设计 → 操作机制 → 效果评价”。已保留原有引言并提交 29914b0。这版草稿用于检查研究叙事是否连贯；核心算法、命题归并与知识维护机制、评测协议仍待细化。下一步优先审阅第 2、4 节，明确哪些设计承担核心贡献、需要什么证据支持
+
 ## 正在进行的工作
-
-抽取 Agent 设计，需要给 pi 禁用原本工具，然后提供一组专门负责抽取的 agent 工具
-
-定下两件小事：Resource:Model 包含只通过 API 提供的模型和模型族入口，Tool 限定为非模型的服务 API；检索设计中名称索引加入 Task，新增 
-
-目前新建了一个 pi-configs/paper-extract 配置
 
 ## 备忘
 
@@ -67,3 +98,5 @@
 我认同这次调整的理由，也认为它更贴近你要保存的阅读经验。接下来最关键的是让阅读后形成的新判断有明确的位置，这样模型才能完整表达经验的积累与修订。
 
 建议进度条目：审阅数据模型的新修改，讨论了删除 Condition / ContentUnit、收紧 note、扩展 ABOUT 和引入 Observation 的作用。待明确作者主张与 Agent 归纳判断的归属及证据表达，下一步补齐 Claim 的语义边界。
+
+评测 basline 方案：论文切块的 rag，还有 markdown 文档上的 grep 或者全文索引检索
