@@ -1,0 +1,38 @@
+# 这个服务部署在 192.168.163.112 上，不在本地
+services:
+  vllm-qwen3-embed:
+    image: vllm/vllm-openai:v0.21.0
+    container_name: vllm-qwen3-embed
+    runtime: nvidia
+
+    ports:
+      - "8002:8000"
+
+    volumes:
+      - /srv/models/embedding/Qwen/Qwen3-Embedding-8B:/models/Qwen3-Embedding-8B
+
+    ipc: host
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["3"]
+              capabilities: [gpu]
+
+    command:
+      - --model
+      - /models/Qwen3-Embedding-8B
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --dtype
+      - bfloat16
+      - --gpu-memory-utilization
+      - "0.3"
+      - --served-model-name
+      - qwen3-embedding-8b
+
+    restart: unless-stopped
