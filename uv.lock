@@ -6,7 +6,6 @@ requires-python = ">=3.12, <3.14"
 members = [
     "arxiv2md",
     "cacheplan",
-    "cacheplan-e07",
     "cacheplan-e08",
 ]
 
@@ -214,22 +213,12 @@ notebook = [
 test = [{ name = "pytest", specifier = ">=8,<9" }]
 
 [[package]]
-name = "cacheplan-e07"
-version = "0.1.0"
-source = { editable = "experiments/e07-p4a-case-pool" }
-dependencies = [
-    { name = "pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "pyyaml", specifier = ">=6" }]
-
-[[package]]
 name = "cacheplan-e08"
 version = "0.1.0"
 source = { editable = "experiments/e08" }
 dependencies = [
     { name = "beautifulsoup4" },
+    { name = "httpx" },
     { name = "mineru-vl-utils" },
     { name = "neo4j" },
     { name = "pyyaml" },
@@ -238,6 +227,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.13,<5" },
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "mineru-vl-utils", specifier = ">=2.0.5,<3" },
     { name = "neo4j", specifier = ">=5.28,<7" },
     { name = "pyyaml", specifier = ">=6,<7" },

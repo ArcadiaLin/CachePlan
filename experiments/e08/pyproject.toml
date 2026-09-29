@@ -17,6 +17,8 @@ dependencies = [
     # 同样靠传递依赖进的 .venv，理由同上，显式声明。
     "neo4j>=5.28,<7",
     "pyyaml>=6,<7",
+    # e08.operator 调用 embedding 服务（vLLM 的 /v1/embeddings）；此前同样靠传递依赖进的 .venv
+    "httpx>=0.28,<1",
 ]
 
 [build-system]
