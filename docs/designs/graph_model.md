@@ -14,14 +14,9 @@ Graph Model
 ├── Relationship
 │    ├── Type
 │    └── Property
-│
-└── Query
-     ├── Pattern matching
-     ├── Traversal
-     └── Path query
 ```
 
-以下为概念设计，Cypher 仅用于展示结构与查询意图，尚未实施。
+以下为概念设计，Cypher 仅用于展示结构。入库前查找已有节点的查询算子及其索引见 [operator.md](operator.md)。
 
 ## 设计思路
 
@@ -559,113 +554,3 @@ graph BT
 ```
 
 该图仅表达类别归属，不据此推导两个具体方案之间的 `DERIVED_FROM`。复用时可通过共同对象或同类节点关系找到相关记录，再阅读 Agent 描述，必要时沿锚点核对原文。
-
-## Query
-
-以下查询展示模型希望支持的读取方式，尚未在数据库执行。
-
-### 按名称与 aliases 查找候选实体
-
-抽取时先按名称和 aliases 做归一化的精确匹配，并返回命中字段，供 Agent 判断是否复用：
-
-```cypher
-WITH toLower(trim($q)) AS q
-MATCH (n:Paper|Method|MethodConcept|Task|Resource|Metric)
-WHERE toLower(coalesce(n.name, n.title)) = q
-   OR ANY(a IN coalesce(n.aliases, []) WHERE toLower(trim(a)) = q)
-RETURN n.id AS id, labels(n) AS labels,
-       coalesce(n.name, n.title) AS name, n.aliases AS aliases,
-       CASE WHEN toLower(coalesce(n.name, n.title)) = q
-            THEN 'name' ELSE 'alias' END AS hit
-```
-
-精确匹配未命中或需要召回写法相近的候选时，使用覆盖名称、标题和 aliases 的全文索引：
-
-```cypher
-CREATE FULLTEXT INDEX entity_names IF NOT EXISTS
-FOR (n:Paper|Method|MethodConcept|Task|Resource|Metric)
-ON EACH [n.name, n.title, n.aliases];
-
-CALL db.index.fulltext.queryNodes('entity_names', $q) YIELD node, score
-RETURN node.id AS id, labels(node) AS labels,
-       coalesce(node.name, node.title) AS name, node.aliases AS aliases, score
-ORDER BY score DESC LIMIT 10
-```
-
-ClaimConcept 与 Issue 没有名称，按陈述文本检索；共享节点的 description 与 note 另建一个索引，用于名称未命中时按内容召回：
-
-```cypher
-CREATE FULLTEXT INDEX statement_texts IF NOT EXISTS
-FOR (n:ClaimConcept|Issue)
-ON EACH [n.text, n.description, n.note];
-
-CREATE FULLTEXT INDEX entity_texts IF NOT EXISTS
-FOR (n:Paper|Method|MethodConcept|Task|Resource|Metric)
-ON EACH [n.description, n.note];
-```
-
-以上查询只返回候选；是否为同一对象仍由 Agent 结合定义、来源和版本判断。名称的精确匹配与 `entity_names` 已在样例图谱上执行（`experiments/e08/notebooks/04_neo4j.ipynb` step9），本地 Neo4j 2026.09 的全文索引可直接索引 aliases 这类字符串列表。
-
-### 从贡献查看具体主张及其结果依据
-
-```cypher
-MATCH (:Paper {id: $paper_id})-[:HAS_CONTRIBUTION]->(c:Contribution)
-OPTIONAL MATCH (c)-[:HAS_CLAIM]->(cl:Claim)
-OPTIONAL MATCH (cl)-[:SUPPORTED_BY]->(e:Experiment)
-RETURN c.text AS contribution,
-       c.anchor AS contribution_anchor,
-       cl.text AS claim,
-       cl.anchor AS claim_anchor,
-       e.description AS experiment,
-       e.anchor AS experiment_anchor
-```
-
-### 找到表达共同命题的其他论文
-
-```cypher
-MATCH (p1:Paper {id: $paper_id})-[:HAS_CLAIM]->(c1:Claim)
-      -[:EXPRESSES]->(concept:ClaimConcept)
-      <-[:EXPRESSES]-(c2:Claim)<-[:HAS_CLAIM]-(p2:Paper)
-WHERE p1.id <> p2.id
-RETURN concept.text AS common_claim,
-       c1.text AS source_claim,
-       p2.title AS related_paper,
-       c2.text AS related_claim,
-       c1.anchor AS source_anchor,
-       c2.anchor AS related_anchor
-```
-
-### 沿共同资源查找其他论文的使用经验
-
-```cypher
-MATCH (p1:Paper {id: $paper_id})-[:HAS_RESOURCE_RECORD]->(r1:ResourceRecord)
-      -[:DESCRIBES]->(r:Resource)
-      <-[:DESCRIBES]-(r2:ResourceRecord)
-      <-[:HAS_RESOURCE_RECORD]-(p2:Paper)
-WHERE p1.id <> p2.id
-RETURN r.name AS resource,
-       r1.description AS source_experience,
-       p2.title AS related_paper,
-       r2.description AS related_experience,
-       r2.anchor AS related_anchor
-```
-
-按次级 Label 限定资源种类，例如查找两篇论文共同评测过的 Benchmark：
-
-```cypher
-MATCH (p1:Paper {id: $paper_id})-[:REPORTS]->(:Experiment)
-      -[:USES]->(b:Resource:Benchmark)
-      <-[:USES]-(:Experiment)<-[:REPORTS]-(p2:Paper)
-WHERE p1.id <> p2.id
-RETURN b.name AS benchmark, collect(DISTINCT p2.title) AS other_papers
-```
-
-论文与资源的角色也可直接查询：
-
-```cypher
-MATCH (p:Paper)-[rel:RELATES_TO]->(r:Resource {id: $resource_id})
-RETURN p.title AS paper, rel.role AS role,
-       rel.description AS relation, rel.anchor AS anchor
-```
-
-这些路径用于发现值得一起阅读和比较的经验。主张归并是否正确、资源是否对齐、关系是否有依据，以及它们是否帮助后续研究，是本模型需要检验的研究问题。

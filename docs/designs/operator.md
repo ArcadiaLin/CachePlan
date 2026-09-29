@@ -181,5 +181,4 @@ Query:<text>
 - **通道之间并不独立。** `lexical_text` 与 `semantic` 都读节点的 description，被两路同时召回的候选有一部分属于重复计数，可能让弱相关候选挤进前 `n`。修法（降权或截断 lexical_text）待有数据后决定。
 - **定义通道不使用 mention。** 整体资源的定义往往列出其组成部分，例如 ETT 的定义中有 ETTh1。改为只用 description 后，查询 ETTh1 时 ETT 从第 2 名降到第 4 名；不过 ETTh1 的 `PART_OF → ETT` 仍在邻接关系中可见。
 - **只给称呼时，语义通道区分度低。** 需要在 Agent 的工具说明中约定：查询时尽量附上一句 description。
-- **与 graph_model Query 一节不一致。** 该节写的是 `entity_texts` 含 note、`statement_texts` 不含 Claim，也没有向量索引；待检索层稳定后同步。
 - **待测试。** 漏找率与漏找类型、融合参数、候选数量，都等六篇论文入库后，用抽取运行中记录的真实查询和 Agent 的复用决定来检验。
