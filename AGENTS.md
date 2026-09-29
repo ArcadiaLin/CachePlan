@@ -5,24 +5,48 @@
 This repository supports an ongoing research project. The tentative publication
 target remains **SIGMOD**.
 
-The current research direction (updated 2026-09-17) is:
+The current research direction (updated 2026-09-29) is:
 
-> **Paper-knowledge memory for research agents and its data-management
-> mechanisms (tentative).**
+> **Data-management middleware for persistent paper-derived knowledge in
+> CS research workflows (tentative).**
 
 The current core question is:
 
-> **How can we build a paper-knowledge database for agents that organizes and
-> manages reading-derived understanding and its complex semantic relationships,
-> supporting continual knowledge accumulation and querying, composition, and
-> reuse in subsequent research tasks?**
+> **How can a semantic data model and composable operators support the
+> representation, querying, composition, and maintenance of accumulated
+> paper-derived knowledge for external agents in bounded CS research workloads?**
 
-The motivating problem is domain-specific Agent Memory: preserving the
-understanding formed by reading papers and associated materials, retaining its
-semantic relationships and evidence, and reusing it across research tasks and
-sessions. Papers are source material; the managed objects are accumulated
-knowledge and its relationships. The database framing concerns their persistent
-representation, organization, querying, and maintenance.
+The motivating application remains domain-specific Agent Memory. Papers and
+associated materials are sources; the managed objects are accumulated knowledge,
+interpretations, semantic relationships, and their evidence. The research focus
+is the middleware's data-management mechanisms and support for downstream work.
+"Paper understanding" refers to interpretations produced by external agents
+during reading and extraction; it does not promise autonomous scientific
+reasoning or inference of contradictions by the database.
+
+Derive representative access and update workloads from the common needs of
+human researchers and agents within selected CS tasks and research processes.
+Do not attempt to enumerate all research behavior or universal research intents.
+Intents motivate workloads; concrete inputs, required outputs, data states, and
+operation sequences must make those workloads evaluable. The selected tasks and
+benchmark remain to be agreed.
+
+External agents interpret tasks and materials, make semantic judgments, and
+submit explicit operations or plans. The middleware manages and executes those
+operations without internal LLM reasoning about identity, claim relations, or
+research conclusions. Retrieving a stored judgment is distinct from producing
+one. The placement of embedding computation remains an open implementation
+boundary.
+
+The technical direction is to give the data model and operators explicit
+database semantics: types, identity and provenance rules, constraints, input and
+output contracts, composition, and mappings to backend execution. Property graphs
+and Cypher are the current implementation foundation. Representation fidelity,
+semantic preservation, and invariant-preserving updates are candidate formal
+goals; one-to-one mappings, a complete new algebra or compiler, and expressive
+power beyond Cypher are not established requirements or contributions. An agent
+may translate intent into an operator plan, but intent fidelity must be assessed
+separately from plan validation and backend execution correctness.
 
 Cache optimization, KV-cache management, and cache-aware scheduling are no
 longer research objectives. The repository name CachePlan is historical; it does
@@ -31,9 +55,11 @@ not constrain the new direction or prescribe an inference backend.
 The earlier literature mini-bench contains useful task and data-design ideas.
 Its scope can be developed in greater depth, but its previous role as an
 execution-optimization workload no longer applies. Related-work comparisons
-should prioritize scientific Agent Memory and structured memory architectures.
-AgenticScholar remains a relevant reference for scholarly data management; its
-relevance does not establish this project's novelty or effectiveness.
+should emphasize data-management middleware, scholarly knowledge systems, and
+structured Agent Memory. AgenticScholar remains a relevant reference for
+workload-driven design and system evaluation; its internal LLM operators are not
+the responsibility boundary adopted here, and its relevance does not establish
+this project's novelty or effectiveness.
 
 The specific challenges, technical mechanism, task scope, and evaluation
 protocol remain to be agreed. Do not treat candidate ideas from discussion as
@@ -59,6 +85,15 @@ benchmark for the new direction.
 
 Evaluation principles:
 
+- **Evaluate middleware support first.** Compare supported query and update
+  workloads, result correctness, execution and interaction costs, scalability,
+  and maintenance behavior. Downstream task outcomes provide application
+  evidence but are not the sole or primary measure of the middleware's value.
+  Include construction and update costs when assessing reuse benefits.
+- **Make capability comparisons operational.** Distinguish native support,
+  support through composition, and support requiring additional implementation
+  or external reasoning. A feature table alone does not demonstrate correctness,
+  efficiency, or superiority over a general-purpose backend with suitable queries.
 - **Verify semantic correctness.** Schema validity and evidence links alone do
   not establish that extracted facts or relationships are supported.
 - **Separate claims from verification.** A paper's release claim, observed
@@ -68,7 +103,10 @@ Evaluation principles:
   silently merge incompatible entities, experimental conditions, or versions.
 - **Use independent quality evaluation and strong baselines.** Compare methods
   under equivalent information access and declared budgets; distinguish the
-  effects of reasoning, retrieval, validation, and model choice.
+  effects of reasoning, retrieval, validation, and model choice. Separate
+  controlled evaluations on the same stored knowledge from evaluations of the
+  entire construction-and-use process, and isolate external-agent behavior from
+  middleware execution where possible.
 - **Evaluate the data product.** Extraction quality, relationship correctness,
   evidence support, and downstream usefulness matter alongside construction
   cost. Do not infer library quality solely from fluent answers.
