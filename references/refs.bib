@@ -259,3 +259,32 @@
   note      = {支撑 docs/discussions/2026-09-11-p4a-related-work-and-method-directions.md：
                Graphiti 的时序事实、关系失效与历史保留机制，作为资源知识维护的相邻方法。}
 }
+
+@inproceedings{2017-GraphRelAlgebra,
+  title     = {Formalising {openCypher} Graph Queries in Relational Algebra},
+  author    = {Marton, J{\'o}zsef and Sz{\'a}rnyas, G{\'a}bor and Varr{\'o}, D{\'a}niel},
+  booktitle = {Advances in Databases and Information Systems (ADBIS 2017)},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {10509},
+  pages     = {182--196},
+  publisher = {Springer},
+  year      = {2017},
+  doi       = {10.1007/978-3-319-66917-5_13},
+  eprint    = {1705.02844},
+  url       = {https://arxiv.org/abs/1705.02844},
+  note      = {支撑 docs/designs/v2/research_design_v2.md §5：
+               以关系图代数（扩展关系操作并引入图操作）形式化核心 openCypher 构造，
+               作为语义算子映射到 Cypher 后端执行时可借鉴的形式化参照。}
+}
+
+@article{2018-CypherSemantics,
+  title     = {Formal Semantics of the Language {Cypher}},
+  author    = {Francis, Nadime and Green, Alastair and Guagliardo, Paolo and Libkin, Leonid and Lindaaker, Tobias and Marsault, Victor and Plantikow, Stefan and Rydberg, Mats and Schuster, Martin and Selmer, Petra and Taylor, Andr{\'e}s},
+  journal   = {arXiv preprint arXiv:1802.09984},
+  year      = {2018},
+  eprint    = {1802.09984},
+  url       = {https://arxiv.org/abs/1802.09984},
+  note      = {支撑 docs/designs/v2/research_design_v2.md §5：
+               Cypher 只读核心片段（模式匹配、过滤、表上关系操作）的指称语义，
+               作为定义算子语义与验证执行正确性的底层语义依据。}
+}
