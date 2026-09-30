@@ -10,6 +10,8 @@
     utils/embedding.py  向量计算、向量索引与补算
     utils/ids.py        id 分配
     utils/fusion.py     分词、归一化与 RRF 融合
+    utils/schema.py     graph_model 的结构约束（写入前检查）
+    utils/anchor.py     原文锚点的解析、检查与读取
 
 包放在 e08 下而不是顶层：顶层的 `operator` 会遮蔽标准库同名模块。
 """
