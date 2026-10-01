@@ -1,6 +1,21 @@
 # 算子设计：数据模型、组合语义与 Agent 职责边界
 
-> **状态更新（2026-09-29）：本文已不再是可靠的当前设计依据，仅保留为讨论历史。** 数据模型与算子正在重新审视，原有设计可能很快被推翻。当前问题见 [数据模型与领域算子：基本抽象的重新审视](2026-09-29-data-model-and-operator-reconsideration.md)。下文的候选方案、接口及判断不能直接作为既定设计或实现要求；当前职责边界以仓库约定和后续讨论为准。
+> **状态：已退役（2026-10-01）。** 本文的问题已被 v2 设计吸收或改写，不再作为开放问题跟踪，仅作讨论历史保留。当前设计见 `docs/designs/v2/research_design_v2.md` 与 `docs/designs/v2/intents_decompose.md`；仍未定的部分见 [v2 未定模型问题与写路径](../discussions/2026-10-01-v2-open-model-decisions-and-write-path.md)。
+
+## 退役说明：各问题的去向
+
+| 本文疑问 | v2 中的处理 | 状态 |
+| --- | --- | --- |
+| 什么才算一个算子 | 任务级访问算子，带输入类型、硬约束、召回含义、输出绑定、缺失与截断状态（`AccessResult`） | 已解决 |
+| 怎样组合、中间结果是什么 | `AccessResult` 的 items / bindings / witnesses / coverage 调用链；统一状态维度；`PredRow` | 已解决（实例待验证） |
+| 基础操作与复合操作如何分工 | 原语（`Resolve`、`Search`、`Context`、`Get`、`ReadEvidence`）与专用算子（`Experiments`、`Evidence`、`Implementations`）；专用算子可与组合语义等价，价值在稳定契约 | 已解决（复用声明待检验） |
+| Agent 与系统各承担什么 | 外部 `A_map` / `A_pred` / `A_policy` 契约与确定性 router；中间件只执行显式操作 | 已解决 |
+| 接口组织方案 A / B / C | 采用“原语 + 模型相关专用算子”，近似本文方案 B；Cypher 作为实现与基线 | 已解决 |
+| 算子如何进入论文贡献 | 主张分层：A 为理解经验复用，B 为收窄的访问层主张（见 `docs/progress.md` 备忘） | 已解决 |
+| Agent 自己形成的跨论文判断如何归属 | 未定 | 移入讨论文档 §2 |
+| embedding 放在服务内还是外 | 未定（AGENTS.md 仍列为开放实现边界） | 移入讨论文档 §8 |
+
+本文链接的设计文档已移至 `docs/designs/v1/`。以下为 2026-09-29 原文。
 
 日期：2026-09-29。状态：开放讨论。外部 Agent 与数据管理系统的职责边界已明确；算子的定义、粒度、组合方式和具体接口仍待选择。
 
@@ -8,9 +23,9 @@
 
 相关材料：
 
-- [数据模型](../designs/graph_model.md)：已有对象、关系及其语义约定。
-- [研究设计](../designs/research_design.md)：需要由知识库支持的研究意图与能力。
-- [查询算子](../designs/operator.md)：`find_entities`、`find_statements` 的当前原型设计。
+- [数据模型](../designs/v1/graph_model.md)：已有对象、关系及其语义约定。
+- [研究设计](../designs/v1/research_design.md)：需要由知识库支持的研究意图与能力。
+- [查询算子](../designs/v1/operator.md)：`find_entities`、`find_statements` 的当前原型设计。
 - [候选查找的定位与实体身份问题](2026-09-28-entity-lookup-and-identity.md)：检索组件的定位，以及身份积累与修正的开放问题。
 
 ## 1. 为什么提出这个问题
