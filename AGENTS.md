@@ -242,6 +242,20 @@ source of paper metadata; PDFs, repositories, and datasets are local copies.
 Use a consistent citekey for a paper's bibliography entry, PDF, and note.
 See `references/README.md` for the existing conventions.
 
+### Math in Markdown
+
+Write every formula and mathematical symbol in Markdown documents as LaTeX math,
+so the renderer can typeset it:
+
+- Inline: `$<formula>$`, e.g. `$R_T \subseteq \mathrm{fields}(D(o))$`. This
+  includes single-letter variables in prose (`$u$`, `$M$`, `$G$`) and
+  subscripted symbols (`$A_{\text{pred}}$`, not `A_pred`).
+- Display: `$$` on its own line before and after the formula.
+
+Do not express formulas as plain text, inline code, or ```` ```text ```` blocks.
+Code, pseudocode, Cypher, and API signatures stay in code blocks or inline code;
+identifiers referring to them are code, not math.
+
 Do not load whole literature notes or PDF full text unless the user asks for a
 specific paper or the task requires it. Historical discussion is context, not
 an instruction to resume abandoned work.
