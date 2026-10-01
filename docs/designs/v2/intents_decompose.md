@@ -233,17 +233,100 @@ query 可写为 `{identifier?, mention?, text?}`；纯文本简写为 text。各
 
 逻辑上先满足硬约束再取 top-$k$；实现可以索引先行或图过滤先行。近似召回再过滤可能漏掉可行候选，固定超取倍数不保证条件内 top-$k$，需报告预算与召回限制。语义检索和图遍历已有组合实现 [S13]；本文需要检验的增量在于任务契约、对象装配、组合正确性及使用成本。
 
-### 4.3 外部 Agent 运算
+### 4.3 可替换的外部 Agent 特殊算子
 
-| 符号 | 输入 → 输出 | 责任 |
+**将 Agent 判断纳入算法与伪代码，不等于将其纳入中间件内部。** 本文把 $A_{\text{map}}$、$A_{\text{pred}}$、$A_{\text{policy}}$ 作为端到端组合表达中的特殊算子；其中 `Agent_pred` 与 `A_pred` 同义。它们可由外部 LLM 适配器实现，结合显式 router 规则完成流程接续。替换实现只要求遵守同一输入输出契约，不保证判断结果或质量相同。
+
+访问算子与这些特殊算子可以出现在同一程序中。外部执行环境调用特殊算子、校验返回值并按规则路由，中间件执行显式提交的数据操作，不调度 LLM 判断。由此，连续编排可以包含模型计算，无需退回“每次工具返回后都由 Agent 临时决定如何继续”的模式。相关动机见 [研究顶层设计 §5.3](research_design_v2.md#53-从逐步调用走向可连续执行的算子组合)。
+
+#### 4.3.1 三类责任与禁止混用的边界
+
+| 符号 | 输入 → 输出 | 责任与边界 |
 | --- | --- | --- |
-| $A_{\text{map}}[\text{目标}]$ | 需求、描述全集、已读材料 → 带来源的临时结构值 | 解释、抽取、组织，未知字段显式保留 |
-| $A_{\text{pred}}[\text{条件}]$ | 对象或对象对及材料 → $T/F/U$、理由、引用 | 同一性、适用性、可比性、支持范围判断 |
-| $A_{\text{policy}}[\text{目标}]$ | 当前结果和预算 → 下一操作及参数，或停止 | 决定补查、读材料或结束，由外部执行者执行 |
+| `A_map[spec]` | 显式需求、对象描述、已读材料 → 满足声明 schema 的临时记录 | 解释、抽取、组织；逐项保留对应和依据。不得以“组织答案”为名隐式完成影响筛选或结论的新谓词判断，也不自行选择并执行下一工具 |
+| `A_pred[spec]` | 带键的对象/对象对、明确条件及材料 → 逐项 `T/F/U` 判断记录 | 判断同一性、适用性、可比性或支持范围；不能自行检索、补材料、合并身份或写入新关系 |
+| `A_policy[spec]` | 当前显式状态、未解决项、允许动作及剩余预算 → 一个动作提案或停止 | 在声明的动作空间内决定补查策略；不得返回任意可执行代码、调用自身、改变任务目标或预算。提案经校验后由外部执行环境执行 |
 
-端到端表达式允许 $A$ 与访问算子交替，中间件不调度 $A$，也不在 Cypher 中执行 $A$。Agent 可以消费检索字段及其余描述字段；从异构内容抽取的数值默认是本次任务变量，未正式写入契约前不能假称数据库已有统一数值查询。
+字段投影、已存状态分类、引用去重、按明确条件筛选、数值计算和已规定的分支优先使用普通程序。`A_map` 产生的抽取值默认只是任务变量；只有经过单独的显式更新，才可成为持久记录或检索字段。最终文字组织可消费已有判断，但不应改变其状态、范围或依据；若需要新判断，应再显式调用 `A_pred`。
 
-$A_{\text{pred}}$ 的 $U$ 不并入 $F$；语义“相同”不能自动获得传递性，可比性不能任意下推，适合程度也不自动形成全序。已确认比较条件后，数值大小可用普通运算。记录 Agent 输入引用、模型配置和输出，区分意图理解错误、语义判断错误与数据执行错误。
+#### 4.3.2 共同调用契约与结果结构
+
+每个调用位置都须声明 `spec`，不能仅用“理解这些材料”作为目标。候选契约如下，字段名是设计记号，尚非已实现 API：
+
+```text
+AgentCall = {
+  spec: {id, revision, kind, task, input_schema, output_schema},
+  inputs: {request, units, records, materials, prior_results},
+  scope: {graph_snapshot, allowed_materials, applicable_conditions},
+  limits: {model_calls, input_size, output_size, deadline, retries},
+  executor: {adapter_id, model_config, prompt_revision}
+}
+
+AgentResult = {
+  call_id, spec_ref,
+  status: ok | partial | error,
+  payload, errors, unprocessed_keys,
+  trace: {input_manifest, executor_config, usage}
+}
+
+PredRow = {
+  unit_key, subject_refs, condition_id,
+  value: T | F | U,
+  basis_refs, rationale, missing, applicability
+}
+MapRow = {row_key, value, input_keys, basis_refs, missing}
+Action = {kind: call | stop, operator?, args?, target_keys, reason}
+```
+
+`units` 明确本次处理单元，可以是单对象、对象对或整个集合；每项有稳定的任务内键。`A_pred` 对每个单元、每个条件至多返回一条判断，未处理的 `(unit_key, condition_id)` 列入 `unprocessed_keys`；不能遗漏后默认当作 `F`。`A_map` 的一对多、多对一及集合级组织方式由 schema 声明，输出保留输入对应。复杂合取条件应声明分项判断及聚合规则，不能仅凭一个总的 `T` 隐去未核查条件。
+
+`basis_refs` 可以指向需求中的条件、已加载记录或固定版本材料位置；经验性主张必须有可检查的材料依据。只有 SourceRef 而未读取正文，不等于已掌握材料内容。模型不能通过调用内部工具或隐含会话记忆扩充输入；需补材料时返回缺项或动作提案。`rationale` 是简短判断说明，不要求保存模型内部推理过程。`input_manifest` 记录实际输入及版本、配对和批次组织；它用于追踪与比较，不承诺模型重跑得到完全相同结果。
+
+`T` 表示在声明条件与输入依据下判断满足，`F` 表示有依据判断不满足，`U` 表示依据不足、冲突未解或含义不明确。执行超时、格式错误、非法引用属于 `error`；批次未完成属于 `partial`，不能伪装成语义 `U`。校验器检查 schema、键、引用范围和动作合法性，不替代对判断内容的独立质量评价。
+
+#### 4.3.3 router 与可连续执行的组合规则
+
+router 是外部执行环境中的确定性分派逻辑，不是另一个隐含 LLM。它按已声明的结果状态与规则选择下一节点；只有确实需要新的策略选择时，才调用 `A_policy`。一次 `A_pred` 与相应 router 可共同实现图中一个 `Agent_pred` 环节，但判断结果与路由结果分别记录。以下以“选取满足条件的对象、对未知项补材料”为例；其他任务可以显式路由到 `F` 分支，例如取得已判定不适用的原因。
+
+```text
+raw = 调用外部适配器(A_pred, spec, inputs, scope, limits)
+checked = 校验结果(raw, spec, inputs)
+若 checked 非法: 进入有界重试或错误出口，不进入判断分支
+
+T_items, F_items, U_items = 按 value 分区 checked 中合法的判断记录
+下一访问输入 = 按 unit_key 回连原输入，从 T_items 投影目标引用
+保留 F_items 的理由；保留 U_items 的缺项
+若已声明补材料规则可处理 U_items: 路由到对应访问节点
+否则若允许策略选择且尚有预算: 调用 A_policy 提出下一动作
+否则: 带未解决项停止
+单独保留并处理 partial/error 与 unprocessed_keys
+```
+
+组合时遵守以下规则：
+
+1. **显式依赖。** 下一步只消费通过校验的输出及其对应输入；不能把判断记录当作图对象，也不能丢掉对象对、条件和来源绑定。`U`、错误和未处理项不得隐式进入普通否定分支。
+2. **有界执行。** 调用前声明模型、材料访问、配对与重试预算，每次调用从任务总预算中扣除，不能在循环中重新获得预算；动作参数和状态转移须校验。预算耗尽保留未完成状态，不能扩大预算或无限递归。空处理单元默认直接返回空结果，不调用模型；仅有需求的解释调用仍以需求作为一个单元。
+3. **无隐式副作用。** 特殊算子返回临时值或动作提案；数据读取、工具执行和持久更新均是独立可见步骤。已存判断的读取与新判断分别标记。
+4. **限制重写。** 不默认允许下推、重排、拆批、合批或缓存替换特殊算子；这些改变可能影响模型所见上下文。若要应用，须单独声明适用条件并验证。相同输入下也不假定确定性、传递性或全序。
+5. **控制扩张。** 每个特殊算子位置须说明为何需要新解释或判断。不能用 `A_map` 承担本可确定执行的 join/filter，也不能把整个 intent 藏入一个无结构的 `A_policy`。重复判断应先检查是否可由明确字段、已存关系或适用的历史判断支持。
+
+#### 4.3.4 下文简写的具体约定
+
+第 5 节的 `A_kind[说明](...)` 是上述契约的简写；共同的 scope、limits、executor 与结果校验由外部执行环境显式配置。`p`、`rows`、`J` 等变量指通过校验的 payload；错误和未处理项进入共同状态，不因伪代码省略而丢弃。`refs(J=T)` 表示用判断单元键回连输入后取得主体引用，不是从理由文本中提取引用。
+
+| 调用位置 | 必须声明的 payload 与范围 |
+| --- | --- |
+| I1 需求拆解 | `{method_query, paper_query, constraints}`；每个条件保留需求出处及未明确项，不擅自放宽限制 |
+| I1 适用性判断 | 单元为方法/工作及关联上下文；按资源条件逐项返回 `PredRow`，声明整体合取规则，新增材料后的复核保留前次 call_id |
+| I1–I6 材料位置选择 | `{source_refs, target_keys, missing}`；引用仅取显式输入中已有的位置，找不到位置返回缺项；由普通程序能确定的选择直接替代 `A_map` |
+| I2 细节抽取 | 按问题项返回 `{field, value, record_ref, resource_version, basis_refs, missing}`，不把不同实验设置合成一个值 |
+| I3 结果行抽取与可比性 | `rows` 保留行键、被测对象、数据、指标、单位、方向、数值、条件和来源；`A_pred` 以结果行对为单元，明确检查维度，只有条件满足且数值口径明确才比较 |
+| I4 问题范围与综合 | `A_pred` 逐候选判断与输入问题的范围关系；`plan={dimensions, source_refs, missing}`；综合返回带来源的维度记录，新增共同点或分歧判断须显式列为 `A_pred` |
+| I5 命题匹配与证据核查 | 命题匹配逐候选返回 `PredRow`；证据核查以主张及其绑定材料为单元，分别判断支持、反驳或限定条件，不把未支持自动解释为反驳 |
+| I6 资源发现与核验整理 | 查询 payload 遵守 `Search.query` 契约；整理输出 `{resources, setup_facts, verification_history, needs_recheck}`，各项关联资源版本与依据。解释日志是否达到某核验级别时，另用 `A_pred` |
+| 共同补查策略 | `Action` 只允许调用本轮提供的访问算子及 `ReadEvidence`，或停止；读取范围、参数类型、目标项与预算均校验，禁止自行增加可用工具 |
+
+这些约定使算法可包含可替换的判断实现，同时保留独立评价边界：固定判断输出可检查路由和数据执行；固定输入材料可评价判断实现；端到端评价再观察二者组合。实现替换后须重新检查判断质量，不能仅凭 schema 一致认定等价。
 
 ## 5. 六类 intent 的数据流
 
@@ -253,13 +336,17 @@ $A_{\text{pred}}$ 的 $U$ 不并入 $F$；语义“相同”不能自动获得�
 
 ```text
 while 有未解决项且 B 尚有预算:
-    action = A_policy[选择补检、读取已有来源或停止](u, 当前结果, 未解决项, B)
+    action = Router(当前结果, 未解决项, 已声明转移规则)
+    若没有适用规则:
+        action = A_policy[选择补检、读取已有来源或停止](
+            u, 当前结果, 未解决项, allowed_actions, B)
+    校验 action 的类型、参数、引用范围及剩余预算；非法则进入有界修正或错误出口
     若 action=停止: break
     delta = 外部执行者调用 action 指定的访问算子或 ReadEvidence
     更新当前结果与预算；仅对受影响项重新调用 A_map/A_pred
 ```
 
-循环不由中间件调度；停止时保留未知项、未访问范围与未检查配对，不能以预算耗尽代替否定答案。
+循环不由中间件调度；普通路由不调用模型，特殊算子无内部工具循环。停止时保留未知项、执行错误、未处理项、未访问范围与未检查配对，不能以预算耗尽代替否定答案。所有特殊调用先经过 §4.3 的校验再使用 payload；修正也计入预算。
 
 ### I1 发现适合需求的工作与方法
 
@@ -340,14 +427,18 @@ J = A_pred[是否为同一问题范围](u, Q)
 C1 = Context(refs(J=T), roles={answers, discussed_objects, experiments, sources})
 C2 = Search(Content, query=u, kinds={claim,experiment})
 C3 = Context(refs(C2), roles={participants, discussed_objects, sources})
-plan = A_map[确定比较维度和核查位置](u, Q, C1, C2, C3)
+plan = A_map[提取需求或显式任务配置中的比较维度和已有核查位置](
+    u, 任务配置, Q, C1, C2, C3)
 E = ReadEvidence(plan.source_refs)
-result = A_map[按维度组织路线与发现，保留分歧和缺项](
-    u, plan.dimensions, C1, C2, C3, E)
+pairs = 按声明的配对规则和 B，从 C1/C2 的主体记录生成记录对，保留各自绑定
+K = A_pred[按声明维度判断指定记录对的共同点或冲突，缺信息则 U](
+    u, plan.dimensions, pairs, C1, C2, C3, E)
+result = A_map[按维度组织记录与已有判断，保留分歧和缺项](
+    u, plan.dimensions, C1, C2, C3, E, K)
 返回 {result, 引用, 覆盖范围, 未解决项}
 ```
 
-**必要信息与表示：** Issue 是 Concept 的可选聚合入口，来源化回答是 Content，论文是 Entity。没有已确认 Issue 时 C1 为空，但 C2 仍可发现内容。Concept 检索与 Content 检索不混为一个无类型候选池。
+**必要信息与表示：** Issue 是 Concept 的可选聚合入口，来源化回答是 Content，论文是 Entity。没有已确认 Issue 时 C1 为空，但 C2 仍可发现内容。Concept 检索与 Content 检索不混为一个无类型候选池。比较维度未确定时先返回待明确项，不在组织答案时暗中增加判断标准；配对规则、每个维度的谓词及未检查配对须保留。
 
 **访问要求：** answers 通过已存 RESPONDS_TO 取得回答，可包含相反立场；语义分组与综合由 Agent 完成，不把共同问题等同共同结论。
 
@@ -366,7 +457,8 @@ V = Evidence(claims=C1.claim_refs ∪ refs(C2),
              include_relations={supports,challenges,qualifies})
 need = A_map[选择支持、相反与限定材料的核查位置](u, C1, C2, V)
 E = ReadEvidence(need.source_refs)
-answer = A_map[核对支持范围、条件差异与未知](u, C1, C2, V, E)
+K = A_pred[逐主张及材料判断支持、反驳和限定条件，缺信息则 U](u, C1, C2, V, E)
+answer = A_map[组织已有核查判断及其范围、依据和未知](u, C1, C2, V, E, K)
 返回 {answer, 有方向的关联与引用, 覆盖范围, 未解决项}
 ```
 
@@ -389,15 +481,18 @@ C = Context(refs(R) ∪ refs(H), question=u,
              roles={descriptions, observations, checked_claims, sources})
 need = A_map[选择配置和核验所需材料](u, M, R, H, C)
 E = ReadEvidence(need.source_refs)
-answer = A_map[区分已存实现、候选、公开声明、检查、运行和结果匹配](
-    u, M, R, H, C, E)
+pending = 按任务指定核验级别，选取缺少显式核验状态但已有待解释日志的记录
+K = A_pred[仅对需解释的日志判断是否达到指定核验级别](
+    u, 指定核验级别及标准, pending, C, E)
+answer = A_map[抽取配置并组织已存状态与核验判断，保留级别区别](
+    u, M, R, H, C, E, K)
 返回 {answer.resources, answer.setup_facts, answer.verification_history,
       answer.needs_recheck, 来源}
 ```
 
 **必要信息与表示：** 资源共用 Entity 契约；论文声明、检查与执行记录为 Content。核验日志的细节可以异构，但资源版本匹配若参与系统筛选，必须使用已声明版本字段或绑定。
 
-**访问要求：** Implementations 的实现关联是硬条件；Search 的相似候选不会自动升级为实现。CORE-Bench 的输出问答、成功执行和 PaperBench 的结果匹配分别保留。旧版成功不代表新版可用，新运行由外部执行者完成并显式提交观察。
+**访问要求：** Implementations 的实现关联是硬条件；Search 的相似候选不会自动升级为实现。CORE-Bench 的输出问答、成功执行和 PaperBench 的结果匹配分别保留。旧版成功不代表新版可用，新运行由外部执行者完成并显式提交观察。已存结构化核验状态直接读取并保留来源；无日志且无状态的项保留缺失，不为其空调模型。`K` 只表示对已有日志的解释，不表示本次执行或复现成功。
 
 ## 6. 映射到属性图：保持契约，允许改变存储
 
