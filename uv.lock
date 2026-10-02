@@ -7,6 +7,7 @@ members = [
     "arxiv2md",
     "cacheplan",
     "cacheplan-e08",
+    "cacheplan-e09",
 ]
 
 [[package]]
@@ -229,6 +230,21 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.13,<5" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "mineru-vl-utils", specifier = ">=2.0.5,<3" },
+    { name = "neo4j", specifier = ">=5.28,<7" },
+    { name = "pyyaml", specifier = ">=6,<7" },
+]
+
+[[package]]
+name = "cacheplan-e09"
+version = "0.1.0"
+source = { editable = "experiments/e09" }
+dependencies = [
+    { name = "neo4j" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
     { name = "neo4j", specifier = ">=5.28,<7" },
     { name = "pyyaml", specifier = ">=6,<7" },
 ]

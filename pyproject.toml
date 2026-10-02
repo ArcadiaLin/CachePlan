@@ -22,8 +22,8 @@ default-groups = ["notebook", "test"]    # 一次 `uv sync` 就得到完整开�
 
 [tool.uv.workspace]
 members = [
-    "experiments/e07-p4a-case-pool",
     "experiments/e08",
+    "experiments/e09",
     "packages/arxiv2md",
 ]
 exclude = [

@@ -10,6 +10,9 @@
 !/data/raw/e08-paper-knowledge/
 /data/raw/e08-paper-knowledge/*
 !/data/raw/e08-paper-knowledge/seeds/
+!/data/raw/e09-paper-knowledge/
+/data/raw/e09-paper-knowledge/*
+!/data/raw/e09-paper-knowledge/seeds/
 /data/processed/
 /data/cache/
 /models/
@@ -98,3 +101,6 @@ infra/neo4j-e08/data/
 infra/neo4j-e08/logs/
 infra/neo4j-e08/plugins/
 infra/neo4j-e08/backups/
+infra/neo4j-e09/data/
+infra/neo4j-e09/logs/
+infra/neo4j-e09/backups/

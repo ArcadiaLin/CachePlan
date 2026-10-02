@@ -2,7 +2,7 @@
 #
 #   make setup     建统一 uv 环境 + 装 nbstripout 的 git 过滤器（每个 clone 跑一次）
 #   make lab       启动 JupyterLab
-#   make verify    仓库级自检（E01、E06、E07 的 stdlib-only 复现闸门）
+#   make verify    仓库级自检：声明 dependencies = [] 的实验的 stdlib-only 复现闸门（当前没有）
 
 UV ?= uv
 
@@ -27,7 +27,6 @@ hooks:
 lab:
 	$(UV) run jupyter lab
 
+# E01、E06、E07 已删除（见 git 历史），它们的闸门随之移除。新增 dependencies = [] 的实验时在这里挂上。
 verify:
-	$(MAKE) -C experiments/e01-p4a-trajectory verify-stdlib
-	$(MAKE) -C experiments/e06-static-prefix verify-stdlib
-	$(MAKE) -C experiments/e07-p4a-case-pool verify-stdlib
+	@echo "no stdlib-only gates registered"
