@@ -103,6 +103,8 @@ $$
 
 所有对象共享内部引用 `ref={id,revision}`、`family`、`kind` 和来源引用。内部 ID 只定位记录，不证明对象同一性。以下是各类在此基础上的检索契约；关系字段返回目标引用及关联记录，不以自由文本替代。
 
+> **工程映射（2026-10-02）。** `family` 与 `kind` 是逻辑字段，属性图中以双 Label 存储：主 Label 为 family，次级 Label 为 kind，不另存同名属性。本文中的小写 kind 值对应首字母大写的次级 Label，例如 `Content/experiment` 存为 `(:Content:Experiment)`，`Entity/split` 存为 `(:Entity:Split)`，`Concept/protocol` 存为 `(:Concept:Protocol)`。算子签名中的 `type`、`kind`、`kinds` 参数含义不变，执行时翻译为 Label 条件。完整映射见 [Graph Model V2](./graph_model_v2.md)。
+
 | 类别 | 标量或文本检索字段 | 关系检索字段（逻辑角色） | 默认检索与组织方式 |
 | --- | --- | --- | --- |
 | **Entity：资源对象** | `identifiers`、`name`、`aliases`、`description`、`resource_version` | `versions`、`parts`、`implements`、`described_by`、`observed_by` | 标识匹配、名称/别名匹配与资源描述召回；按明确版本和实现关系过滤；返回资源及资格依据 |
@@ -637,26 +639,26 @@ answer = 投影已有字段；文本配置显式 A_map 抽取，组织 stored/K 
 以 `Experiments(subjects={a,b}, dataset={ref:d,include:{},depth:1})` 为例。固定快照中 ref 唯一选定修订；以下为报告级映射核心，尚未执行验证。先按反向 PART_OF/VERSION_OF 枚举 depth 内资源路径，得到 `$selected_ids`（严格时仅 d）与 `$extra_ids`（可展开但未选资源），保留每个目标的 witness。显式展开只采用 include 指定的边类型，循环路径按节点引用截断。三支共享 subjects、快照、范围与预算。
 
 ```cypher
-MATCH (e:Content {kind:'experiment'})-[tested:EVALUATES]->(m:Concept)
+MATCH (e:Content:Experiment)-[tested:EVALUATES]->(m:Concept)
 WHERE m.id IN $subject_ids
 MATCH (e)-[used:USES]->(d:Entity)
 WHERE used.role = 'evaluation_data' AND d.id IN $selected_ids
 RETURN DISTINCT 'matched' AS bucket, e, m, tested, d, used
 UNION ALL
-MATCH (e:Content {kind:'experiment'})-[tested:EVALUATES]->(m:Concept)
+MATCH (e:Content:Experiment)-[tested:EVALUATES]->(m:Concept)
 WHERE m.id IN $subject_ids
 MATCH (e)-[used:USES]->(d:Entity)
 WHERE used.role = 'evaluation_data' AND d.id IN $extra_ids
 RETURN DISTINCT 'expandable' AS bucket, e, m, tested, d, used
 UNION ALL
-MATCH (e:Content {kind:'experiment'})-[tested:EVALUATES]->(m:Concept)
+MATCH (e:Content:Experiment)-[tested:EVALUATES]->(m:Concept)
 WHERE m.id IN $subject_ids
 MATCH (e)-[used:USES]->(d:Entity)
 WHERE used.role IS NULL AND d.id IN $selected_ids
 RETURN DISTINCT 'role_missing' AS bucket, e, m, tested, d, used
 ```
 
-`matched` 装配为结果，其余分支只按实验引用去重返回 count/refs 与 coverage；role_missing 的缺失来源为 store。extra_ids 为 parts/versions 在 depth 内的资源集合减去 selected_ids（按引用去重），默认仍枚举其额外命中用于报告；展开后 witness 标记 PART_OF 或 VERSION_OF。预算截断下报告已见数量。matched 直接保留命中的 m 与 tested（含 target/baseline 角色），按完整绑定去重；装配只补取指标、协议等其余上下文。诊断分支在输出 count/refs 时才按实验引用去重。
+`matched` 装配为结果，其余分支只按实验引用去重返回 count/refs 与 coverage；role_missing 的缺失来源为 store。extra_ids 为 parts/versions 在 depth 内的资源集合减去 selected_ids（按引用去重），默认仍枚举其额外命中用于报告；展开后 witness 标记 PART_OF 或 VERSION_OF。预算截断下报告已见数量。matched 直接保留命中的 m 与 tested（含 target/baseline 角色），按完整绑定去重；装配只补取指标、协议等其余上下文。诊断分支在输出 count/refs 时才按实验引用去重。VERSION_OF 只在存在版本节点时参与展开；修订级版本默认记在 `USES.version` 上（见 [Graph Model V2](./graph_model_v2.md) §2.3），经 `used` 随结果返回，不参与匹配，由 I3.6 作为可比性条件判断：两边相同为 T，不同或缺失为 U。
 
 结果精度上限为表格行：键为 `(被测对象 ref, 数据切分或版本 ref, 指标 ref)`，附 value、unit、direction、表格行锚点和父 Experiment Content。行键在父报告及行锚点下解释，以区分同一组合的重复记录。ResultUnit 是此行的物理表示；只有报告加锚点也合法，每项声明 `granularity: report | row`。不追求单元格级或脚注级条件绑定，脚注和条件留在来源化描述供 A_map 读取。报告级匹配按 report 返回，行级匹配须在该行绑定上求值；报告不得静默加强为行级对应。
 

@@ -45,7 +45,7 @@ Graph Model
 | --- | --- | --- | --- |
 | `id` | 系统分配的无语义标识 | 沿用 | 只定位记录，不证明对象同一性 |
 | `revision` | 修订号；引用写作 `ref={id, revision}` | 新增 | 修订如何产生未定（Q2）。倾向：Entity、Concept 原地修改并递增；Content 不可变，新修订经 `SUPERSEDES` 指向旧记录 |
-| `kind` | 类内类型 | 改写 | **已定（2026-10-02）**：只用次级 Label 存储，不另存属性；设计文档中的逻辑字段 `kind` 由 Label 投影。`intents_decompose.md` §6.1 的 `(:Content {kind:'experiment'})` 相应改写为 `(:Content:Experiment)` |
+| `kind` | 类内类型 | 改写 | **已定（2026-10-02）**：只用次级 Label 存储，不另存属性；设计文档中的逻辑字段 `kind` 由 Label 投影。`intents_decompose.md` §3.2 已加工程映射注解，§6.1 的 Cypher 已改写为 `(:Content:Experiment)` |
 | `family` | Entity / Concept / Content | 改写 | 由主 Label 表达，不另存 |
 | `source_refs` | 来源引用 `{entity_ref, material_ref, locator}` | 改写 | 取代 v1 的 `anchor` 字符串；存储方式见下 |
 | `note` | 使用提醒、消歧线索；这一阶段也存任务相关的阅读理解 | 改写 | 不写定义。**已定（2026-10-02）**：v1 Paper `description` 中"结合当前任务对论文的理解"写入 note，开头注明任务与日期，例如 `[I3 比较 BM25 与 DPR, 2026-10-02] …`。note 不进检索面、没有版本；这类理解正是主张 A 要复用的经验，Q1 / Q5 讨论时再决定是否升级为 Content |
@@ -346,7 +346,7 @@ MATCH (k:NameKey {key: $key})-[:NAMES]->(n)
 
 | # | 事项 | 倾向 | 位置 |
 | --- | --- | --- | --- |
-| 1 | kind 用次级 Label 还是属性 | **已定（2026-10-02）**：次级 Label；`intents_decompose.md` §6.1 待同步改写 | 第 1 节 |
+| 1 | kind 用次级 Label 还是属性 | **已定（2026-10-02）**：次级 Label；`intents_decompose.md` §3.2 已加注解、§6.1 已改写 | 第 1 节 |
 | 2 | `source_refs` 的存储 | **已定（2026-10-02）**：Node 用 `FROM`，Relationship 用字符串 | 第 1 节 |
 | 3 | 精确键用 `NameKey` 还是 `aliases` 列表 | **已定（2026-10-02）**：`NameKey`，对象上不存列表 | 第 5 节 |
 | 4 | Paper `title` → `name`；`identifiers` 的存储；Paper `description` | **已定（2026-10-02）**：改名；字符串列表；description 存摘要，任务相关理解写入 note | 2.2 |
