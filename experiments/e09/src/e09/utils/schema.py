@@ -27,3 +27,13 @@ CONSTRAINTS = [
     "CREATE CONSTRAINT concept_id IF NOT EXISTS FOR (n:Concept) REQUIRE n.id IS UNIQUE",
     "CREATE CONSTRAINT namekey_key IF NOT EXISTS FOR (k:NameKey) REQUIRE k.key IS UNIQUE",
 ]
+
+# 全文索引：名称 -> (Label, 字段, 分词方式)。检索字段按类别声明（intents_decompose.md §6.2）
+# - namekey_raw：名称词面通道。名称与 alias 都在 NameKey 上，对象上没有 aliases 列表；默认分词，不做词形还原
+# - entity_texts / concept_texts：Entity 的 description、Concept 的 definition 与 scope_note；english 分词
+FULLTEXT = {
+    "namekey_raw": ("NameKey", ["raw"], "standard-no-stop-words"),
+    "entity_texts": ("Entity", ["description"], "english"),
+    "concept_texts": ("Concept", ["definition", "scope_note"], "english"),
+}
+TEXT_FIELDS = {"Entity": ["description"], "Concept": ["definition", "scope_note"]}   # 文本通道与向量共用的字段

@@ -5,6 +5,7 @@
 #   make neo4j-down  停止 neo4j-e09（数据保留在 infra/neo4j-e09/data/）
 #   make check       环境自检：材料与种子目录、连库、版本与 edition、确认不是 v1 库
 #   make seed        种子入库（e09.seed）：重跑无副作用；有冲突或写后复核失败时返回非零
+#   make embed       建向量索引并补算向量（Resolve 的语义阶段用）；需要 embedding 服务，只补算文本变过的对象
 #   make lab         在本目录启动 JupyterLab
 #
 # 当前用户若不在 docker 组：make neo4j-up DOCKER="sudo docker"
@@ -14,7 +15,7 @@ DOCKER ?= docker
 RUN = $(UV) run
 COMPOSE = $(DOCKER) compose -f ../../infra/neo4j-e09/docker-compose.yml
 
-.PHONY: setup neo4j-up neo4j-down check seed lab clean
+.PHONY: setup neo4j-up neo4j-down check seed embed lab clean
 
 setup:
 	$(MAKE) -C ../.. setup
@@ -30,6 +31,9 @@ check:
 
 seed:
 	$(RUN) python -m e09.seed
+
+embed:
+	$(RUN) python -m e09.utils.embedding
 
 lab:
 	mkdir -p notebooks && $(RUN) jupyter lab --notebook-dir=notebooks

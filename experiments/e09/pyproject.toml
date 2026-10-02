@@ -6,10 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 
 # 只声明流水线自己 import 的包；notebook 工具在根的 [dependency-groups]。
-# embedding 服务（httpx）等到检索算子需要时再加。
 dependencies = [
     "neo4j>=5.28,<7",   # 图谱读写
     "pyyaml>=6,<7",     # 种子与入库增量
+    "httpx>=0.28,<1",   # embedding 服务（vLLM 的 /v1/embeddings），Resolve 的语义阶段
 ]
 
 [build-system]
