@@ -2,7 +2,7 @@
 
 from neo4j import GraphDatabase, RoutingControl
 
-from .config import NEO4J_AUTH, NEO4J_DB, NEO4J_URI
+from ..config import NEO4J_AUTH, NEO4J_DB, NEO4J_URI
 from .schema import CONSTRAINTS
 
 # 空库时查不存在的属性键或 Label 会收到 UNRECOGNIZED 类提示，关掉
