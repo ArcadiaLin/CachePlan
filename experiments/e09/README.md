@@ -18,6 +18,7 @@ E08 是 v1 图谱，保留不动；E09 用独立的数据目录与 Neo4j 实例�
     make setup        # 第一次，或依赖变化后
     make neo4j-up     # 不在 docker 组时：make neo4j-up DOCKER="sudo docker"
     make check        # 自检：材料与种子目录、连库、确认不是 v1 库
+    make seed         # 种子入库；重跑无副作用，有冲突或复核失败时返回非零
     make lab          # JupyterLab，工作目录为 notebooks/
 
 ## 数据
@@ -33,10 +34,20 @@ E08 是 v1 图谱，保留不动；E09 用独立的数据目录与 Neo4j 实例�
 
     notebooks/            探索面：按步骤推进入库与检验
     notebooks/_scratch/   notebook 导出的中间结果，不进版本管理
-    src/e09/              共同配置、环境自检；入库流水线确定后提升到这里
+    src/e09/              已确定的部分，脚本与 notebook 共用
+
+| 模块 | 内容 |
+| --- | --- |
+| `config` | 路径与连接参数 |
+| `env_check` | 环境自检（`make check`） |
+| `schema` | graph_model_v2 的机器可读部分：kind、命名空间唯一性、关系端点、id 前缀、约束 |
+| `graph` | 连接、只读查询 `q`、建约束 |
+| `namekey` | 规范化配置 `name-key-v1` 与精确键 |
+| `ids` | 按 kind 顺序分配对象 id |
+| `seed` | 种子入库：检查 → plan → apply → 复核（`make seed`）；探索与失败路径演示见 `notebooks/01_seed_ingest.ipynb` |
 
 ## 现在还不是什么
 
-还没有入库流水线。入库表单、编译规则与 `Commit` 校验在讨论确定后再写进
-`src/e09/`，并给 Makefile 加上可失败的复现目标。notebook 只读写
+还没有论文入库。入库表单、编译规则与 Content 侧的 `Commit` 校验在讨论确定后再写进
+`src/e09/`，并给 Makefile 加上可失败的复现目标；读取侧算子（Resolve、Get 等）同样尚未实现。notebook 只读写
 `data/raw/e09-paper-knowledge/` 与 neo4j-e09，不能成为文档引用数字的唯一来源（AGENTS.md）。
