@@ -1,6 +1,6 @@
 # Graph Model V2
 
-> **状态：** 候选清单（2026-10-02），尚未经真实论文入库检验；第 7 节前 4 项已与用户确认。列出由 workload 拆解得到的候选 Node 与 Relationship，并标出需要重新考虑的 Property。Q1–Q8 指 [v2 未定模型问题与写路径](../../discussions/2026-10-01-v2-open-model-decisions-and-write-path.md) 中的编号；D1–D11 指已定决策，正文见 [Workload 拆解](./intents_decompose.md)。
+> **状态：** 候选清单（2026-10-02），尚未经真实论文入库检验；第 7 节第 1–10 项已与用户确认。列出由 workload 拆解得到的候选 Node 与 Relationship，并标出需要重新考虑的 Property。Q1–Q8 指 [v2 未定模型问题与写路径](../../discussions/2026-10-01-v2-open-model-decisions-and-write-path.md) 中的编号；D1–D11 指已定决策，正文见 [Workload 拆解](./intents_decompose.md)。
 
 `V2` 设计一个面向研究 Agent 的论文知识图：保存阅读后形成的理解，通过论文引用、共享方法、资源和命题连接不同论文，让后续研究能够查找、比较和复用已有经验。
 
@@ -91,7 +91,7 @@ B 的已知代价与应对：
 | `aliases` | 全部 | 精确键 | 改写 | v1：可重复，命中后再消歧；v2：写入时强制唯一，冲突拒绝（D3）。**已定（2026-10-02）**：不在对象上存列表，存为 `NameKey`（第 5 节）；`Get` 由 NameKey 装配 aliases 供阅读 |
 | `identifiers` | 全部 | 精确匹配 | 新增 | 取代 v1 的 `s2_id`、`arxiv_id` 与部分 `url`。逻辑结构 `{namespace, value, version_scope}`。**已定（2026-10-02）**：存为字符串列表，如 `"arxiv:2005.11401"` |
 | `description` | 全部 | 全文 / 向量 | 改写 | **已定（2026-10-02）**：Paper 的 `description` 存摘要，其他资源存内容与用途介绍。v1 中"Agent 对论文的概述"是结合当时任务形成的理解，这一阶段写入 `note`（见第 1 节） |
-| `resource_version` | 版本节点 | 精确 | 新增 | 只用于定位，不跨资源比较大小 |
+| `resource_version` | 版本节点 | 精确 | 新增 | 只在升级出版本节点时使用（2.3）；只用于定位，不跨资源比较大小 |
 | `split_role` | Split | 否 | 候选 | train / dev / test：切分在数据集内声明的角色。实验实际怎样使用它写在 `USES.role` 上，二者不互推 |
 | `year` | Paper | 否 | 沿用 | 若 I1 需要按年份过滤，再提升进检索面 |
 | `paper_type` | Paper | 否 | 重审 | 六类 intent 未使用。倾向退役，或仅作描述字段 |
@@ -100,24 +100,28 @@ B 的已知代价与应对：
 | `anchor` | Paper | — | 退役 | 摘要不需要锚点；概述的依据随 `note` 写明 |
 | 作者、许可、安装说明等 | 全部 | 否 | 沿用 | 描述面，类内允许异构 |
 
-### 2.3 版本与切分（重审）
+### 2.3 版本与切分（已定，2026-10-02）
 
-v2 已定：版本经 `VERSION_OF` 导航，切分经 `PART_OF` 连到父版本。还需要定什么时候建版本节点、版本节点怎样命名：
+六类 intent 中只有两处关心资源版本：I3 把数据集版本作为可比性条件，I6 用 commit / checkpoint 判断核验记录是否适用（I2 仅在输出中注明版本）。版本因此不是独立需求，只在"是否可比""是否适用"两种判断中起作用。据此区分两种差异：
 
-- 倾向总是建立身份节点；只有来源明确区分版本时，才建版本节点并 `VERSION_OF` 身份节点。
-- 版本节点与身份节点用同一次级 Label，以 `resource_version` 是否为空区分，不另设 `Version` kind。
-- 版本节点必须有自己的 `name`（如 `MS MARCO v2.1`），否则与身份节点在精确键上冲突。
-- 版本未知时，Split 先挂在身份节点上，并在来源化记录中注明版本未知。这与 D4 的关系仍是 `docs/progress.md` 中的待决问题。
+| 情况 | 例子 | 做法 |
+| --- | --- | --- |
+| 名称级差异 | FlashAttention 与 FlashAttention-2 | 不同实体，必要时以 `DERIVED_FROM` 关联；不算版本 |
+| 修订级差异（默认） | 数据集 v2.0 与 v2.1、两个 commit、同一模型的两个快照 | 不建版本节点；版本字符串记在使用处的 `USES`、`EVALUATES`、`OBSERVES` 边的 `version` 属性上，来源未写则留空 |
+| 修订版本自身需要挂结构 | 两个版本的切分或语料确实不同 | 才升级为版本节点：同一次级 Label，带 `resource_version` 与独立 `name`（如 `MS MARCO v2.1`），经 `VERSION_OF` 连到身份节点 |
 
 ```cypher
-(:Entity:Dataset {name: "MS MARCO"})
-(:Entity:Dataset {name: "MS MARCO v2.1", resource_version: "v2.1"})
-    -[:VERSION_OF]->(:Entity:Dataset {name: "MS MARCO"})
-(:Entity:Split {name: "dev", split_role: "dev"})
-    -[:PART_OF]->(:Entity:Dataset {name: "MS MARCO v2.1"})
+(:Entity:Split {name: "dev", split_role: "dev"})-[:PART_OF]->(d:Entity:Dataset {name: "MS MARCO"})
+(e:Content:Experiment)-[:USES {role: "evaluation_data", version: "v2.1"}]->(d)
+(o:Content:Observation)-[:OBSERVES {version: "a1b2c3d"}]->(:Entity:Code {name: "facebookresearch/DPR"})
 ```
 
-`dev` 的精确键 scope 为 `MS MARCO v2.1`，所以不同数据集的 `dev` 不冲突。
+- **未写版本**：自然归到原实体，不猜版本。
+- **D4 不变**：切分的 scope 是 `PART_OF` 指向的节点，默认为身份节点，版本节点存在时为版本节点。上例中 `dev` 的精确键 scope 为 `MS MARCO`。
+- **I3 规则**：两边 `version` 均有且相同输出 T；不同输出 U，由 Agent 判断差异是否重要，不直接判 F；任一方缺失输出 U，记 `missing_in=material`。
+- **规范化**：`version` 字符串使用单独的版本化规范化配置（如统一大小写、去掉前缀 `v`），避免 `v2.1`、`V2.1`、`2.1` 被判为不同。NameKey 的 `name-key-v1` 保留大小写，不能直接套用；原字符串照常保留。
+- **`include={versions}`**：只在存在版本节点时起作用。
+- **实例中测量**：因数据版本被判为 U 的比较数量，及 Agent 最终判定其中多少确实不可比；若几乎都无关紧要，可进一步弱化边上的 `version`。
 
 ## 3. Concept：定义对象
 
@@ -125,7 +129,7 @@ v2 已定：版本经 `VERSION_OF` 导航，切分经 `PART_OF` 连到父版本�
 
 | 次级 Label | 含义 | 状态 | v1 对应 | 说明 |
 | --- | --- | --- | --- | --- |
-| `Method` | 方法方案及方法类别 | 重审 | `Method` + `MethodConcept` | v2 只列 Method，类别经 `BROADER` 表达。合并后失去 v1 中"具体方案 / 类别"的区分：`INSTANCE_OF` 与 `SUBTYPE_OF` 都变成 `BROADER`。倾向合并；若 I1 需要只取具体方案，加描述字段 `level: scheme / family`，不新增 kind |
+| `Method` | 方法方案及方法类别 | 改写 | `Method` + `MethodConcept` | **已定（2026-10-02）**：合并为一个 kind，类别经 `BROADER` 表达（v1 的 `INSTANCE_OF` 与 `SUBTYPE_OF` 都并入）。代价是失去"具体方案 / 类别"的区分；若 I1 需要只取具体方案，加描述字段 `level: scheme / family`，不新增 kind |
 | `Task` | 研究任务 | 沿用 | `Task` | |
 | `Metric` | 指标 | 改写 | `Metric` | 归入 Concept；定义必须写明影响可比性的口径，如 @k 与计算方式（D2） |
 | `Protocol` | 评测协议或核验标准 | 新增 | 写在 Experiment 描述中 | 定义及修订有明确引用；一次实验实际采用的参数留在 Content 中（§3.4） |
@@ -145,7 +149,7 @@ Method、Task、Metric、Protocol 是术语型，Issue、Proposition 是陈述�
 | `scheme_ref` | 术语型 | 过滤 | 重审 | 外部定义体系（如某个任务分类表）。当前没有外部体系，倾向首版不设 |
 | `text` | 陈述型 | 全文 / 向量 | 沿用 | 措辞中立，保留范围限定（v1 规则） |
 | `description` | Issue | 否 | 沿用 | 争议所在与判断条件 |
-| `direction` | Metric | 否 | 重审 | 越大越好或越小越好。`intents_decompose.md` §6.1 把 direction 放在结果行上；放在 Metric 上可少抽取一次，但同名指标偶有方向相反的变体。倾向放在 Metric，结果行只在不一致时填写 |
+| `direction` | Metric | 否 | 新增 | 越大越好或越小越好。**已定（2026-10-02）**：放在 Metric 上，只定义一次；结果行仅在与 Metric 不一致时填写，读取时以行上的值为准。原则：能在定义层确定的，不让每次抽取重复判断 |
 | `anchor` | Method、Metric | — | 退役 | 定义出处改由可选的 `FROM` 表达；定义由 Agent 归纳时没有单一来源 |
 
 ## 4. Content：来源化内容
@@ -171,14 +175,14 @@ Method、Task、Metric、Protocol 是术语型，Issue、Proposition 是陈述�
 | `source_refs`（`FROM`） | 除 Observation、Assessment | 限制条件 | 改写 | 见第 1 节 |
 | `setting` | Experiment | 否 | 重审 | 见 4.4 |
 | `granularity` | Experiment | 否 | 重审 | `report / row` 是返回项的属性（§4.1）。有 ResultUnit 子节点即 row，没有即 report，不必另存；只有要区分"尚未抽取"与"原文只有报告级"时，才另存 `result_extraction: none / report / row` |
-| `check_level` | Observation | 过滤 | 改写 | 即 v1 的 `kind`（repo_inspection / execution / reproduction）。v2 中 `kind` 已指类内类型，**必须改名** |
+| `check_level` | Observation | 过滤 | 改写 | 即 v1 的 `kind`（repo_inspection / execution / reproduction）。v2 中 `kind` 已指类内类型，**已定（2026-10-02）**改名 |
 | `observed_at` | Observation | 过滤 | 沿用 | |
-| `target` | Observation | — | 改写 | 改为 `OBSERVES` 指向资源版本节点，commit 等精确版本写在版本节点的 `resource_version` 上 |
+| `target` | Observation | — | 改写 | 改为 `OBSERVES` 指向资源，commit 等精确版本写在 `OBSERVES.version` 上（2.3） |
 | `environment` | Observation | 否 | 新增 | I6.3 适用性检查需要（§5.1.3） |
 | `evidence` | Observation | 否 | 沿用 | 检查日志或产物路径，作用相当于 source_refs，但材料不是论文 |
 | `condition_id`、`value`、`origin`、`rule_ref` / `call_id`、`rationale`、`made_at`、`validity` | Assessment | `condition_id` 精确 | 候选 | 即持久化的 `PredRow`：`value` 取 T / F / U，`origin` 取 rule / agent，`validity` 取 valid / stale。被判断对象与依据用关系表达（6.2.5），依据必须固定到 `{id, revision}` |
 
-### 4.3 ResultUnit：结果表的一行（新增，物理细节重审）
+### 4.3 ResultUnit：结果表的一行（已定，2026-10-02）
 
 D1 规定结果精度上限为表格行，行键为 `(被测对象 ref, 切分或版本 ref, 指标 ref)`，附 value、unit、direction 和表格行锚点。ResultUnit 是这一行的物理表示，属于 Experiment 视图的组成部分。
 
@@ -190,24 +194,26 @@ D1 规定结果精度上限为表格行，行键为 `(被测对象 ref, 切分�
 (r)-[:FROM {material_ref: "<material_id>", locators: ["<实验结果::start:end>"]}]->(:Entity:Paper)
 ```
 
-| 待定点 | 选项 | 倾向 |
+| 事项 | 选项 | 决定 |
 | --- | --- | --- |
 | 行键的三条边 | 复用 `EVALUATES / USES / MEASURED_BY`，或另起 `OF_SUBJECT / ON_DATA / BY_METRIC` | 复用：Experiments 的模式在报告级与行级同构，角色语义不变。代价是同一 Type 有两种起点，查询须写明 Label |
 | 是否带 `Content` 主 Label | 带，或只带 `ResultUnit` | 只带 `ResultUnit`：它不单独作为语义对象检索，避免 Content 全文检索命中结果行（§3.3"物理中间节点不自动成为语义对象"） |
-| `value` 的类型 | 原文字符串，或数值 | 两者都存：`value` 保留原文（如 `45.3±0.2`），`value_num` 存解析后的数值；比较只用后者，解析失败时留空 |
+| `value` 的类型 | 原文字符串，或数值 | 两者都存：`value` 保留原文（如 `45.3±0.2`、`18.7†`），`value_num` 存解析后的数值，解析失败时留空 |
 
-### 4.4 Experiment 的可比性条件哪些进入结构（重审）
+**数值比较的回退规则。** 规则默认先比较 `value_num`，但只在条件理想时输出 T / F：所有可比性条件为 T、两行 `value_num` 均非空、单位与 direction 一致。任一项不满足，规则输出 `value=U, origin=rule`，按既有 U 路由交给 $A_{\text{pred}}$，由 Agent 读取原文 `value` 及其标记、脚注再判断。数值比较是可比性检查之后的最后一步，不替代它。
+
+### 4.4 Experiment 的可比性条件哪些进入结构（已定，2026-10-02）
 
 D2 把四项可比性条件放进领域配置。它们在图中有不同的去处：
 
 | 条件 | 去处 | 状态 |
 | --- | --- | --- |
-| 数据集版本与切分 | `USES` 指向 Split 或版本节点 | 已定 |
+| 数据集版本与切分 | `USES` 指向 Split 或数据集，版本记在 `USES.version` 上（2.3） | 已定 |
 | 指标定义（含 @k） | `MEASURED_BY` 指向 Metric | 已定 |
-| 候选集或语料 | `USES {role: "retrieval_corpus"}` 指向 Dataset，或写在 `setting` 文本中 | 重审：新增 USES role 后，规则即可判定；否则只能交给 $A_{\text{pred}}$ |
-| 是否重排序 | Protocol，或 `setting` 文本 | 重审 |
+| 候选集或语料 | `USES {role: "retrieval_corpus"}` 指向 Dataset | 已定：新增 USES role，规则即可判定 |
+| 是否重排序 | `setting` 文本 | 已定：首版由 $A_{\text{pred}}$ 判断；I3 实例显示规则可以决定时再提升 |
 
-倾向前三项进入结构，重排序先留在文本中；用 I3 实例检验规则能否决定，再提升。`setting` 本身保留为异构描述字段，存其余超参数。
+进入结构的条件由规则判定，留在文本中的交给 Agent。这决定主张 B 的一项测量（规则与 Agent 各判定多少比较条件），而进入结构的抽取成本计入主张 A，实例中两边同时记录。`setting` 保留为异构描述字段，存其余超参数。
 
 ## 5. 系统记录
 
@@ -263,8 +269,8 @@ MATCH (k:NameKey {key: $key})-[:NAMES]->(n)
 | --- | --- | --- | --- | --- | --- |
 | `FROM` | Content → Entity | `Content.source_refs` | `material_ref`、`locators` | 改写 | 取代 v1 的来源类关系及 Node 上的 `anchor` |
 | `ABOUT` | Content → Entity / Concept | `Content.about`、`Entity.described_by` | | 沿用 | 讨论关系不表示支持；v1 的 `DESCRIBES` 并入 |
-| `EVALUATES` | Experiment / ResultUnit → Method、Model 等 | `Content.participants` | `role: target / baseline`（必填） | 沿用 | Q7：立即回补 role，§6.1 依赖它 |
-| `USES` | Experiment / ResultUnit → Entity | `Content.participants` | `role`：training_data / evaluation_data / analysis_input / tooling；候选 retrieval_corpus | 沿用 | role 缺失时进入 `diagnostics.role_missing` |
+| `EVALUATES` | Experiment / ResultUnit → Method、Model 等 | `Content.participants` | `role: target / baseline`（必填）、`version` | 沿用 | Q7：立即回补 role，§6.1 依赖它 |
+| `USES` | Experiment / ResultUnit → Entity | `Content.participants` | `role`：training_data / evaluation_data / analysis_input / tooling / retrieval_corpus（2026-10-02 新增）；`version` | 沿用 | role 缺失时进入 `diagnostics.role_missing` |
 | `MEASURED_BY` | Experiment / ResultUnit → Metric | `Content.participants` | | 沿用 | |
 | `USES_PROTOCOL` | Experiment / ResultUnit / Observation → Protocol | `Content.protocol` | | 新增 | 实际参数留在 Content 中 |
 | `ON_TASK` | Experiment → Task | | | 沿用 | Q7：立即回补 |
@@ -278,7 +284,7 @@ MATCH (k:NameKey {key: $key})-[:NAMES]->(n)
 | `SUPPORTS`、`CHALLENGES`、`QUALIFIES` | Claim → Claim | `Content.supports` 等 | | 沿用 | 不推导传递关系 |
 | `EXPRESSES` | Claim → Proposition | `Concept.expressed_by` | | 沿用 | Q6 |
 | `RESPONDS_TO` | Claim → Issue | `Concept.answered_by` | `stance` | 沿用 | Q6 |
-| `OBSERVES` | Observation → Entity | `Entity.observed_by` | | 沿用 | 终点倾向为版本节点 |
+| `OBSERVES` | Observation → Entity | `Entity.observed_by` | `version` | 沿用 | 记录检查的 commit 或快照（2.3） |
 | `CHECKS` | Observation → Claim / Usage | `Content.checks` | `verdict` | 沿用 | |
 
 #### 6.2.3 资源之间与资源—概念
@@ -344,12 +350,12 @@ MATCH (k:NameKey {key: $key})-[:NAMES]->(n)
 | 2 | `source_refs` 的存储 | **已定（2026-10-02）**：Node 用 `FROM`，Relationship 用字符串 | 第 1 节 |
 | 3 | 精确键用 `NameKey` 还是 `aliases` 列表 | **已定（2026-10-02）**：`NameKey`，对象上不存列表 | 第 5 节 |
 | 4 | Paper `title` → `name`；`identifiers` 的存储；Paper `description` | **已定（2026-10-02）**：改名；字符串列表；description 存摘要，任务相关理解写入 note | 2.2 |
-| 5 | 版本节点的建立时机与命名；版本未知时 Split 挂在哪里 | 来源区分版本才建；版本节点独立命名；未知时挂身份节点 | 2.3 |
-| 6 | ResultUnit 的边名、Label、`value` 类型 | 复用参与边；只带 `ResultUnit`；原文与数值都存 | 4.3 |
-| 7 | 可比性条件哪些进入结构 | 版本、切分、指标、语料进入结构；重排序留在文本 | 4.4 |
-| 8 | Method 与 MethodConcept 合并 | 合并，用 `BROADER` | 3.1 |
-| 9 | `Observation.kind` 改名为 `check_level` | 必须改，无争议 | 4.2 |
-| 10 | `Metric.direction` 的位置 | 放在 Metric 上 | 3.2 |
+| 5 | 版本节点的建立时机与命名；版本未知时 Split 挂在哪里 | **已定（2026-10-02）**：修订级版本默认记在使用边的 `version` 上，只在版本自身需要挂结构时建节点；未写版本归原实体 | 2.3 |
+| 6 | ResultUnit 的边名、Label、`value` 类型 | **已定（2026-10-02）**：复用参与边；只带 `ResultUnit`；原文与数值都存，数值比较不理想时回退原文交 Agent | 4.3 |
+| 7 | 可比性条件哪些进入结构 | **已定（2026-10-02）**：版本、切分、指标、语料进入结构；重排序留在文本 | 4.4 |
+| 8 | Method 与 MethodConcept 合并 | **已定（2026-10-02）**：合并，用 `BROADER` | 3.1 |
+| 9 | `Observation.kind` 改名为 `check_level` | **已定（2026-10-02）** | 4.2 |
+| 10 | `Metric.direction` 的位置 | **已定（2026-10-02）**：放在 Metric 上 | 3.2 |
 | 11 | Usage、Contribution、Assessment 的去留 | 等 Q5、Q1 | 4.1 |
 | 12 | `revision`、`status`、`SUPERSEDES` | 等 Q2 | 第 1 节、6.2.5 |
 | 13 | Issue、Proposition 的归类 | 等 Q6，用 I4、I5 实例裁决 | 3.1 |
