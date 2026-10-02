@@ -26,6 +26,9 @@
 /results/
 /tmps/
 
+# 项目级 agent skills：nature-figure 只在本地使用，不进版本管理（其余 skill 仍跟踪）。
+/.agents/skills/nature-figure/
+
 # Per-config pi conversation history.
 /pi-configs/*/sessions/
 
