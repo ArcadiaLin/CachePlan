@@ -186,7 +186,7 @@ AccessResult = {
 }
 ```
 
-Resolve 的 type 指 Entity/Concept/Content 类别，kind 指类内类型（如 Entity/split、Concept/protocol、Concept/metric）；单次调用指定一对合法值，跨 kind 请求分别调用并保留类型。kind 属于 Content 时只支持已注册标识与内容候选通道。Resolve 按已注册标识 → 作用域唯一 name/alias → 全文/向量融合候选逐级解析。read 模式前两级唯一命中即停止；冲突键标 ambiguous 并继续提供语义候选，语义阶段无精确冲突时返回 candidates 与 `value=U`，由外部 `A_pred` 确认。write 模式前两级命中后仍运行语义查重，`refs` 保留精确结果，近邻及其候选状态记入 match_trace，由外部判断重复对象或补 alias；stage/status 指主解析结果，语义查重过程另记 match_trace。三级均未返回引用且无既有冲突时，返回 `stage=semantic,status=none,refs=[],states.access=empty`，coverage 保留搜索范围与截断；执行失败单独保留错误，不作 none 处理。write 模式已有精确结果而查重为空时仍为 resolved。Resolve 承担 lookup，Search 承担 discover 和条件枚举；其他算子的引用参数接收已确认引用。新说法经确认后，通过独立显式写入注册 alias，供后续解析复用。
+Resolve 的 type 指 Entity/Concept/Content 类别，kind 指类内类型（如 Entity/split、Concept/protocol、Concept/metric）；单次调用指定一对合法值，跨 kind 请求分别调用并保留类型。kind 属于 Content 时只支持已注册标识与内容候选通道。Resolve 按已注册标识 → 作用域唯一 name/alias → 全文/向量融合候选逐级解析。标识的唯一性按命名空间在领域配置中声明：唯一命名空间（如 arxiv、doi、s2）的写入冲突处理与 alias 相同；非唯一命名空间（如 url，同一仓库可发布多个数据集，或同时发布代码与模型）允许重复注册。标识级命中多个对象时返回 `stage=id,status=ambiguous` 及全部命中引用，不静默落到下一级；输入同时带名称时，与 name/alias 级结果取交集，交集唯一则 resolved 并在 match_trace 记录两级依据，仍不唯一或为空则保留 ambiguous 交外部 `A_pred`，交集为空同时报告为不一致。write 模式下，非唯一标识的多重命中只作查重候选，不直接复用。read 模式前两级唯一命中即停止；冲突键标 ambiguous 并继续提供语义候选，语义阶段无精确冲突时返回 candidates 与 `value=U`，由外部 `A_pred` 确认。write 模式前两级命中后仍运行语义查重，`refs` 保留精确结果，近邻及其候选状态记入 match_trace，由外部判断重复对象或补 alias；stage/status 指主解析结果，语义查重过程另记 match_trace。三级均未返回引用且无既有冲突时，返回 `stage=semantic,status=none,refs=[],states.access=empty`，coverage 保留搜索范围与截断；执行失败单独保留错误，不作 none 处理。write 模式已有精确结果而查重为空时仍为 resolved。Resolve 承担 lookup，Search 承担 discover 和条件枚举；其他算子的引用参数接收已确认引用。新说法经确认后，通过独立显式写入注册 alias，供后续解析复用。
 
 items 为语义对象视图，bindings 保留对象与角色对应，witnesses 是满足已声明关系条件的关联记录/路径。source_refs 指向材料；匹配路径与来源均不自动证明研究结论。`coverage={local, upstream}`；`local={call_id, snapshot, scope, candidate_depth, truncated, unprocessed_keys}`，`upstream` 保存输入覆盖记录的引用。组合按调用 ID 保留上游链并新增本步记录，分页通过 continuation 继续；完整性按具体范围查询这条链。
 
@@ -241,7 +241,7 @@ Content: text 全文/向量召回；source_refs 与参与关系限制
 返回结果及截断、缺失和续取信息
 ```
 
-query 可写为 `{identifier?, mention?, text?}`；纯文本简写为 text。各类只接受本契约支持的分量，不能把 Concept/Content 查询强行套进资源标识通道。query 可省略，此时按结构条件枚举，而非对空文本编码。精确标识通道只执行已注册的匹配规则；满足 `(normalized_name_or_alias,type,kind,scope)` 唯一约束的命中具有精确身份语义；导入或核查发现的既有非唯一键标 ambiguous，其他词面、模糊与语义命中保留候选 `value=U`。类内相同通道使用同一预处理和编码配置，缺失文本关闭对应通道。
+query 可写为 `{identifier?, mention?, text?}`；纯文本简写为 text。各类只接受本契约支持的分量，不能把 Concept/Content 查询强行套进资源标识通道。query 可省略，此时按结构条件枚举，而非对空文本编码。精确标识通道只执行已注册的匹配规则，非唯一命名空间的命中只缩小候选、不单独确定身份；满足 `(normalized_name_or_alias,type,kind,scope)` 唯一约束的命中具有精确身份语义；导入或核查发现的既有非唯一键标 ambiguous，其他词面、模糊与语义命中保留候选 `value=U`。类内相同通道使用同一预处理和编码配置，缺失文本关闭对应通道。
 
 词面与向量排行可采用 RRF [S9]；精确匹配采用独立且声明过的优先规则，不能重复计分。关系信号若参与排序，须声明含义及权重，不能将“存在路径”默认为证据强度。跨类排行不直接比较原始分数。
 

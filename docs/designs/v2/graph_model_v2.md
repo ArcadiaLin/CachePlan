@@ -89,13 +89,13 @@ B 的已知代价与应对：
 | --- | --- | --- | --- | --- |
 | `name` | 全部 | 精确键 | 改写 | **已定（2026-10-02）**：Paper 的 `title` 统一为 `name`，使 Resolve 的键在类内一致。精确键为 `(规范化 name/alias, type, kind, scope)`（D3）；`name` 留在对象上作主称呼，同时注册为一条 `NameKey` |
 | `aliases` | 全部 | 精确键 | 改写 | v1：可重复，命中后再消歧；v2：写入时强制唯一，冲突拒绝（D3）。**已定（2026-10-02）**：不在对象上存列表，存为 `NameKey`（第 5 节）；`Get` 由 NameKey 装配 aliases 供阅读 |
-| `identifiers` | 全部 | 精确匹配 | 新增 | 取代 v1 的 `s2_id`、`arxiv_id` 与部分 `url`。逻辑结构 `{namespace, value, version_scope}`。**已定（2026-10-02）**：存为字符串列表，如 `"arxiv:2005.11401"` |
+| `identifiers` | 全部 | 精确匹配 | 新增 | 取代 v1 的 `s2_id`、`arxiv_id` 与 `url`。逻辑结构 `{namespace, value, version_scope}`。**已定（2026-10-02）**：存为字符串列表 `"<namespace>:<value>"`，如 `"arxiv:2005.11401"`、`"url:https://github.com/zhouhaoyi/ETDataset"`；唯一性按命名空间声明，重复时的处理见 2.4 |
 | `description` | 全部 | 全文 / 向量 | 改写 | **已定（2026-10-02）**：Paper 的 `description` 存摘要，其他资源存内容与用途介绍。v1 中"Agent 对论文的概述"是结合当时任务形成的理解，这一阶段写入 `note`（见第 1 节） |
 | `resource_version` | 版本节点 | 精确 | 新增 | 只在升级出版本节点时使用（2.3）；只用于定位，不跨资源比较大小 |
 | `split_role` | Split | 否 | 候选 | train / dev / test：切分在数据集内声明的角色。实验实际怎样使用它写在 `USES.role` 上，二者不互推 |
 | `year` | Paper | 否 | 沿用 | 若 I1 需要按年份过滤，再提升进检索面 |
 | `paper_type` | Paper | 否 | 重审 | 六类 intent 未使用。倾向退役，或仅作描述字段 |
-| `url` | Code、Dataset、Model | 部分 | 重审 | 规范入口（如 GitHub 仓库）作为 identifier；论文给出的具体链接属于 Usage。保留 v1 规则：同一 URL 不自动表示同一资源（同一仓库可同时发布 Code 与 Model），因此 identifier 唯一性按 kind 分开 |
+| `url` | Code、Dataset、Model | — | 改写 | **已定（2026-10-02）**：资源的官方入口并入 `identifiers` 的 `url` 命名空间（非唯一，见 2.4）；论文给出的具体链接属于 Usage |
 | `markdown_path` | Paper | — | 退役 | 移到 `Material`（第 5 节），由 `material_ref` 引用 |
 | `anchor` | Paper | — | 退役 | 摘要不需要锚点；概述的依据随 `note` 写明 |
 | 作者、许可、安装说明等 | 全部 | 否 | 沿用 | 描述面，类内允许异构 |
@@ -122,6 +122,26 @@ B 的已知代价与应对：
 - **规范化**：`version` 字符串使用单独的版本化规范化配置（如统一大小写、去掉前缀 `v`），避免 `v2.1`、`V2.1`、`2.1` 被判为不同。NameKey 的 `name-key-v1` 保留大小写，不能直接套用；原字符串照常保留。
 - **`include={versions}`**：只在存在版本节点时起作用。
 - **实例中测量**：因数据版本被判为 U 的比较数量，及 Agent 最终判定其中多少确实不可比；若几乎都无关紧要，可进一步弱化边上的 `version`。
+
+### 2.4 标识的唯一性与重复（已定，2026-10-02）
+
+标识只用于匹配，不默认唯一。唯一性按命名空间在领域配置中声明，重复是正常输入，由算子报告，不靠改写模型或数据回避。
+
+| 命名空间 | 唯一性 | 写入时重复 | 读取时多重命中 |
+| --- | --- | --- | --- |
+| `arxiv`、`doi`、`s2` | 唯一 | 拒绝写入，处理同 NameKey 冲突 | 正常不会发生；导入或核查发现的冲突隔离为 `ambiguous` |
+| `url` | 非唯一：同一仓库可发布多个数据集（ETT 与 ETTh1–ETTm2 共用 `zhouhaoyi/ETDataset`），也可同时发布代码与模型 | 允许 | Resolve 返回 `stage=id, status=ambiguous` 及全部命中，不静默落到下一级 |
+
+非唯一标识的多重命中缩小了候选范围，再按确定性规则继续缩小：
+
+```text
+id 级：   url = zhouhaoyi/ETDataset          → {ETT, ETTh1, ETTh2, ETTm1, ETTm2}
+别名级：  mention = "ETTh1", kind = Dataset  → {ETTh1}
+交集唯一  → status=resolved，match_trace 记录两级依据
+仍不唯一或交集为空 → 保留 ambiguous，交外部 A_pred；交集为空同时报告为不一致
+```
+
+写入模式下，非唯一标识的多重命中只作为查重候选，由外部判断新对象是其中之一还是同仓库中的另一个对象，不直接复用。同一原则适用于 alias 与 `version` 字符串：每条匹配规则都规定唯一命中、多重命中、无命中与数据冲突四种返回。
 
 ## 3. Concept：定义对象
 
