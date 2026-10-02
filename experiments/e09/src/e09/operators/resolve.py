@@ -1,22 +1,25 @@
 """Resolve：把一个说法解析为已存对象的引用（intents_decompose.md §4.1，graph_model_v2.md §2.4）。
 
-    resolve(mention, *, kind, identifier=None, text=None, scope="global", mode="read")
-      -> {stage: id | alias | semantic, status: resolved | ambiguous | candidates | none | error,
-          refs, match_trace, states, coverage}
+    resolve(query={identifier?, mention?, text?}, *, kind, scope="global", mode="read")
+      -> {stage: id | alias | semantic, status: resolved | ambiguous | candidates | none | unprocessed,
+          refs, match_trace, states, coverage, execution: ok | partial | error}
 
-三级逐级解析，type 由 kind 推出（单次调用一对合法值）：
+query 也可以直接给一个字符串，即 mention。三级逐级解析，type 由 kind 推出（单次调用一个合法 kind）：
 
 1. **id**：`identifier` 在本 kind 对象的 identifiers 中精确匹配。唯一命名空间单个命中即 resolved；
-   非唯一命名空间（url）的命中只缩小候选、不单独确定身份。多重命中返回 ambiguous 及全部命中，不静默落到下一级。
+   非唯一命名空间（url）的命中只缩小候选、不单独确定身份：多重命中返回 ambiguous 及全部命中，不静默落到下一级；
+   单个命中返回 candidates。
 2. **alias**：`mention` 经 name-key-v1 规范化后查 NameKey（`规范化名称|kind|scope`）。active 键唯一命中即 resolved；
    已隔离为 ambiguous 的键返回 ambiguous。与 id 级同时有结果时取交集：交集唯一 resolved，
-   仍不唯一或为空保留 ambiguous 交外部 A_pred；名称命中了对象、交集却为空时另报不一致。
+   仍不唯一或为空保留 ambiguous 交外部 A_pred；名称命中了对象、交集却为空时另记 resolution=conflicting。
 3. **semantic**：名称词面（NameKey.raw 全文）、文本（description / definition 全文）、向量三路召回，按 RRF 融合；
    只给候选，value=U，由外部 A_pred 确认。没有阈值：只要本 kind 有对象，向量通道总会给出近邻。
 
 read 模式前两级 resolved 即停止；ambiguous 时仍跑语义阶段，结果记入 match_trace 供外部判断。
 write 模式前两级命中后仍跑语义查重，近邻记入 match_trace；非唯一标识的多重命中只作查重候选（candidates），不直接复用。
-三级都没有引用时返回 none、access=empty；执行失败单独记为 error，不当作 none。
+三级都没有引用时返回 none、access=empty、resolution=missing（missing_in=store）。
+通道执行失败记入 execution（partial / error）；因失败而没有引用时 status=unprocessed、access=unprocessed，不当作 none。
+states 的维度与取值沿用 intents_decompose.md §4.3.2.1。
 """
 
 from ..utils.embedding import EMBED_MODEL, VECTOR_INDEXES, embed
@@ -109,8 +112,11 @@ def _alias_stage(mention, kind, scope):
     return {"stage": "alias", "key": key, "key_status": status, "hits": hits, "normalizer_ref": NORMALIZER}
 
 
-def resolve(mention: str | None = None, *, kind: str, identifier: str | None = None, text: str | None = None,
-            scope: str = "global", mode: str = "read", n: int = TOP_N) -> dict:
+def resolve(query: dict | str, *, kind: str, scope: str = "global", mode: str = "read", n: int = TOP_N) -> dict:
+    query = {"mention": query} if isinstance(query, str) else dict(query)
+    if unknown := set(query) - {"identifier", "mention", "text"}:
+        raise ValueError(f"query 只接受 identifier、mention、text，不接受 {sorted(unknown)}")
+    mention, identifier, text = query.get("mention"), query.get("identifier"), query.get("text")
     if kind not in FAMILY:
         raise ValueError(f"未知 kind {kind!r}")
     if mode not in ("read", "write"):
@@ -180,14 +186,22 @@ def resolve(mention: str | None = None, *, kind: str, identifier: str | None = N
             if top:
                 result = ("semantic", "candidates", [c["id"] for c in top])
             elif errors:
-                result = ("semantic", "error", [])
+                result = ("semantic", "unprocessed", [])
             else:
                 result = ("semantic", "none", [])
     else:
         coverage["channels"] = {"lexical_name": "skipped", "lexical_text": "skipped", "semantic": "skipped"}
 
     stage, status, refs = result
-    states = {"access": "hit" if refs else ("error" if status == "error" else "empty"),
-              "value": "T" if status == "resolved" else "U",
-              "consistency": "inconsistent" if issues else "ok", "issues": issues, "errors": errors}
-    return {"stage": stage, "status": status, "refs": refs, "match_trace": trace, "states": states, "coverage": coverage}
+    resolution = {"resolved": "resolved", "ambiguous": "ambiguous", "candidates": "unresolved",
+                  "none": "missing", "unprocessed": "unresolved"}[status]
+    if issues and status != "resolved":
+        resolution = "conflicting"   # 标识与名称指向不同对象，或唯一键/唯一标识指向多个对象
+    states = {"access": "matched" if refs else ("unprocessed" if status == "unprocessed" else "empty"),
+              "resolution": resolution, "value": "T" if status == "resolved" else "U",
+              "origin": "rule", "issues": issues, "errors": errors}
+    if resolution == "missing":
+        states["missing_in"] = "store"
+    execution = "ok" if not errors else ("error" if status == "unprocessed" else "partial")
+    return {"stage": stage, "status": status, "refs": refs, "match_trace": trace, "states": states,
+            "coverage": coverage, "execution": execution}

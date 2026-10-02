@@ -130,7 +130,7 @@ B 的已知代价与应对：
 | 命名空间 | 唯一性 | 写入时重复 | 读取时多重命中 |
 | --- | --- | --- | --- |
 | `arxiv`、`doi`、`s2` | 唯一 | 拒绝写入，处理同 NameKey 冲突 | 正常不会发生；导入或核查发现的冲突隔离为 `ambiguous` |
-| `url` | 非唯一：同一仓库可发布多个数据集（ETT 与 ETTh1–ETTm2 共用 `zhouhaoyi/ETDataset`），也可同时发布代码与模型 | 允许 | Resolve 返回 `stage=id, status=ambiguous` 及全部命中，不静默落到下一级 |
+| `url` | 非唯一：同一仓库可发布多个数据集（ETT 与 ETTh1–ETTm2 共用 `zhouhaoyi/ETDataset`），也可同时发布代码与模型 | 允许 | 多个命中时，Resolve 返回 `stage=id, status=ambiguous` 及全部命中，不静默落到下一级；只命中一个时返回 `candidates`，不单独确定身份 |
 
 非唯一标识的多重命中缩小了候选范围，再按确定性规则继续缩小：
 
@@ -138,10 +138,14 @@ B 的已知代价与应对：
 id 级：   url = zhouhaoyi/ETDataset          → {ETT, ETTh1, ETTh2, ETTm1, ETTm2}
 别名级：  mention = "ETTh1", kind = Dataset  → {ETTh1}
 交集唯一  → status=resolved，match_trace 记录两级依据
-仍不唯一或交集为空 → 保留 ambiguous，交外部 A_pred；交集为空同时报告为不一致
+仍不唯一或交集为空 → 保留 ambiguous，交外部 A_pred
+名称命中了其他对象（如 mention = "Weather"）→ 交集为空且另记 resolution=conflicting
+名称未注册 → 交集为空只是缺信息，不记冲突
 ```
 
 写入模式下，非唯一标识的多重命中只作为查重候选，由外部判断新对象是其中之一还是同仓库中的另一个对象，不直接复用。同一原则适用于 alias 与 `version` 字符串：每条匹配规则都规定唯一命中、多重命中、无命中与数据冲突四种返回。
+
+**工程实现（2026-10-02，E09）。** 唯一命名空间的标识存在对象的字符串列表里，后端唯一约束作用于整个属性值、管不到列表元素，所以由 `Commit` 在 dry_run 中检查、在写入事务内复查。如果需要由后端保证，可以仿照 NameKey，为唯一命名空间单独建键节点（第 7 节第 16 项）。上面的规则已在 E09 的种子图上逐条检验（`experiments/e09/notebooks/02_resolve_get.ipynb`）。
 
 ## 3. Concept：定义对象
 
@@ -241,7 +245,7 @@ D2 把四项可比性条件放进领域配置。它们在图中有不同的去�
 
 | Label | 作用 | 状态 | Property 与关系 |
 | --- | --- | --- | --- |
-| `NameKey` | 精确键注册表 | 新增 | **已定（2026-10-02）**。`key`（规范化名称、kind、scope 拼成的单个字符串，带唯一约束）、`normalized`、`raw`、`kind`、`scope`（global 或父对象 id）、`normalizer_ref`、`status: active / ambiguous`、注册来源与提交者；`(:NameKey)-[:NAMES]->(对象)` |
+| `NameKey` | 精确键注册表 | 新增 | **已定（2026-10-02）**。`key`（规范化名称、kind、scope 拼成的单个字符串，带唯一约束）、`normalized`、`raw`、`kind`、`scope`（global 或父对象 id）、`normalizer_ref`（属性不能存 map，编码为字符串，如 `name-key-v1@unicode-15.0.0`）、`status: active / ambiguous`、注册来源与提交者（`registered_from`、`registered_by`）；`(:NameKey)-[:NAMES]->(对象)` |
 | `Material` | 固定版本的材料 | 候选 | `path`、`format`、`content_hash`、`derived_from`（如原 PDF）、`created_at`；`(:Material)-[:MATERIAL_OF]->(:Entity:Paper)`；`FROM.material_ref` 引用其 id |
 
 **为什么用 `NameKey`，而不是 `aliases` 列表。** 这是工程映射，不改变 D3 的设计：D3 中每个 alias 本来就是一条带属性的注册记录。
@@ -250,7 +254,12 @@ D2 把四项可比性条件放进领域配置。它们在图中有不同的去�
 - `intents_decompose.md` §3.2 要求原字符串与 `normalizer_ref` 随注册记录保存，冲突键还要能单独标为 `ambiguous`。这些都是"每个键"的属性，放不进字符串列表。
 - 对象上不另存 `aliases` 列表，避免两份副本需要同步；`Get` 由 `NAMES` 装配 aliases 供 Agent 阅读。
 
-**对算子的影响。** `Resolve` 的签名、三级解析和返回结构不变，只是第二级的查询写法改变；ambiguous 状态与 `normalizer_ref` 可以直接写入 match_trace。
+**对算子的影响。** `Resolve` 的三级解析和返回结构不变，第二级的查询写法改为下面这样；ambiguous 状态与 `normalizer_ref` 可以直接写入 match_trace。E09 实现后发现还有两处受影响（`intents_decompose.md` §6.2）：
+
+- **名称词面通道：** 语义阶段的名称词面通道也改为查 NameKey 的 `raw` 全文索引，因为对象上没有 aliases。
+- **向量失效：** 向量的输入文本含由 NameKey 装配的 alias，所以注册或撤销 alias 会使该对象的派生向量失效。
+
+向量（`embedding`、`embedding_key`）作为检索派生属性存在对象上，不属于内容属性。
 
 ```cypher
 MATCH (k:NameKey {key: $key})-[:NAMES]->(n)
@@ -380,5 +389,8 @@ MATCH (k:NameKey {key: $key})-[:NAMES]->(n)
 | 12 | `revision`、`status`、`SUPERSEDES` | 等 Q2 | 第 1 节、6.2.5 |
 | 13 | Issue、Proposition 的归类 | 等 Q6，用 I4、I5 实例裁决 | 3.1 |
 | 14 | `IMPLEMENTS` 的依据、`INTRODUCES`、`RELATED_TO` | 等 I6 实例 | 6.2.3、6.2.6 |
+| 15 | `Commit` 契约：论文增量的表单与编译规则、操作集（create_object、link、register_name、attach_source，以及更新与撤销）、dry_run 与 apply 的批级解析 | E09 已实现种子部分；更新目前只能覆盖属性，不能撤销属性或 alias。随入库表单剩余三项（实例范围、方法变体、条件槽）一起定 | `intents_decompose.md` §5 写路径 |
+| 16 | 唯一命名空间标识的后端约束 | 倾向先保持事务内复查；需要后端保证时仿 NameKey 建键节点 | 2.4 |
+| 17 | 语义候选的阈值或"可能不存在"提示 | 暂不设；等真实查询中外部否定的比例出来再定 | `intents_decompose.md` §4.1 |
 
-I3 实例只涉及 Paper、Dataset、Split、Method、Metric、Experiment、ResultUnit 及其参与边，第 11–14 项不阻塞它。
+I3 实例只涉及 Paper、Dataset、Split、Method、Metric、Experiment、ResultUnit 及其参与边，第 11–14、16、17 项不阻塞它；第 15 项在论文入库前必须定。

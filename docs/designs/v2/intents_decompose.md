@@ -117,11 +117,13 @@ $$
 
 精确键在写入时强制唯一：普通注册若与另一对象冲突，拒绝该次写入并返回键、已有对象及拟注册对象，保持原键有效；唯一检查与写入原子执行，同键同对象的重复注册为幂等操作。外部可选择显式合并对象、使用经确认的另一作用域或放弃注册。仅批量导入或事后核查发现既有冲突时，将该键隔离为 `ambiguous`，暂停精确解析并保留冲突对象。唯一命中返回已解析引用和 `origin=rule`；这是以读取时直接采用身份换取构建正确性的设计取舍。构建评价（主张 A）抽样核查 alias 精度，并注入错误 alias 测量下游退化。切分名的 scope 为父数据集版本，方法、资源等其他对象默认全局，kind 的例外由领域配置声明。
 
-名称规范化采用版本化配置 `name-key-v1`：按 Unicode 15.1 执行 NFC，将 White_Space 属性字符组成的连续空白折叠为一个 ASCII 空格并去除首尾空白；保留大小写、连字符及其他标点，不做 NFKC 或字符删除。因此 `BM-25` 与 `BM25`、`BERT` 与 `bert` 是不同键，可经确认分别注册为同一对象的 alias。读写使用同一配置，原字符串及 `normalizer_ref={id,revision,unicode_version}` 随注册记录和 match_trace 保存。配置升级先在新索引中重算并检查冲突，再显式切换活动版本；同一活动索引内只使用一个规范化版本。
+名称规范化采用版本化配置 `name-key-v1`：按配置记录的 Unicode 版本执行 NFC，将 White_Space 属性字符组成的连续空白折叠为一个 ASCII 空格并去除首尾空白；保留大小写、连字符及其他标点，不做 NFKC 或字符删除。因此 `BM-25` 与 `BM25`、`BERT` 与 `bert` 是不同键，可经确认分别注册为同一对象的 alias。读写使用同一配置，原字符串及 `normalizer_ref={id,revision,unicode_version}` 随注册记录和 match_trace 保存。配置升级先在新索引中重算并检查冲突，再显式切换活动版本；同一活动索引内只使用一个规范化版本，也只使用一个 Unicode 版本。
+
+> **工程映射（2026-10-02，E09）。** Unicode 版本取实现所用字符库的实际版本并如实记录，不硬性规定 15.1；原型使用 Python 3.12 的 `unicodedata`，即 Unicode 15.0。属性图的属性不能存 map，`normalizer_ref` 编码为单个字符串，如 `name-key-v1@unicode-15.0.0`。
 
 **Entity。** Paper、Dataset、Code、Model 共用资源模型；Paper 表达书目对象，不包办整篇论文的信息。identifiers 保存 `{namespace,value,version_scope}`，匹配与唯一性规则按命名空间声明。resource_version 用于精确版本定位，不跨资源比较版本大小。Paper 的摘要可直接作为 description，其他资源使用用途与内容介绍，无需改名 abstract。作者、许可细节、安装说明等其余字段允许异构。
 
-**Concept。** Method、Task、Metric、Issue、Proposition 以定义和适用范围为核心。definition 与 scope_note 采用类内固定组合方式建立语义索引；外部维护的 scheme_ref 区分定义体系。组件细节与解释注释可以异构。Concept 也可以拥有严谨的标识符；SKOS 已支持概念 URI、标签、定义及语义关系 [S12]，所以不能用“概念没有 ID”证明分类。区别在于资源指称、版本对应与概念定义匹配所需的规则不同。一个有 ID 的概念仍可能与另一有 ID 的概念含义重叠。
+**Concept。** Method、Task、Metric、Issue、Proposition 以定义和适用范围为核心。definition 与 scope_note 采用类内固定组合方式建立语义索引（原型的向量输入另含名称与 alias，见 §6.2）；外部维护的 scheme_ref 区分定义体系。组件细节与解释注释可以异构。Concept 也可以拥有严谨的标识符；SKOS 已支持概念 URI、标签、定义及语义关系 [S12]，所以不能用“概念没有 ID”证明分类。区别在于资源指称、版本对应与概念定义匹配所需的规则不同。一个有 ID 的概念仍可能与另一有 ID 的概念含义重叠。
 
 **Content。** Claim、Experiment、Observation 等记录来源中的表达、报告或检查。text 是可独立理解的内容描述，必要时由外部构建过程从表格等材料生成，并保留依据；正文片段、设置和结果表等其他字段可以异构。Observation 可以来自仓库检查或外部实验。相似内容不自动合并来源，也不因被称为“证据”就成为已验证事实。
 
@@ -173,7 +175,9 @@ SourceRef 至少包含 `{entity_ref, material_ref, locator}`；material_ref 固�
 ### 4.1 共同输入、输出与组合
 
 ```text
-Resolve(mention, type, kind, scope, mode: read | write) -> {stage: id | alias | semantic, status: resolved | ambiguous | candidates | none, refs, match_trace, states, coverage}
+Resolve(query={identifier?, mention?, text?}, kind, scope, mode: read | write)
+  -> {stage: id | alias | semantic, status: resolved | ambiguous | candidates | none | unprocessed,
+      refs, match_trace, states, coverage, execution: ok | partial | error}
 Search(type, query?, kinds?, where={}, expand={}, scope, budget) -> AccessResult
 Context(refs, question?, roles, scope, budget)                  -> AccessResult
 Experiments(subjects, dataset={ref:d, include:{}, depth:1}?, metric?, scope, budget) -> AccessResult
@@ -186,7 +190,26 @@ AccessResult = {
 }
 ```
 
-Resolve 的 type 指 Entity/Concept/Content 类别，kind 指类内类型（如 Entity/split、Concept/protocol、Concept/metric）；单次调用指定一对合法值，跨 kind 请求分别调用并保留类型。kind 属于 Content 时只支持已注册标识与内容候选通道。Resolve 按已注册标识 → 作用域唯一 name/alias → 全文/向量融合候选逐级解析。标识的唯一性按命名空间在领域配置中声明：唯一命名空间（如 arxiv、doi、s2）的写入冲突处理与 alias 相同；非唯一命名空间（如 url，同一仓库可发布多个数据集，或同时发布代码与模型）允许重复注册。标识级命中多个对象时返回 `stage=id,status=ambiguous` 及全部命中引用，不静默落到下一级；输入同时带名称时，与 name/alias 级结果取交集，交集唯一则 resolved 并在 match_trace 记录两级依据，仍不唯一或为空则保留 ambiguous 交外部 `A_pred`，交集为空同时报告为不一致。write 模式下，非唯一标识的多重命中只作查重候选，不直接复用。read 模式前两级唯一命中即停止；冲突键标 ambiguous 并继续提供语义候选，语义阶段无精确冲突时返回 candidates 与 `value=U`，由外部 `A_pred` 确认。write 模式前两级命中后仍运行语义查重，`refs` 保留精确结果，近邻及其候选状态记入 match_trace，由外部判断重复对象或补 alias；stage/status 指主解析结果，语义查重过程另记 match_trace。三级均未返回引用且无既有冲突时，返回 `stage=semantic,status=none,refs=[],states.access=empty`，coverage 保留搜索范围与截断；执行失败单独保留错误，不作 none 处理。write 模式已有精确结果而查重为空时仍为 resolved。Resolve 承担 lookup，Search 承担 discover 和条件枚举；其他算子的引用参数接收已确认引用。新说法经确认后，通过独立显式写入注册 alias，供后续解析复用。
+Resolve 的 kind 指类内类型（如 Entity/split、Concept/protocol、Concept/metric），type（Entity/Concept/Content 类别）由 kind 推出；单次调用指定一个合法 kind，跨 kind 请求分别调用并保留类型。query 的分量与 §4.2 相同：`identifier` 为 `<namespace>:<value>`，`mention` 为说法，`text` 为可选的说明文字，只进入语义阶段；只给一个字符串时视为 mention。kind 属于 Content 时只支持已注册标识与内容候选通道。Resolve 按已注册标识 → 作用域唯一 name/alias → 全文/向量融合候选逐级解析。
+
+标识的唯一性按命名空间在领域配置中声明：唯一命名空间（如 arxiv、doi、s2）的写入冲突处理与 alias 相同；非唯一命名空间（如 url，同一仓库可发布多个数据集，或同时发布代码与模型）允许重复注册。非唯一标识的命中只缩小候选、不单独确定身份：命中多个对象时返回 `stage=id,status=ambiguous` 及全部命中引用，不静默落到下一级；只命中一个对象时返回 `stage=id,status=candidates`。输入同时带名称时，与 name/alias 级结果取交集：交集唯一则 resolved，stage 记为确定身份的那一级，match_trace 记录两级依据；仍不唯一或为空则保留 ambiguous 交外部 `A_pred`。名称级命中了对象而交集为空，说明标识与名称指向不同对象，此时另记 `resolution=conflicting`；名称未注册造成的空交集只是缺信息，不记冲突。write 模式下，非唯一标识的命中只作查重候选（candidates），不直接复用。
+
+read 模式前两级唯一命中即停止；冲突键标 ambiguous 并继续提供语义候选，语义阶段无精确冲突时返回 candidates 与 `value=U`，由外部 `A_pred` 确认。write 模式前两级命中后仍运行语义查重，`refs` 保留精确结果，近邻及其候选状态记入 match_trace，由外部判断重复对象或补 alias；stage/status 指主解析结果，语义查重过程另记 match_trace。write 模式已有精确结果而查重为空时仍为 resolved。
+
+三级均未返回引用且无既有冲突时，返回 `stage=semantic,status=none,refs=[]`，`states.access=empty`、`resolution=missing`、`missing_in=store`，coverage 保留搜索范围与截断。**语义阶段不设阈值**：只要 scope 内有该 kind 的对象，向量通道总会给出近邻，所以库内不存在的对象通常以 candidates 而非 none 返回；none 只在 scope 内没有该 kind 的对象，或 query 没有可供语义阶段使用的 mention/text 时出现。"库内没有"因此要由外部对候选逐个作出否定判断（§4.3.4），其成本计入主张 A；是否引入阈值或"可能不存在"提示，待真实查询数据再定。执行失败单独保留：部分通道失败记 `execution=partial`；因执行失败而没有任何引用时记 `status=unprocessed`、`access=unprocessed`、`execution=error`，不作 none 处理。
+
+`states` 沿用 §4.3.2.1 的统一维度。下游按下表路由 Resolve 结果，伪代码中"名称先 Resolve"均指这一路由：
+
+| 返回 | states | 下游处理 |
+| --- | --- | --- |
+| `resolved` | `resolution=resolved`，`value=T`，`origin=rule` | 直接采用引用 |
+| `ambiguous` | `resolution=ambiguous` | 交 `A_pred` 在 refs 中确认（§4.3.4），附 match_trace |
+| `ambiguous` 且有数据冲突（标识与名称指向不同对象，或唯一键、唯一标识指向多个对象） | `resolution=conflicting` | 同上，并作为数据问题报告；不自动采用任一侧 |
+| `candidates` | `resolution=unresolved`，`value=U` | 交 `A_pred` 确认；候选全部判 F 时记 `resolution=missing`，`missing_in=store` |
+| `none` | `access=empty`，`resolution=missing`，`missing_in=store` | 保留为未解决项，需要时由写入流程新建对象 |
+| `unprocessed` | `access=unprocessed`，`execution=error` | 进入错误出口，不当作 none |
+
+同一任务中，Resolve 及其后的外部确认都按说法键 `(raw, kind, scope)` 去重：表格中重复出现的原值只解析和确认一次，结果按键复用。Resolve 承担 lookup，Search 承担 discover 和条件枚举；其他算子的引用参数接收已确认引用。新说法经确认后，通过独立显式写入注册 alias，供后续解析复用。
 
 items 为语义对象视图，bindings 保留对象与角色对应，witnesses 是满足已声明关系条件的关联记录/路径。source_refs 指向材料；匹配路径与来源均不自动证明研究结论。`coverage={local, upstream}`；`local={call_id, snapshot, scope, candidate_depth, truncated, unprocessed_keys}`，`upstream` 保存输入覆盖记录的引用。组合按调用 ID 保留上游链并新增本步记录，分页通过 continuation 继续；完整性按具体范围查询这条链。
 
@@ -351,6 +374,7 @@ T_items, F_items, U_items = 按 value 分区合法判断
 
 | 调用位置 | 必须声明的 payload 与范围 |
 | --- | --- |
+| Resolve 候选确认（I3.1、I3.5、I6.1、I6.2 及写入查重） | 单元为 `(说法键, 候选 ref)` 对，说法键为 `(raw, kind, scope)`，`condition_id=same_object`；输入带候选的 Get 视图与 match_trace。唯一 T 则采用该引用，经确认的新写法可另行显式注册 alias；全部 F 记 `resolution=missing`、`missing_in=store`；多个 T 记 `conflicting`；其余为 U。按说法键去重后批量调用 |
 | I1 需求拆解 | `{method_query, paper_query, constraints}`；每个条件保留需求出处及未明确项，不擅自放宽限制 |
 | I1 适用性判断 | 单元为方法/工作及关联上下文；按资源条件逐项返回 `PredRow`，声明整体合取规则，新增材料后的复核保留前次 call_id |
 | I1–I6 材料取得 | `SelectSources` 消费入库时的报告/结果行锚点；缺绑定记录 `material=missing`，材料解释由后续 `A_map` 完成 |
@@ -430,20 +454,20 @@ SelectSources(targets, inputs, source_policy, B)
 | I3.2 实验访问 / 中间件 | 对象引用 → 实验、参与角色、结果位置与来源绑定 | 按 dataset 的 include/depth 访问；额外匹配报告与 role_diag 均从 Experiments.diagnostics 取得；后者限定 EVALUATES subjects 和已选数据范围，缺 role 标 missing_in=store | 有分页规则则继续；无匹配且拟放宽条件时才需要策略提案 | 精确参与角色及结果级对象—数据绑定；付抽取、核查与修订成本。诊断范围与严格访问分别记录 |
 | I3.3 选材与读取 / 外部程序 | 条件键—结果/实验—材料版本位置 → 材料与目标映射 | 按请求字段生成 targets；选材并读取，分别记录 `material=missing/deferred/error/available` | 只使用入库锚点；位置不足记 material=missing，按补读规则或停止 | 入库写入报告/表格行锚点；材料版本更新时维护绑定，脚注解释保留在读取阶段 |
 | I3.4 结果抽取 / 程序或外部 `A_map` | 结果位置与材料 → 行键、方法、数据、条件、数值、单位及依据 | 输出 granularity=report 或 row；行键为（对象 ref，数据切分/版本 ref，指标 ref），附 value/unit/direction 和表格行锚点；父记录为实验报告 | 异构表格及脚注仍需解释；格式错误按有界修正规则处理，耗尽后保留错误 | 最多细到表格行，允许仅报告及锚点；脚注和条件留在来源化描述供 A_map 读取，构建成本计入 A |
-| I3.5 条件规范化 / 程序，必要时外部判断 | 原值、上下文 → 规范值/引用、作用域、映射依据与版本 | Resolve 按 id/alias/semantic 解析；唯一键直接 resolved，语义候选外部确认；切分 scope 取该行父数据集版本 | 同义性判定显式交给 `A_pred`；命名或作用域仍不明则保留待定，不猜等价 | 作用域 alias 及单位规则计入构建维护成本；统计三级命中与语义确认成本 |
+| I3.5 条件规范化 / 程序，必要时外部判断 | 原值、上下文 → 规范值/引用、作用域、映射依据与版本 | 按说法键 `(raw, kind, scope)` 去重后 Resolve，结果按 §4.1 路由：唯一键直接 resolved，ambiguous/candidates 交外部确认，unprocessed 进错误出口；切分 scope 取该行父数据集版本 | 同义性判定显式交给 `A_pred`，库内没有对应对象时由它否定全部候选；命名或作用域仍不明则保留待定，不猜等价 | 作用域 alias 及单位规则计入构建维护成本；语义阶段不设阈值，未注册的写法都会产生候选，统计三级命中、去重后的确认次数与全部否定的比例 |
 | I3.6 配对与比较条件检查 / 程序及外部 `A_pred` | 行对键、规范条件及依据 → 逐条件判断 | 按预算配对；规则输出 PredRow；对 `value=U,origin=rule` 调用 A_pred；agent 的 U 转补材料/策略；按条件键合并并强三值合取 | 只对未决条件解释；有补查绑定则读取，否则按规则停止或提出新策略 | 可引用的协议/条件包与有作用域的兼容性规则；付规则核查和例外维护成本。共同报告仅缩小配对候选 |
 | I3.7 数值比较与输出 / 程序 | 已通过全部必需条件的行对、数值单位/方向 → 比较及未决项 | 仅汇总 `value=T` 的行对进入数值比较；返回诊断候选、字段状态、依据和 coverage | 表格输出无需新判断；开放文字解释单列 `A_map`，不能新增未核查结论 | 有类型的数值及模板足以支持机械呈现；不消除上游抽取、对齐的成本 |
 
 规范化记录为 `{raw_value, canonical_ref_or_value, scope, mapping_ref, mapping_revision, basis_refs, states}`。切分为 Entity，scope 是父数据集版本；协议为 Concept，具体参数留在实验 Content；单位为 value 的 unit/scale 字段，使用版本化换算规则。方法、资源等默认全局 scope，kind 例外由领域配置声明。
 
-检索评测领域配置声明四项必需条件：数据版本与切分、候选集合或检索语料、指标定义（含 @k 与计算口径）、是否重排序及其设置。配置跨任务复用并计入构建维护成本，完备性待实例测量。映射调用 `Resolve(raw, type=类别, kind=类型, scope=该行绑定派生的作用域, mode=read)`，分别使用 Entity/split、Concept/protocol、Concept/metric：split 以绑定父版本为作用域，其他 kind 按领域配置采用默认全局或显式作用域；唯一命中直接采用，只有规范化已解决的条件进入规则比较。
+检索评测领域配置声明四项必需条件：数据版本与切分、候选集合或检索语料、指标定义（含 @k 与计算口径）、是否重排序及其设置。配置跨任务复用并计入构建维护成本，完备性待实例测量。映射调用 `Resolve({mention: raw}, kind=类型, scope=该行绑定派生的作用域, mode=read)`，kind 分别为 Entity/split、Concept/protocol、Concept/metric：split 以绑定父版本为作用域，其他 kind 按领域配置采用默认全局或显式作用域；唯一命中直接采用，只有规范化已解决的条件进入规则比较。同一说法键只调用一次：一张结果表的单元格成百上千，其中的数据集、切分、指标原值高度重复，不去重会按单元格重复触发确认。
 
 #### 5.1.3 I6：按步骤审计资源与核验历史
 
 | 步骤 / 执行者 | 必需输入与输出绑定 | 规则及可观察分支 | 剩余语义计算 / 重新规划条件 | 消除该语义调用所需表示及代价 |
 | --- | --- | --- | --- | --- |
 | I6.1 明确目标 / 程序或外部 `A_map` | 方法、目标资源版本、核验标准及用途要求 → 带版本的请求 | 读取目标配置或解释用途，名称经 Resolve 解析；缺请求字段 resolution=missing、missing_in=request 时返回待明确项 | 用途到核验要求的解释需显式调用；未指定环境时不能擅称适用于当前环境 | 版本化的核验标准及任务模板；付标准设计与需求填写成本 |
-| I6.2 实现取得与候选发现 / 中间件及外部程序 | 方法引用、标识/别名 → 已存实现绑定与相似候选两个集合 | Get 方法后读取显式资源说法字段；仅自由描述存在时 A_map 抽取 mention/kind/依据，再按 Entity/code 或 Entity/model Resolve；开放用途仍 Search discover；Context 装配版本、协议和核验记录 | 自由描述提取资源名计入 A_map；用途改写或确认新实现关系需显式判断；已声明搜索耗尽后，扩展来源才需策略提案 | 方法—实现—资源版本—依据绑定；付关系验证及版本演化维护成本，相似命中不能替代绑定 |
+| I6.2 实现取得与候选发现 / 中间件及外部程序 | 方法引用、标识/别名 → 已存实现绑定与相似候选两个集合 | Get 方法后读取显式资源说法字段；仅自由描述存在时 A_map 抽取 mention/identifier/kind/依据，再按 Entity/code 或 Entity/model Resolve，论文给出的仓库或模型链接作为 url 标识与名称一并传入；开放用途仍 Search discover；Context 装配版本、协议和核验记录 | 自由描述提取资源名计入 A_map；用途改写或确认新实现关系需显式判断；已声明搜索耗尽后，扩展来源才需策略提案 | 方法—实现—资源版本—依据绑定；付关系验证及版本演化维护成本，相似命中不能替代绑定 |
 | I6.3 核验记录适用性检查 / 程序及外部 A_pred | 资源版本、标准修订、环境、时间及来源 → applicability 条件的 PredRow | 先规则求值；对适用性 U 按 origin 路由：rule 交 A_pred，agent 补材料或 A_policy；同键无新材料跳过重复判断 | 模型只消费已有记录及已读材料；需要新材料时返回 U，由 I6.4 后按同规则重试 | Observation 绑定资源修订、标准修订、环境、观察时间与被检查声明；付日志整理、状态失效与重新核验成本 |
 | I6.4 选材与读取 / 外部程序 | 配置项/核验项—资源修订—材料位置 → 有绑定的材料 | 按配置项生成 targets，选材读取，记录 `material=missing/deferred/error/available` | 已有锚点不足记 material=missing；需要新来源时按补读规则或 A_policy | 报告/记录的版本化材料锚点；付入库提取和材料变更维护成本 |
 | I6.5 状态取得或日志解释 / 程序及外部 `A_pred` | 适用记录、已读日志、核验标准 → 带依据状态 | 适用性 T 的状态直接取；无状态且材料 available 则 A_pred 解释；冲突 `resolution=conflicting`；需新执行则输出提案 | 只解释可用日志；冲突没有裁决规则则保留并列。任务要求新执行时保留核验 `value=U`，输出提案并退出当前只读流 | 结构化检查项、执行结果、标准及日志绑定；付采集与核查成本。模型解释不能替代真实执行 |
@@ -454,16 +478,20 @@ SelectSources(targets, inputs, source_policy, B)
 | 契约或测量项 | 对应步骤 | 约定与检查 |
 | --- | --- | --- |
 | 结果单元与条件身份 | I3.4–I3.6 | 最大粒度精度为表格行，允许 report；每项声明 granularity，实际粒度分布待实例测量 |
-| Resolve 三级命中 | I3.1、I3.5、I6.2 | id/alias/semantic 命中比例待实例测量，另报冲突键和语义确认成本 |
+| Resolve 三级命中 | I3.1、I3.5、I6.2 | id/alias/semantic 命中比例待实例测量，另报冲突键、按说法键去重后的语义确认次数，以及候选被外部全部否定的比例 |
 | 条件到材料的绑定 | I3.3、I6.4 | 绑定由入库抽取 Agent 构建并计入 A；锚点足以定位的比例待实例测量 |
 | 核验适用性与状态冲突 | I6.3、I6.5 | 观察返回版本、环境、标准、时间与状态；缺项按 missing_in 分流，适用性 U 按 origin 路由 |
 | 访问诊断与覆盖传播 | I3.2、两条流的选材步骤 | coverage 保留输入链；role 诊断限定 EVALUATES subjects 与已选数据范围，只回传 count/refs |
 | 规则与临时判断的来源 | I3.5–I3.7、I6.5 | 保存规则版本、模型调用与输入材料；按 origin 路由 U，分别记录构建、规则执行和本次语义成本 |
 
-**写路径前置约定。** 写入先执行 Resolve(write)，精确命中后继续语义查重，由外部 A_pred 确认重复对象或补 alias。
-经确认的新说法以独立显式写入注册 alias，原子检查规范化配置下的作用域唯一键；新冲突拒绝写入并返回冲突对象，原键保持有效；仅导入或核查发现的既有冲突隔离为 ambiguous。
-入库抽取同时写入报告/表格行锚点，保留材料版本与来源；alias 与锚点成本计入主张 A。
-完整写入或更新 workload 仍待设计。
+**写路径前置约定。** 写入以批为单位，由 `Commit(delta, mode: dry_run | apply)` 执行，身份解析分两处：
+
+- 外部 Agent 填写增量前，可用 Resolve(write) 逐个说法查重；精确命中后继续语义查重，由外部 A_pred 确认重复对象或补 alias。
+- `Commit` 的 dry_run 对整批统一解析，既看库内也看批内：同批两个对象注册同一键、同批多个新对象共用一个非唯一标识，只有在整批层面才看得到，逐个调用 Resolve 发现不了。dry_run 返回新建、更新、不变、冲突与查重候选；有冲突时 apply 拒绝整批。
+
+经确认的新说法以独立显式写入注册 alias，原子检查规范化配置下的作用域唯一键；新冲突拒绝写入并返回冲突对象，原键保持有效；仅导入或核查发现的既有冲突隔离为 ambiguous。唯一命名空间的标识以列表存在对象上，后端约束管不到列表元素，由 `Commit` 在写入事务内复查。入库抽取同时写入报告/表格行锚点，保留材料版本与来源；alias 与锚点成本计入主张 A。由于语义阶段不设阈值，每个新对象写入时都有语义近邻需要外部排除，这也是主张 A 的固定构建成本。
+
+E09 已实现种子增量的最小 `Commit`（Entity、Concept、NameKey 与关系）。论文增量的表单与编译规则、更新语义（当前只能覆盖属性，不能撤销属性或 alias），以及对象合并（Q4），连同完整写入或更新 workload 仍待设计。
 
 这两条流可预编排到哪些位置，由上述状态及配置决定：已有处理规则的缺失、分页和错误可直接路由；没有适用规则才交给策略选择或返回未解决项。模型调用数、判断单元/条件数、重新规划次数，以及配置构建/规范化成本分别统计。本节固定设计契约，未扩展 schema 实现。
 
@@ -527,15 +555,17 @@ answer = A_map[逐项解释标注、语料和模型，对应具体记录](u, M, 
 **依据与输入输出：** [S3] 支持任务、数据、指标和分数整理，可比性为扩展。输入 $a$/$b$/$d$、问题 $u$；输出逐实验的数值与条件、比较或不可比较理由。
 
 ```text
-spec = 读取领域配置和任务条件（include 默认 {}，depth 默认 1）；名称先 Resolve(read)，只采用 resolved 或外部确认的 a/b/d；缺项返回 missing_in=request # I3.1
+spec = 读取领域配置和任务条件（include 默认 {}，depth 默认 1）；名称先 Resolve(read) 并按 §4.1 路由，只采用 resolved 或外部确认的 a/b/d；缺项返回 missing_in=request # I3.1
 X = Experiments(subjects={a,b}, dataset={ref:d, include:spec.include, depth:spec.depth})                                      # I3.2
 role_diag = X.diagnostics.role_missing；仅 EVALUATES a/b 且 USES 已选数据范围的缺 role 实验 # I3.2
 expandable = X.diagnostics.expandable；独立返回数量、引用及 coverage               # I3.2
 targets = 按 spec 的结果字段与条件键生成待核查项                               # I3.3
 need = SelectSources(targets, X, source_policy, B); E = ReadEvidence(need.source_refs) # I3.3
 rows = 读取报告/行；缺失部分 A_map 读取已有锚点，声明 granularity 和 value_source # I3.4
-maps = 按 Entity/split、Concept/protocol、Concept/metric 分别 Resolve(raw, type, kind, scope=行绑定派生作用域, mode=read) # I3.5
-normalized = 采用 id/alias 已解析引用；语义候选交 A_pred；none 保留未解决项，U 按 origin 路由     # I3.5
+keys = 从 rows 取说法键 (raw, kind, scope) 并去重；kind 为 Entity/split、Concept/protocol、Concept/metric，scope 由行绑定派生 # I3.5
+maps = 对 keys 逐一 Resolve({mention: raw}, kind, scope, mode=read)                # I3.5
+C = A_pred[同一对象](maps 中 ambiguous/candidates 的 (说法键, 候选) 对, Get(候选), match_trace) # I3.5
+normalized = resolved 与 C 唯一 T 直接采用；C 全部 F 或 none 记 missing_in=store；unprocessed 进错误出口；其余 U 按 origin 路由；按说法键回填各行 # I3.5
 pairs = 按声明规则与 B 从 normalized 生成行对，记录未处理键                      # I3.6
 J_rule = 规则逐条件输出 PredRow(origin=rule, rule_ref=规则版本)                   # I3.6
 J_sem = A_pred[未决比较条件](J_rule 中 value=U 且 origin=rule、无重复调用的项, rows, normalized, X, E)      # I3.6
@@ -610,11 +640,11 @@ answer = A_map[组织已有核查判断及其范围、依据和未知](u, C1, C2
 **依据与输入输出：** [S7][S8] 支持执行及不同核验要求；资源发现是前置扩展。输入 $m$、用途 $u$；输出实现资源、潜在候选、配置依据与需重查项。
 
 ```text
-spec = 读取目标配置；名称先 Resolve(read)，采用已解析或外部确认的 m；自由用途 A_map 提取，缺请求字段记 missing_in=request # I6.1
+spec = 读取目标配置；名称先 Resolve(read) 并按 §4.1 路由，采用已解析或外部确认的 m；自由用途 A_map 提取，缺请求字段记 missing_in=request # I6.1
 M = Get({m}); R = Implementations(method=m, resource_kinds={code,model})         # I6.2
 mentions = 从 M 的显式资源说法字段（若存在）读取 mention/kind/依据；仅有自由描述时显式 A_map 抽取，计入语义成本 # I6.2
-H = 对 mentions 分别 Resolve(mention, type=Entity, kind=code 或 model, scope=global, mode=read) # I6.2
-H = 保留已解析/外部确认引用；none 保留未解决项；开放用途的额外候选由显式 Search discover 取得 # I6.2
+H = 对 mentions 按说法键去重后分别 Resolve({identifier?: 链接, mention}, kind=code 或 model, scope=global, mode=read) # I6.2
+H = resolved 直接采用；ambiguous/candidates 交 A_pred[同一对象] 确认；全部 F 或 none 保留未解决项；开放用途的额外候选由显式 Search discover 取得 # I6.2
 C = Context(refs(R) ∪ refs(H), roles={descriptions,observations,checked_claims,sources,versions,parts,protocol}) # I6.2
 applicability = 按 spec 对记录范围规则求值，输出带规则版本的 PredRow              # I6.3
 对 value=U 项: origin=rule 交 A_pred；origin=agent 补材料或 A_policy；无新材料跳过重复判断 # I6.3
@@ -673,6 +703,15 @@ RETURN DISTINCT 'role_missing' AS bucket, e, m, tested, d, used
 可共享索引引擎、编码模型和融合组件，也可按类别建立索引；同类 kind 遵守同一配置。图遍历已有后端支持，全文与向量索引采用后端接口 [S10]。异构嵌套描述可序列化或拆图存储，不能假设任意嵌套 map 都是 Neo4j 属性 [S11]。
 
 配置需记录字段映射、文本修订、编码模型与预处理版本；关系变化也可能改变候选资格或派生文本，必须使相关派生视图失效或更新。嵌入计算部署边界待定，不影响中间件不调度语义判断 Agent 的约定。
+
+> **原型配置（2026-10-02，E09）。**
+>
+> - **名称词面通道：** 查询 NameKey 原字符串（`raw`）的全文索引，再经 `NAMES` 取得对象。对象上没有 aliases 列表（[Graph Model V2](./graph_model_v2.md) 第 5 节），所以这一通道不查对象本身。
+> - **文本通道：** Entity 查 description，Concept 查 definition 与 scope_note。
+> - **向量通道：** 输入文本按类别固定，为名称、由 NameKey 装配的 alias 与该类的文本字段，note 不参与；编进名称与 alias，是为了只给称呼时语义阶段仍有可比内容。写入侧不加任务说明，查询侧加。
+> - **失效：** 注册或撤销 NameKey 会改变向量输入，与文本修订一样使该对象的派生向量失效。每个对象以 `embedding_key`（模型名与输入文本的哈希）判断是否需要重算。
+> - **按 kind 过滤：** 向量索引按主 Label 建立，先取较大的候选池再按 kind 过滤，可能漏掉 kind 内的可行候选（§4.2），过滤方式记入 coverage。
+> - **部署：** 嵌入由外部服务计算（Qwen3-Embedding-8B），向量作为检索派生属性存于对象上，不属于内容属性。
 
 ## 7. Workload、设计取舍与验证
 
