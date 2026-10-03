@@ -4,11 +4,11 @@
 >
 > **核心目标：** 在少量仍需理解局部文本的连接点，用受限判断替代外层 Agent 携带完整上下文的一次介入，使既定算子组合能连续执行。收益以减少介入和上下文传递为主，同时必须评价失去外层综合判断能力的代价。
 >
-> 对应：[Intent 拆解](intents_decompose.md) §4.3、§5.1 和 I1–I6；[研究顶层设计](research_design_v2.md) §5.3。本文件细化其中适合局部化的子判断，不将已有 `A_pred` 全部替换为 `Decide`。
+> 对应：[Intent 拆解](../designs/v2/intents_decompose.md) §4.3、§5.1 和 I1–I6；[研究顶层设计](../designs/v2/research_design_v2.md) §5.3。本文件细化其中适合局部化的子判断，不将已有 `A_pred` 全部替换为 `Decide`。
 
 ## 1. 先明确外层 Agent 与局部算子的能力差异
 
-![逐步交互与预先编排的算子组合](images/operator-composition.svg)
+![逐步交互与预先编排的算子组合](../designs/v2/images/operator-composition.svg)
 
 图左侧的 Agent 拿到 tool result 后，结合已有任务上下文重新阅读。它能够完成当前判断，也有机会发现结果异常、质疑原计划、补充条件、寻找新材料，或者决定提前结束。这种介入具有更宽的判断范围和更大的行动空间，不能全部记作无价值的编排开销。
 
